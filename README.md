@@ -235,14 +235,14 @@ should includes most of the things you'll need to get your contribution started!
 
 <!-- Markdown link & img dfn's -->
 [Tizen ssh key 등록 저장소]: https://review.tizen.org/gerrit
-[ssh-config]: https://github.com/ainpeople/ainpeople_doc/blob/master/devspoon-startup-tizen/images/ssh_config.png
+[ssh-config]: https://github.com/ainpeople/ainpeople_doc/raw/master/ainci-tizen/images/ssh_config.png
 [tizen-register-site]: https://github.com/ainpeople/ainpeople_doc/blob/master/devspoon-startup-tizen/images/tizen_ssh_register.png
 [ssh-config]: https://github.com/ainpeople/ainpeople_doc/blob/master/devspoon-startup-tizen/images/ssh_config.png
-[ssh-success-msg]: https://github.com/ainpeople/ainpeople_doc/blob/master/devspoon-startup-tizen/images/ssh_result.png
+[ssh-success-msg]: https://github.com/ainpeople/ainpeople_doc/raw/master/ainci-tizen/images/ssh_result.png
 [Tizen 수동 환경 설치 & 추가 정보 제공]: https://github.com/ainpeople/ainpeople_doc
 [Tizen 수동 환경 설치]: https://source.tizen.org/ko/documentation/developer-guide/getting-started-guide
-[Tizen image mng server]: https://github.com/ainpeople/ainpeople_doc/blob/master/devspoon-startup-tizen/images/sample_tizen.PNG
-[devspoon-startup-tizen Build]: https://github.com/ainpeople/ainpeople_doc/blob/master/devspoon-startup-tizen/images/devspoon-startup-tizen_build.jpg
+[Tizen image mng server]: https://github.com/ainpeople/ainpeople_doc/raw/master/ainci-tizen/images/sample_tizen.PNG
+[devspoon-startup-tizen Build]: https://github.com/ainpeople/ainpeople_doc/raw/master/ainci-tizen/images/AinCI-Tizen_build.jpg
 [Tizen jenkins 기반 설치 공식 메뉴얼]: https://source.tizen.org/ko/documentation/developer-guide/all-one-instructions/one-click-solution-tizen-image-creation-based-on-jenkins-framework
 [Tizen documentation]: https://source.tizen.org/documentation
 [Tizen 공식 사이트]: https://www.tizen.org/ko?langswitch=ko
