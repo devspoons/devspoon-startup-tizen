@@ -1,0 +1,11 @@
+version: "3"
+services:
+  tizenenv:
+    build: ../../docker/tizen-env/
+    container_name: tizenenv
+    restart: always
+    ports:
+        - "2222:22"
+    environment:
+         TZ: "Asia/Seoul"
+    
