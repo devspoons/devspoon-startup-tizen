@@ -23,6 +23,16 @@ RUN curl http://commondatastorage.googleapis.com/git-repo-downloads/repo > ~/bin
 
 COPY .ssh /root/.ssh
 
+RUN chmod 700 /root/.ssh/ && chmod 644 /root/.ssh/* && chmod 600 /root/.ssh/id_rsa
+
+RUN mkdir /root/tizen_project
+
+ADD repo-init-tizen.sh /root/tizen_project/repo-init-tizen.sh
+
+RUN chmod 777 /root/tizen_project/repo-init-tizen.sh
+
 ADD catalina.sh /usr/local/bin/catalina.sh
+
+RUN chmod 777 /usr/local/bin/catalina.sh
 
 ENTRYPOINT ["/usr/local/bin/catalina.sh"]

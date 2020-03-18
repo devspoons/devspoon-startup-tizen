@@ -3,9 +3,9 @@ services:
   tizenenv:
     build: ../../docker/tizen-env/
     container_name: tizenenv
-    restart: always
-    ports:
-        - "2222:22"
+    volumes:
+      - ../../log/tizen/:/log/tizen/         
     environment:
-         TZ: "Asia/Seoul"
+      TZ: "Asia/Seoul"      
+    restart: always
     
