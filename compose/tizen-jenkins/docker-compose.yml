@@ -2,7 +2,9 @@ version: "3"
 services:
   tizenenv:
     build: ../../docker/tizen-env/
+    working_dir: /application
     container_name: tizenenv
+    privileged: true
     volumes:
       - ../../log/tizen/:/log/tizen/         
     environment:

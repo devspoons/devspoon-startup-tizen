@@ -27,9 +27,9 @@ RUN chmod 700 /root/.ssh/ && chmod 644 /root/.ssh/* && chmod 600 /root/.ssh/id_r
 
 RUN mkdir /root/tizen_project
 
-ADD repo-init-tizen.sh /root/tizen_project/repo-init-tizen.sh
+ADD repo-script/ /root/tizen_project/repo-script/
 
-RUN chmod 777 /root/tizen_project/repo-init-tizen.sh
+RUN chmod 777 /root/tizen_project/repo-script/*
 
 ADD catalina.sh /usr/local/bin/catalina.sh
 
