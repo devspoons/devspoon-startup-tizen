@@ -1,0 +1,31 @@
+version: "3"
+services:
+  webserver:
+    image: nginx:latest
+    working_dir: /application
+    container_name: nginx-python-webserver      
+    volumes:
+        - ../../../www:/www
+        - ../../../script/:/script/
+        - ../../../bin/certbot-auto:/usr/local/bin/certbot-auto
+        - ../../../config/web-server/nginx/gunicorn/sites-available/:/etc/nginx/sites-available/
+        - ../../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
+        - ../../../config/web-server/nginx/gunicorn/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
+        - ../../../ssl/letsencrypt/:/etc/letsencrypt/
+        - ../../../ssl/ssl/:/etc/ssl/
+        - ../../../log:/log
+    ports:
+        - "80:80"
+        - "443:443"
+    restart: always
+
+  gunicorn-app:
+    build: ../../../docker/gunicorn/
+    working_dir: /application
+    container_name: gunicorn-app
+    privileged: true
+    volumes:
+        - ../../../www:/www
+        - ../../../log:/log        
+        - /sys/fs/cgroup:/sys/fs/cgroup:ro    
+    restart: always

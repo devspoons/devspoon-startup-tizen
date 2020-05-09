@@ -1,0 +1,29 @@
+version: "3"
+services:
+    nginx-proxy:
+      image: nginx:latest
+      container_name: nginx-proxy
+      volumes:
+        - ../../../config/web-server/nginx/php/sites-available/test.devspoon_ng.conf:/etc/nginx/sites-available/test.devspoon_ng.conf          
+        - ../../../config/web-server/nginx/php/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
+        - ../../../config/web-server/nginx/php/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
+        - ../../../nginx_cache/:/etc/nginx/cache/
+        - ../../../ssl:/etc/nginx/ssl/
+        - ../../../log/nginx/:/log/nginx/
+      ports:
+        - "80:80"
+        - "443:443"
+      environment:
+        TZ: "Asia/Seoul"
+      restart: always
+      depends_on:
+        - jenkins
+        
+    jenkins:
+      image: 'jenkins/jenkins:latest'
+      container_name: 'jenkins'          
+      volumes:
+        - './jenkins_home:/var/jenkins_home'
+      environment:
+        TZ: "Asia/Seoul"
+      restart: always
