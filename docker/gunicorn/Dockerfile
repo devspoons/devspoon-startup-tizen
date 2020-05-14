@@ -1,42 +1,66 @@
 FROM ubuntu:18.04
 
-ENV container docker
-ENV LC_ALL C
-ENV DEBIAN_FRONTEND noninteractive
+RUN apt-get update
+RUN apt-get -y upgrade
+# curl/wget/git
+RUN apt-get install -y curl wget git tar
+# vim
+RUN apt-get install -y vim 
+# C
+RUN apt-get install -y build-essential gcc
 
-RUN sed -i 's/# deb/deb/g' /etc/apt/sources.list
+# Python
+RUN apt install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev
+RUN cd /usr/src ; wget https://www.python.org/ftp/python/3.7.1/Python-3.7.1.tar.xz ; tar -xf Python-3.7.1.tar.xz ; cd Python-3.7.1 ; ./configure ; make altinstall
 
-RUN apt-get update \
-    && apt-get -y dist-upgrade \
-    && apt-get install -y systemd systemd-sysv \
-    && apt-get install -y wget vim build-essential python-dev python-setuptools python-pip python-smbus python3-pip git nginx libncursesw5-dev libgdbm-dev libc6-dev zlib1g-dev libsqlite3-dev tk-dev libssl-dev openssl libffi-dev software-properties-common \
-    && add-apt-repository ppa:deadsnakes/ppa \
-    && apt-get install -y python3.7 \
-    && pip3 install virtualenv \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+# be sure it's 3.7 and not 3.6
+RUN ! ls /usr/local/bin/python3.7 && ls /usr/src/Python-3.7.1/python && cp /usr/src/Python-3.7.1/python /usr/local/bin/python3.7 ; exit 0
 
+# replace python version to have 3.7.3 as default
+RUN rm -f /usr/bin/python
+RUN rm -f /usr/bin/python3
+RUN ln -s /usr/local/bin/python3.7 /usr/bin/python
+RUN ln -s /usr/local/bin/python3.7 /usr/bin/python3
+RUN ln -s /usr/local/bin/python3.7 /usr/local/bin/python
+RUN ln -s /usr/local/bin/python3.7 /usr/local/bin/python3
 
-RUN cd /lib/systemd/system/sysinit.target.wants/ \
-    && ls | grep -v systemd-tmpfiles-setup | xargs rm -f $1
+# create links to pip3.7
+RUN ln -s /usr/local/bin/pip3.7 /usr/bin/pip
+RUN ln -s /usr/local/bin/pip3.7 /usr/bin/pip3
+RUN ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip
+RUN ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
 
-RUN rm -f /lib/systemd/system/multi-user.target.wants/* \
-    /etc/systemd/system/*.wants/* \
-    /lib/systemd/system/local-fs.target.wants/* \
-    /lib/systemd/system/sockets.target.wants/*udev* \
-    /lib/systemd/system/sockets.target.wants/*initctl* \
-    /lib/systemd/system/basic.target.wants/* \
-    /lib/systemd/system/anaconda.target.wants/* \
-    /lib/systemd/system/plymouth* \
-    /lib/systemd/system/systemd-update-utmp*
+#update apt-get 
+RUN apt-get update && apt-get -y upgrade
+RUN pip install --upgrade pip
+RUN pip3 install --upgrade pip
 
-COPY service/* /etc/systemd/system/
+RUN apt-get install -y python3-dev libmysqlclient-dev
 
-COPY systemctl_cmd.sh /root/systemctl_cmd.sh
+# SQLAlchemy
+RUN pip3 install SQLAlchemy
+RUN pip3 install sqlalchemy
+RUN pip3 install sqlalchemy --upgrade
+RUN pip3 install mysqlclient
 
-RUN chmod 777 /root/systemctl_cmd.sh
+# gunicorn
+RUN pip3 install gunicorn
 
-VOLUME [ "/sys/fs/cgroup" ]
+# pip3 package
+RUN pip3 install virtualenv
+RUN pip3 install django
 
-CMD ["/lib/systemd/systemd"]
+# Set the locale
+RUN apt-get install -y locales language-pack-ko
+RUN locale-gen ko_KR.UTF-8
+ENV LANG ko_KR.UTF-8
+ENV LANGUAGE ko_KR:kr
+ENV LC_ALL ko_KR.UTF-8
+
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+ADD run.sh /tmp/run.sh
+RUN chmod u+x /tmp/run.sh
+
+# start run!
+#CMD ["/tmp/run.sh"]
 

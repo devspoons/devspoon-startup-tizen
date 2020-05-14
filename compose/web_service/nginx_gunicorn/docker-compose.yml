@@ -22,10 +22,11 @@ services:
   gunicorn-app:
     build: ../../../docker/gunicorn/
     working_dir: /application
-    container_name: gunicorn-app
-    privileged: true
+    container_name: gunicorn-app    
     volumes:
         - ../../../www:/www
         - ../../../log:/log        
-        - /sys/fs/cgroup:/sys/fs/cgroup:ro    
+    command:
+        - /tmp/run.sh    
     restart: always
+
