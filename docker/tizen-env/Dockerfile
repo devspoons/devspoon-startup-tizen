@@ -6,8 +6,6 @@ RUN echo 'deb [trusted=yes] http://download.tizen.org/tools/latest-release/Ubunt
     apt-get update && \
     apt-get clean
 
-EXPOSE 22
-
 RUN apt-get autoremove -y && apt-get clean \
 	&& rm -rf /var/lib/apt/lists/* 	
 
@@ -25,14 +23,13 @@ COPY .ssh /root/.ssh
 
 RUN chmod 700 /root/.ssh/ && chmod 644 /root/.ssh/* && chmod 600 /root/.ssh/id_rsa
 
-RUN mkdir /root/tizen_project
+ADD repo-script/ /root/repo-script/
 
-ADD repo-script/ /root/tizen_project/repo-script/
-
-RUN chmod 777 /root/tizen_project/repo-script/*
+ADD samples/ /root/samples/
 
 ADD catalina.sh /usr/local/bin/catalina.sh
 
-RUN chmod 777 /usr/local/bin/catalina.sh
+RUN chmod +x /usr/local/bin/catalina.sh
 
 ENTRYPOINT ["/usr/local/bin/catalina.sh"]
+
