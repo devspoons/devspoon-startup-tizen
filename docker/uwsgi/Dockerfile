@@ -30,7 +30,7 @@ RUN ln -s /usr/local/bin/pip3.7 /usr/bin/pip3
 RUN ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip
 RUN ln -s /usr/local/bin/pip3.7 /usr/local/bin/pip3
 
-#update apt-get 
+# update apt-get 
 RUN apt-get update && apt-get -y upgrade
 RUN pip install --upgrade pip
 RUN pip3 install --upgrade pip
@@ -45,8 +45,8 @@ RUN pip3 install sqlalchemy
 RUN pip3 install sqlalchemy --upgrade
 RUN pip3 install mysqlclient
 
-# gunicorn
-RUN pip3 install gunicorn
+# install uwsgi
+RUN pip3 install uwsgi
 
 # pip3 package
 RUN pip3 install virtualenv
