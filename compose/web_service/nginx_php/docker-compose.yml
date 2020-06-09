@@ -17,6 +17,8 @@ services:
     ports:
         - "80:80"
         - "443:443"
+    environment:
+        TZ: "Asia/Seoul"
     restart: always
 
 
@@ -29,4 +31,6 @@ services:
         - ../../../config/app-server/php/pool.d/:/etc/php/7.3/fpm/pool.d
         - ../../../config/app-server/php/php_ini/php.ini:/etc/php/7.3/fpm/php.ini
         - ../../../log:/log
+    environment:
+        TZ: "Asia/Seoul"
     restart: always

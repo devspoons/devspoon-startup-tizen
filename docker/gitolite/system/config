@@ -1,0 +1,5 @@
+Host gitolite
+   User gitolite-creator
+   Hostname dev.devspoon.com
+   Port 222
+   IdentityFile ~/.ssh/git-manager

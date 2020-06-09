@@ -17,15 +17,19 @@ services:
     ports:
         - "80:80"
         - "443:443"
+    environment:
+        TZ: "Asia/Seoul"    
     restart: always
 
-  uwsgi-app:
+  gunicorn-app:
     build: ../../../docker/gunicorn/
     working_dir: /application
     container_name: gunicorn-app    
     volumes:
         - ../../../www:/www
-        - ../../../log:/log        
+        - ../../../log:/log
+    environment:
+        TZ: "Asia/Seoul"  
     command:
         - /tmp/run.sh    
     restart: always

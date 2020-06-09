@@ -22,10 +22,13 @@ services:
       TZ: "Asia/Seoul"
     restart: always    
     depends_on:
-      - app
+      - php-app
       - openproject
+      - jenkins
+      #- gunicorn-app
+      #- uwsgi-app
 
-  app:
+  php-app:
     build: ../../docker/php-fpm/
     working_dir: /application
     container_name: php-fpm7.3      
@@ -36,6 +39,33 @@ services:
     environment:
       TZ: "Asia/Seoul"
     restart: always
+
+  # gunicorn-app:
+  #   build: ../../docker/gunicorn/
+  #   working_dir: /application
+  #   container_name: gunicorn-app    
+  #   volumes:
+  #       - ../../www:/www
+  #       - ../../log:/log
+  #   environment:
+  #       TZ: "Asia/Seoul"  
+  #   command:
+  #       - /tmp/run.sh    
+  #   restart: always
+
+  # uwsgi-app:
+  #   build: ../../docker/uwsgi/
+  #   working_dir: /application
+  #   container_name: uwsgi-app
+  #   volumes:
+  #       - ../../www:/www
+  #       - ../../config/app-server/uwsgi/uwsgi.ini:/application/uwsgi.ini
+  #       - ../../log:/log
+  #   command:
+  #       - /tmp/run.sh
+  #   environment:
+  #       TZ: "Asia/Seoul"
+  #   restart: always   
 
   openproject:
     image: openproject/community:latest
@@ -66,4 +96,27 @@ services:
       - ./jenkins_home:/var/jenkins_home
     environment:
       TZ: "Asia/Seoul"
+    restart: always
+
+  gitolite:
+    build: ../../docker/gitolite
+    working_dir: /application
+    container_name: gitolite
+    volumes:
+      - ./storage:/home/gitolite-creator/repositories        
+    ports:        
+      - "2222:22"
+    environment:
+      TZ: "Asia/Seoul"    
+    restart: always
+
+  tizenenv:
+    build: ../../docker/tizen-env/
+    working_dir: /application
+    container_name: tizenenv
+    privileged: true
+    volumes:
+      - ../../log/tizen/:/log/tizen/         
+    environment:
+      TZ: "Asia/Seoul"      
     restart: always

@@ -17,6 +17,8 @@ services:
     ports:
         - "80:80"
         - "443:443"
+    environment:
+        TZ: "Asia/Seoul"
     restart: always
 
 
@@ -30,4 +32,6 @@ services:
         - ../../../log:/log
     command:
         - /tmp/run.sh
+    environment:
+        TZ: "Asia/Seoul"
     restart: always

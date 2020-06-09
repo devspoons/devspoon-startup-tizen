@@ -1,0 +1,14 @@
+version: "3"
+services:
+  gitolite:
+    build: ../../../docker/gitolite
+    working_dir: /application
+    container_name: gitolite
+    volumes:
+      - ./storage:/home/gitolite-creator/repositories        
+    ports:        
+      - "2222:22"
+    environment:
+      TZ: "Asia/Seoul"    
+    restart: always
+
