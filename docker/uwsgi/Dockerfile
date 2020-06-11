@@ -1,7 +1,8 @@
 FROM ubuntu:18.04
 
 RUN apt-get update
-RUN apt-get -y upgrade
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
+
 # curl/wget/git
 RUN apt-get install -y curl wget git tar
 # vim
