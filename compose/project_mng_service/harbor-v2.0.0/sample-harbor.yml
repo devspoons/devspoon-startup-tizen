@@ -11,12 +11,12 @@ http:
   port: http-port
 
 # https related config
-https:
+##https:
   # https port for harbor, default is 443
-  port: https-port
+  ##port: https-port
   # The path of cert and key files for nginx
-  certificate: /ssl-path/ssl/letsencrypt/live/cococok.com/fullchain.pem
-  private_key: /ssl-path/ssl/letsencrypt/live/cococok.com/privkey.pem
+  ##certificate: ssl-path/letsencrypt/live/cococok.com/fullchain.pem
+  ##private_key: ssl-path/letsencrypt/live/cococok.com/privkey.pem
 
 # # Uncomment following will enable tls communication between all harbor components
 # internal_tls:

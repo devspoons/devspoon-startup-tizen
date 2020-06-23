@@ -2,29 +2,9 @@
 
 while :
 do 
-    echo -n "Enter the account >"
-    read account
-    echo  "Entered account: $account"
-    if [[ "$account" != "" ]]; then
-        break
-    fi
-done 
-
-while :
-do 
-    echo -n "Enter the domain >"
-    read domain
-    echo  "Entered domain: $domain"
-    if [[ "$domain" != "" ]]; then
-        break
-    fi
-done 
-
-while :
-do 
-    echo -n "Enter the portnumber >"
+    echo -n "Enter the service portnumber >"
     read portnumber
-    echo  "Entered portnumber: $portnumber"
+    echo  "Entered service portnumber: $portnumber"
     if [[ "$portnumber" != "" ]]; then
         break
     fi
@@ -32,27 +12,47 @@ done
 
 while :
 do 
-    echo -n "Enter the proxyurl >"
+    echo -n "Enter the service domain >"
+    read domain
+    echo  "Entered service domain: $domain"
+    if [[ "$domain" != "" ]]; then
+        break
+    fi
+done 
+
+while :
+do 
+    echo -n "Enter the proxy url >"
     read proxyurl
-    echo  "Entered proxyurl: $proxyurl"
+    echo  "Entered proxy url: $proxyurl"
     if [[ "$proxyurl" != "" ]]; then
         break
     fi
 done 
 
-
-echo -n "Enter the proxyport >"
+echo "Enter the proxy port"
+echo -n "if you push enter with none, there are no port number >"
 read proxyport
-echo  "Entered proxyport: $proxyport"
+echo  "Entered proxy port: $proxyport"
 
+while :
+do 
+    echo -n "Enter the file name >"
+    read filename
+    echo  "Entered file name: $filename"
+    if [[ "$filename" != "" ]]; then
+        break
+    fi
+done 
 
-sed 's/realurl;/'$realurl';/' sample_nginx_proxy_https.conf > $account'1'.temp
-sed 's/portnumber;/'$portnumber';/' $account'1'.temp > $account'2'.temp
-sed 's/proxyurl/'$proxyurl'/' $account'2'.temp > $account'3'.temp
+sed 's/portnumber;/'$portnumber';/g' sample_nginx_proxy_https.conf > $filename'1'.temp
+sed 's/domain/'$domain'/g' $filename'1'.temp > $filename'2'.temp
+sed 's/proxyurl/'$proxyurl'/g' $filename'2'.temp > $filename'3'.temp
 if [[ "$proxyport" == "" ]]; then
-    sed 's/:proxyport/''/g' $account'3'.temp > ./pool.d/$account'_proxy_https_ng'.conf
+    sed 's/:proxyport/''/g' $filename'3'.temp > $filename'4'.temp
 else
-    sed 's/proxyport/'$proxyport'/g' $account'3'.temp > ./pool.d/$account'_proxy_https_ng'.conf
+    sed 's/proxyport/'$proxyport'/g' $filename'3'.temp > $filename'4'.temp
 fi
+sed 's/filename/'$filename'/g' $filename'4'.temp > ./pool.d/$filename'_proxy_https_ng'.conf
 
 rm *.temp

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-apt-get update  &&  apt-get install -y sendmail wget vim cron
+apt-get update  &&  apt-get install -y sendmail wget vim cron ca-certificates
 
 wget --no-check-certificate https://dl.eff.org/certbot-auto \
  && mv certbot-auto /usr/local/bin/certbot-auto \
@@ -8,10 +8,40 @@ wget --no-check-certificate https://dl.eff.org/certbot-auto \
  && chmod 0755 /usr/local/bin/certbot-auto \
  && certbot-auto --version -n
 
-#if ! test -d /etc/letsencrypt/live/cococok.com ; 
-if ! test -d /ssl/letsencrypt/live/cococok.com ; then 
+while :
+do 
+    echo -n "Enter the service webroot_folder >"
+    read webroot_folder
+    echo  "Entered service webroot_folder: $webroot_folder"
+    if [[ "$webroot_folder" != "" ]]; then
+        break
+    fi
+done 
+
+while :
+do 
+    echo -n "Enter the service domain >"
+    read domain
+    echo  "Entered service domain: $domain"
+    if [[ "$domain" != "" ]]; then
+        break
+    fi
+done 
+
+while :
+do 
+    echo -n "Enter the user e-mail >"
+    read mail
+    echo  "Entered user e-mail: $mail"
+    if [[ "$mail" != "" ]]; then
+        break
+    fi
+done 
+
+#if ! test -d /etc/letsencrypt/live/test.com ; 
+if ! test -d /ssl/letsencrypt/live/domain ; then 
     echo "try to get authentication key using certbot-auto "
-    certbot-auto -n certonly -n --webroot -w /www/cococok/ -d cococok.com --agree-tos -m bluebamus@naver.com; 
+    certbot-auto -n certonly -n --webroot -w /www/webroot_folder/ -d domain --agree-tos -m mail; 
     cp /etc/letsencrypt/ /ssl/letsencrypt/ -rf 
 else
     echo "copy letsencrypt folder by already maden"
