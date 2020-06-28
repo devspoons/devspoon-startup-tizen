@@ -15,6 +15,13 @@ RUN echo 'deb [trusted=yes] http://download.tizen.org/tools/latest-release/Ubunt
 # ENV LANGUAGE ko_KR:kr
 # ENV LC_ALL ko_KR.UTF-8
 
+ENV OS_LOCALE="en_US.utf8" \
+    DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y locales && locale-gen ${OS_LOCALE}
+ENV LANG=${OS_LOCALE} \
+    LANGUAGE=${OS_LOCALE} \
+    LC_ALL=${OS_LOCALE} 
+
 RUN apt-get autoremove -y && apt-get clean \
 	&& rm -rf /var/lib/apt/lists/* 	
 

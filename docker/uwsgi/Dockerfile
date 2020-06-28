@@ -54,11 +54,18 @@ RUN pip3 install virtualenv
 RUN pip3 install django
 
 # Set the locale
-RUN apt-get install -y locales language-pack-ko
-RUN locale-gen ko_KR.UTF-8
-ENV LANG ko_KR.UTF-8
-ENV LANGUAGE ko_KR:kr
-ENV LC_ALL ko_KR.UTF-8
+# RUN apt-get install -y locales language-pack-ko
+# RUN locale-gen ko_KR.UTF-8
+# ENV LANG ko_KR.UTF-8
+# ENV LANGUAGE ko_KR:kr
+# ENV LC_ALL ko_KR.UTF-8
+
+ENV OS_LOCALE="en_US.utf8" \
+    DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y locales && locale-gen ${OS_LOCALE}
+ENV LANG=${OS_LOCALE} \
+    LANGUAGE=${OS_LOCALE} \
+    LC_ALL=${OS_LOCALE} 
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
 ADD run.sh /tmp/run.sh
