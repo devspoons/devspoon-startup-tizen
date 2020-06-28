@@ -18,8 +18,6 @@ RUN sed -i 's/^AcceptEnv LANG LC_\*$//g' /etc/ssh/sshd_config
 
 RUN mkdir /var/run/sshd
 
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
-
 ADD system/sshd_config /etc/ssh/sshd_config
 
 RUN adduser --system --group --disabled-password --gecos "" --shell /bin/bash --home /home/gitolite-creator gitolite-creator

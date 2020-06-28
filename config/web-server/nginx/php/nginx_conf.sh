@@ -63,6 +63,7 @@ if [[ "$serviceport" == "" ]]; then
     sed 's/:serviceport/''/g' $filename'4'.temp > $filename'5'.temp
 else
     sed 's/serviceport/'$serviceport'/g' $filename'4'.temp > $filename'5'.temp
-sed 's/filename/'$filename'/g' $filename'5'.temp > ./pool.d/$filename'_ng'.conf 
+fi
+sed 's/filename/'$filename'/g' $filename'5'.temp > ./conf.d/$filename'_ng'.conf 
 
 rm *.temp

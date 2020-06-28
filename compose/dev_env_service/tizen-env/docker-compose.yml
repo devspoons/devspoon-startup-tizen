@@ -6,7 +6,9 @@ services:
     container_name: tizenenv
     privileged: true
     volumes:
-      - ../../../log/tizen/:/log/tizen/         
+      - ../../../log/tizen/:/log/tizen/
+    ports:        
+      - "2222:22"
     environment:
       TZ: "Asia/Seoul"      
     restart: always

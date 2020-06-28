@@ -45,13 +45,14 @@ do
     fi
 done 
 
-sed 's/portnumber;/'$portnumber';/g' sample_nginx_proxy.conf > $filename'1'.temp
+sed 's/portnumber/'$portnumber'/g' sample_nginx_proxy.conf > $filename'1'.temp
 sed 's/domain/'$domain'/g' $filename'1'.temp > $filename'2'.temp
 sed 's/proxyurl/'$proxyurl'/g' $filename'2'.temp > $filename'3'.temp
 if [[ "$proxyport" == "" ]]; then
     sed 's/:proxyport/''/g' $filename'3'.temp > $filename'4'.temp
 else
     sed 's/proxyport/'$proxyport'/g' $filename'3'.temp > $filename'4'.temp
-sed 's/filename/'$filename'/g' $filename'4'.temp > ./pool.d/$filename'_proxy_ng'.conf
+fi
+sed 's/filename/'$filename'/g' $filename'4'.temp > ./conf.d/$filename'_proxy_ng'.conf
 
 rm *.temp
