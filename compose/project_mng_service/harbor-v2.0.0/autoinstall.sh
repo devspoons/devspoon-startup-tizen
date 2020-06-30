@@ -108,17 +108,9 @@ rm *.temp sharbor.yml
 echo "created a harbor.yml successfully!!!"
 echo "now it start to install harbor service!!!"
 
-#echo "if you don't input anything, it'll be default value"
-#    echo "example : /tmp/local/lang"
-#    echo -n "Enter the ssl path [default : /etc] >"
-#    read sslpath
-#    if [[ "$sslpath" == "" ]]; then
-#        sslpath="/etc"
-#    fi
-#echo  "Entered the ssl path: $sslpath"
-
-echo  "ssl key copyed to path: $sslpath"
-
-cp ssl $sslpath -rf
-
+if [[ "$yesno" == "y" ]]; then
+    echo  "ssl key copyed to path: $sslpath"
+    cp ssl $sslpath -rf
+fi
+ 
 bash install.sh
