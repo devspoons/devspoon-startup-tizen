@@ -172,9 +172,9 @@ devspoon-startup-tizen를 구성하여 내부망으로 이전시, 인터넷이 �
 
 ## Partners and Users
 
-Lim Do-Hyun Owner Developer/project Manager, bluebamus@gmail.com
-Lim Tae-youn Member, Tizen Designer
-Kang Dong-hoon Member, Tizen Developer
+* Lim Do-Hyun Owner Developer/project Manager, bluebamus@gmail.com  
+* Lim Tae-youn Member, Tizen Designer  
+* Kang Dong-hoon Member, Tizen Developer
 
 
 ### How to contributing our project
