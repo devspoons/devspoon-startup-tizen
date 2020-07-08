@@ -31,10 +31,10 @@ RUN mkdir /var/run/sshd
 ADD system/sshd_config /etc/ssh/sshd_config
 
 #ex) test_tizen 
-RUN git config --global user.name "name" 
+RUN git config --global user.name "ID" 
 
 #ex) test_tizen@gmail.com 
-RUN git config --global user.email "email" 
+RUN git config --global user.email "E-MAIL" 
 
 RUN git config --global color.ui true
 

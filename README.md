@@ -1,229 +1,181 @@
 # devspoon-startup-tizen
+devspoon-startup-tizen is an open source solution that can easily build a reliable Tizen development environment using Docker.  
+devspoon-startup-tizen made with the web service building solution supporting php, python based on nginx named [devspoon-web] and integrated management solution(openproject, jenkins, gitolite[private git server], harbor[private docker server]) of project named [devspoon-startup-web].  
+devspoon-startup-tizen can easily build the complex configuration required to develop Samsung Tizen-based IoT devices using the already verified Dockerfile and Docker-compose.  
+Development automation (CI:Continuous Integration) can be configured using jenkins provided as [devspoon-startup-web], and projects can be efficiently managed with openproject.  
+Gitolite is linked with openproject and jenkins, and can be used efficiently without repository public and limitations on the capacity restriction of git server and public storage.  
+Using the harbor, you can build an independent docker image according to the type, version, and kernel environment type of the smart TV, IoT development board, and download and install the docker image to any new server at any time from the docker hub.  
+By configuring devspoon-startup-tizen, when moving to the internal network, you can build a development environment under various conditions and manage sources and projects even when there is no Internet connection.  
+The nginx web server provided as [devspoon-web] supports automatic creation of http/https/Reverse-proxy conf files using shell scripts, and can access project management solutions using domains.  
+You can download and management of the finally created Tizen image from a Tizen image management solution developed by our self.
 
-## What is devspoon-startup-tizen?
+devspoon-startup-tizen은 신뢰할 수 있는 Tizen 개발환경을 Docker를 이용하여 쉽게 구축할 수 있는 오픈소스 솔루션입니다.  
+devspoon-startup-tizen은 nginx 기반의 php, python 웹 서비스 구축 솔루션 [devspoon-web]와 프로젝트 통합 관리 솔루션(openproject, jenkins, gitolite[private git server], harbor[private docker server]) [devspoon-startup-web]을 기반으로 만들어졌습니다.  
+devspoon-startup-tizen은 삼성 Tizen 기반의 IoT 장비들을 개발하기 위해 요구되는 복잡한 환경설정을 이미 검증된 Dockerfile과 Docker-compose를 이용해 쉽게 구축을 할 수 있습니다.   
+[devspoon-startup-web]으로 제공되는 jenkins를 이용해 개발 자동화(CI:Continuous Integration)를 구성할 수 있으며 openproject로 프로젝트들을 효율적으로 관리할 수 있습니다.   
+함께 제공되는 gitolite는 openproject, jenkins와 연동이되며 git server의 용량 제한 및 저장소 공개에 제한, 제약없이 효율적으로 사용가능합니다.   
+harbor를 이용해 스마트 TV, IoT 개발보드의 종류, 버전 및 커널 환경의 종류 등에 따라 독립적인 docker 이미지를 빌드, docker hub로 부터 언제 어느 서버에서도 docker 이미지를 다운로드 받아 설치할 수 있습니다.   
+devspoon-startup-tizen를 구성하여 내부망으로 이전시, 인터넷이 연결되지 않는 환경에서도 다양한 조건의 개발 환경을 구축, 소스 및 프로젝트를 관리할 수 있습니다.   
+[devspoon-web]로 제공되는 nginx 웹서버는 shell script를 이용하여 http/https/Reverse Proxy의 conf 파일 자동생성을 지원하며 도메인을 이용하여 프로젝트 관리 솔루션들에 접근할 수 있습니다.  
+최종적으로 만들어진 Tizen 이미지의 다운로드 및 관리를 자체 개발되어 제공되는 Tizen 이미지 관리 솔루션으로 제공받을 수 있습니다.
 
-devspoon-startup-tizen creates Build, Test, and CI servers with Docker to automatically generate system images for porting to Tizen-based IoT devices. This provides a development server infrastructure for Tizen-based IoT devices.
+## Project management solutions
 
-## 내부 구성 요소
+* **[OpenProject] :** Open source project management software to help you work on your project efficiently
 
-### 통합된 솔루션
+* **[Jenkins] :** As one of the CI tools, CI (Continuous Integration) refers to continuous integration, which is an automated process for developers, and new code changes are automatically built and tested regularly to notify developers to solve problems that can occur when multiple developers develop simultaneously. Software that helps secure development stability and reliability
 
-* nginx/php7.3 가상 호스팅, proxy 솔루션  
-  * Tizen 포팅 이미지 관리 솔루션 지원
-* OpenProject 프로젝트 관리 솔루션
-* Jenkins CI 솔루션
-* Tizen 빌드 솔루션
+* **[Gitolite] :** Configuration Management Tool. user can install git server software at own server
 
-### 통합 예정 솔루션
+* **[Harbor] :** The Private Docker Registry Server for businesses that store and distribute Docker Images
 
-* git server
-* docker-image server
-* AWS, GCP 기반 Docker / Docker-compose 
-* DB는 데이터의 안정성을 위해 Docker로 제공하지 않으며 따로 설치하여 사용 하기를 권장함
-* Tizen 이미지 관리 솔루션은 3306 포트가 local과 포트포워딩 되어 있으므로 이를 통해 외부 서버와 연동 가능함
+* **[OpenProject(KR)] :** 프로젝트를 효율적으로 진행할 수 있도록 지원하는 오픈 소스 프로젝트 관리 소프트웨어
 
-### 서비스 특징
+* **[Jenkins(KR)] :** CI 툴 중 하나로 CI (Continuous Integration)는 개발자를 위한 자동화 프로세스인 지속적인 통합을 말하며 새로운 코드 변경 사항들이 정기적으로 자동 빌드 및 테스트되어 개발자에게 알려줌으로 여러명의 개발자가 동시에 개발하며 발생할 수 있는 문제들을 해결하여 개발의 안정성 및 신뢰성을 확보할 수 있도록 지원하는 소프트웨어
 
-* [OpenProject] : 프로젝트 관리 프로세스(PMI)를 지원 하는 오픈 소스 프로젝트 관리 소프트웨어
-* [Jenkins] : CI 툴 중 하나로 CI (Continuous Integration)는 개발자가 공유 버전 제어 저장소에서 팀의 코드를 컴파일 할 수 있도록함으로써 빌드주기 비 효율성을 줄이기 위한 프로세스
-* [devspoon-web-php] 기반의 가상 호스팅, OpenProject, Jenkins를 개별 서버로 사용할 수 있고 단일 nginx에 통합하여 사용할 수 있음 예) test.com 도메인을 통해 a.test.com/ b.test/com 으로 가상 호스팅을 운영하고 
-  * open.test.com으로 오픈프로젝트를 운영
-  * jen.test.com으로 jenkins를 운영할 수 있음
-* [Tizen-Builder-Env] : Tizen IoT 제품을 만들기 위한 개발 환경 구축
-* 상위 솔루션은 compose/full_service 안의 docker-compose.yml 파일을 실행하여 하나의 nginx 컨테이너로 각각 다른 도메인 서비스를 연결할 수 있음
+* **[Gitolite] :** 형상 관리 도구 혹은 버전관리 시스템으로 자체적으로 설치하고 운영할 수 있는 git 소프트웨어
 
-### 각 서비스별 사용 방법
+* **[Harbor(KR)] :**  Docker Image를 저장하고 분배하는 기업용 Private Docker Registry Server
 
-* 가상 호스팅 사용 방법 : [devspoon-web-php]
-* OpenProject, Jenkins 사용 방법 : [devspoon-startup-web-php]
-* GBS(Tizen Build Server) 구축 방법 : https://source.tizen.org/documentation/developer-guide/all-one-instructions/creating-tizen-images-scratch-one-page
-* GBS(Tizen Build Server)와 Jenkins(CI) 연동 방법 : https://source.tizen.org/documentation/developer-guide/all-one-instructions/one-click-solution-tizen-image-creation-based-on-jenkins-framework
+## Features
 
-### How to build a Tizen image without using devspoon-startup-tizen(기존 방법)
-https://github.com/ainpeople/ainpeople_doc/blob/master/README.md
+* **Support to make configuration files for each service(conf, yml etc)** : Using shell script, you can easily make and manage the configuration files required for nginx, php, dockerfile, etc. with only the information required by the user's keyboard.
 
-### Third-party Development Infrastructure
-![devspoon-startup-tizen Build]
+* **Efficiently  dockerfile configuration for development and service operation** : The log folder is interlocked by "volumes" in docker-compose.yml so that user can can be tracked problems even when the docker container is stopped. Webroot, nginx config, etc. are frequently modified during development so these are interlocked by "volumes" 
 
-## Getting started
+* **Provide reverse proxy function** : Multiple web and app services can be provided through one nginx with php or python and services can be provided simultaneously. A shell script is provided to easily create a proxy config file so that it can be integrated with the web UI of other services.
 
-### Dependencies
+* **Provides easy distributed service operation method** : You can use multiple web servers through proxy, and you can use multiple app servers on one web server. (How to set load balancing will be supported in the future)
 
-The following packages are required(Ubuntu 18.04 LTS):
-
-* docker-ce
-* docker-ce-cli
-* containerd.io
-* vim
-
-### Download devspoon-startup-tizen from GitHub
-
-devspoon-startup-tizen is built with [Docker](https://www.docker.com/), an open-source container tool
-developed by Docker Inc. We suggest downloading and installing Docker using the
-[official instructions](https://docs.docker.com/install/linux/docker-ce/ubuntu/) for Ubuntu.
-
-```shell
-$ sudo apt-get update
-$ sudo apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
-$ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-$ sudo apt-key fingerprint 0EBFCD88
-$ sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-$ sudo apt-get update
-$ sudo apt-get install docker-ce docker-ce-cli containerd.io
-```
-
-The minimum required Docker version is 19.03.5
-
-* Clone the code from the devspoon-startup-tizen GitHub repository and go to devspoon-startup-tizen home folder
-```bash
-$ git clone https://github.com/ainpeople/devspoon-startup-tizen.git
-$ cd devspoon-startup-tizen
-```
-
-### Tizen Gerrit 사이트 접속을 위한 SSH 설정하기
-
-Build Server에서 사용하기 위해서 사전에 진행해야 함
-
-1. Generate RSA keys
-
-```shell
-$ cd <devspoon-startup-tizen home folder>/docker/tizen-env/.ssh
-$ ssh-keygen [-t rsa] [-b 4096 ] [-C "<Comments>"]
-```
-
-2. config 파일 생성
-
->User <Tizen_Gerrit_Site_Username>에 타이젠 공식 사이트(http://review.tizen.org/)에 가입된 계정 정보를 입력(사전에 Tizen Gerrit 가입이 필요함)
-
-```shell
-$ cd <devspoon-startup-tizen home folder>/docker/tizen-env/.ssh
-$ vi config
-
-Host tizen review.tizen.org
-Hostname review.tizen.org
-IdentityFile ~/.ssh/id_rsa
-User <Tizen_Gerrit_Site_Username>
-Port 29418
-# Add the line below when using proxy, otherwise, skip it.
-# ProxyCommand nc -X5 -x <Proxy Address>:<Port> %h %p
-```
-
->Note:
-Both "tizen" and "review.tizen.org" are aliases of the hostname. "tizen" is configured for simplicity of commands when initializing git repositories and cloning specific Tizen projects, and "review.tizen.org" is configured to work with the manifest.xml and _remote.xml files when synchronizing the entire Tizen source.
->
->The ~/.ssh/config file must not be written in by other users. Make sure to remove the write permission by executing chmod o-w ~/.ssh/config. For more information on ssh_config, see man ssh_config.
-
-* Config 파일 예시
+* **각 서비스들의 환경설정 파일 생성 지원(conf, yml etc)** : shell script를 이용해 nginx, php, dockerfile 등에 요구되는 환경설정 파일들을 필수적으로 요구되는 정보들만 사용자의 키보드로 입력받아 쉽게 만들고 관리할 수 있습니다.
   
-![ssh-config]
+* **개발 및 서비스 운영에 효율적인 dockerfile 구성** : docker container가 중지된 경우에도 문제를 추적할 수 있도록 log 폴더를 volumes으로 연동되어 있으며 Webroot, nginx의 config 등 개발시 수정이 빈번하게 발생되는 항목들에 대해서도 volumes으로 연동되어 있습니다.
+  
+* **Reverse proxy 기능 제공** : 하나의 nginx를 통해 여러개의 web, app 서비스를 제공하거나 php 혹은 python의 서비스를 동시에 제공할 수 있습니다. 다른 서비스의 웹 UI와 연동될 수 있도록 proxy config 파일을 쉽게 생성할 수 있도록 쉘 스크립트를 제공합니다.
+  
+* **쉬운 분산 서비스 운영 방법 제공** : proxy를 통해 여러대의 웹 서버를 사용할 수 있으며 하나의 웹 서버에서 여러대의 앱 서버를 사용할 수 있습니다. (부하분산을 설정 방법 차후 지원 예정)
 
-3. Copy the full text in devspoon-startup-tizen home folder/docker/tizen-env/.ssh/id_rsa.pub
+## Considerations
 
-```shell
-$ vi <devspoon-startup-tizen home folder>/docker/tizen-env/.ssh/id_rsa.pub
-```
+* **No DB service** : This open source does not provide DB as docker to suggest stable operation. It is recommended to install it on a real server and access it using a network, such as port 3306. We hope that this will be done for distributed services as well. We hope that this will be consider for distributed services as well.
 
-4. Log in to Tizen Gerrit(https://review.tizen.org/gerrit) and upload the key(사전에 Tizen Gerrit 가입이 필요함)
-* In the Gerrit(https://review.tizen.org/gerrit) Web page, click the user name on the top right corner (with an inverted triangle on the right), and select Settings to display the Settings Web page.
-* Click SSH Public Keys in the left panel, paste the text copied earlier into the Add SSH Public Key box, and click Add.
+* **Development-oriented docker service** : This open source is designed for focused on development-oriented rather than perfect docker container distribution and is suitable for startups or new service development teams with frequent initial modifications and tests.
 
-5. Verify the SSH connection(단, Docker-compose로 컨테이너 구동 후 Tizen Build Server 컨테이너에 접속하여 실행할 것)
+* **Orchestration not supported** : In the future, we plan to interoperate with cloud services such as AWS and GCM
 
-```shell
-$ ssh tizen
+* **This open-source considers generic servers that are not support AWS, GCM** : This open source is intended to be installed and operated on a server that is directly operated, and on general server hosting, and plans to integrate with cloud services such as AWS and GCM in the future
 
-**** Welcome to Gerrit Code Review ****
-```
+* **DB 서비스 없음** : 이 오픈소스는 안정적인 운영을 제안하기 위해 DB는 docker로 제공하지 않습니다. 실제 서버에 설치하여 3306 포트 등으로 네트워크를 이용해 접근하는 것을 권장합니다. 분산 서비스를 위해서라도 이와 같이 구성하기를 바랍니다.
+  
+* **개발 중심적 docker 서비스** : 이 오픈소스는 완전한 docker container의 배포가 아닌 개발 중심적으로 설계되었으며 초기 수정과 테스트가 빈번한 스타트업 혹은 신규 서비스 개발팀에게 적합합니다.
+  
+* **오케스트레이션 미지원** : 앞으로 AWS, GCM 등의 Cloud 서비스와 연동할 계획이며 이후 오케스트레이션이 지원될 예정입니다.
+  
+* **AWS, GCM 기반이 아닌 일반 서버 고려** : 이 오픈소스는 직접 운용하고있는 서버, 일반적인 서버 호스팅에서 설치하여 운영하는 것을 목적으로 하고 있으며 앞으로 단계적으로 AWS, GCM 등의 Cloud 서비스와 연동할 계획입니다.
 
-* SSH connection 확인 예시  
+## Install & Run
 
-![ssh-success-msg]
+### How to build web services(PHP-v7.3, python[gunicorn, uwsgi])
 
-6. Configuring Git for Gerrit Access
+* Refer the guide : [devspoon-web]
 
-* devspoon-startup-tizen home folder/docker/tizen-env/Dockerfile의 다음 항목을 변경
-  * 항목 중 First_Name Last_Name 부분과 E-mail_Address 부분을 변경해줘야 함
-known_hosts 파일 그대로 유지
+### How to build project management solutions(openproject, jenkins, gitolite[private git server], harbor[private docker server])
 
-```shell
-$ vi <devspoon-startup-tizen home folder>/docker/tizen-env/Dockerfile
+* Refer the guide : [devspoon-startup-web]
 
-git config --global user.name <First_Name Last_Name>
-git config --global user.email "<E-mail_Address>"
-```
+### How to build Tizen development environment
 
-### Start devspoon-startup-tizen on local machine(Docker-compose 실행)
+* Build GBS(Tizen Build Server) by user self : https://source.tizen.org/documentation/developer-guide/all-one-instructions/creating-tizen-images-scratch-one-page
+* Interlock GBS(Tizen Build Server) with jenkins(CI)  by user self : https://source.tizen.org/documentation/developer-guide/all-one-instructions/one-click-solution-tizen-image-creation-based-on-jenkins-framework
 
-To run devspoon-startup-tizen locally on the development machine, simply run the following command:
+1. Prepare ssh key
 
-* Docker-compose로 Tizen 환경만 구축하는 방법(Case 1)
+   * Register a user account at [tizen web-site]. 
+   * A user have to make ssh key to using ssh-keygen to register on tizen development official website for accessing tizen repository.
+   * Log in to Tizen Gerrit(https://review.tizen.org/gerrit) and upload the key
+      * In the Gerrit(https://review.tizen.org/gerrit) Web page, get login and go click settings and add your id_rsa.pub at the menu of "SSH Public Keys".
+   * A user have to copy made ssh keys to docker/tizen-env/.ssh.
+   * If A user want to access tizen container directly for development, can add new location of "volumes" in a docker-compose.yml.
+   * If A user want to access tizen container by ssh for development, make a new ssh key and add your pub key to an end of authorized_keys at docker/tizen-env/.ssh. if there are no authorized_keys, A user have to make this file.
 
-```sh
-$ cd <devspoon-startup-tizen home folder>\compose\tizen-jenkins
-$ docker-compose up -d 실행
-```
 
-* Docker-compose로 통합 환경 전체를 구축하는 방법(Case 2)
+2. Update Tizen ssh config file 
+    * docker/tizen-env/.ssh/config
 
-```sh
-$ cd <devspoon-startup-tizen home folder>\compose\full_service
-$ docker-compose up -d 실행
-```
+    ```shell
+    Host tizen review.tizen.org
+    Hostname review.tizen.org
+    IdentityFile ~/.ssh/id_rsa
+    User Tizen_Account_ID #update this user information what already registered ID from Tizen official website!!!
+    Port 29418
+    # Add the line below when using proxy, otherwise, skip it.
+    # ProxyCommand nc -X5 -x <Proxy Address>:<Port> %h %p
+    ```
 
-### Docker 명령어(참고사항)
 
-* 실행된 Docker 컨테이너에 접속하는 방법
+3. Configuring Git for Gerrit Access
 
-```sh
-$ docker exec -it tizenenv bash
-```
+    * Update git information at docker/tizen-env/Dockerfile
 
-* Docker 이미지를 다시 빌드 하는 경우(전체 컨테이너 및 이미지 삭제)
+    ```shell
+    docker/tizen-env/Dockerfile
 
-```sh
-$ docker stop $(docker ps -a -q)
-$ docker rm $(docker ps -a -q)
-$ docker rmi $(docker images -a -q)
-$ docker prune network
-```
+    git config --global user.name "ID" #fill ID
+    git config --global user.email "E-MAIL" #fill E-MAIL
+    ```
 
-### Interacting with Build Artifacts Management System Web UI(추가 예정[현재 미구현])
+4. Run docker-compose.yml
 
-* To access devspoon-startup-tizen(Build Artifacts Management System) Web UI, use a browser to open
-  * http://localhost 로 접속, 다음 예시와 같이 build artifacts들을 관리할 수 있음
+    * How to build only Tizen Environment
 
-* Web UI 예시
-  * 해당 솔루션은 차후 추가될 예정
+    ```sh
+    $ cd compose/dev_env_service/tizen-env
+    $ docker-compose up -d
+    ```
 
-![Tizen image mng server]
+    * How to build full service (require setting [devspoon-web], [devspoon-startup-web])
+    
+    ```sh
+    $ cd compose/master_service
+    $ docker-compose up -d
+    ```
 
-## 현재 업데이트 내역 및 추가 개발 목록
+5. A user selection
+   
+    * If user want to download some package or use existing project, doesn't need this step. this job require huge local size over the hundreds GB
+    * It try to get all tizen repository package in a user's local
+    * A user can run "repo init" using shell script at /root/repo-script there are two kind of shell script files for all case or raspberry pi 3
+        * This step will require the local repository size over the hundreds GB
+    
+6. Test sample project
 
-### 업데이트 내역
+    * There are two number of projects for anchor5 and raspberry pi 3 at /root/samples
+    * It try to build with "peripheral-io" package assume user updated this package's code
+      * The result will be "tizen-unified_iot-headed-3parts-armv7l-artik530.tar.gz" at /Tizen-Work/mic-output 
 
-* 0.0.1
-  * GBS(Build Server) 컨테이너에 Tizen 빌드 툴(Repo, GBS, MIC 등) 설치 및 환경 설정 완료
-  * Jenkins 컨테이너에 기본 세팅 완료
+## Additional development item
 
-### 추가 개발 목록
+* System integration between jenkins, gitolite, tizen-env.
+* Development tizen image management solution.
+  * The tizen image management solution UI sample design
+  ![Tizen image mng server]
 
-* Tizen 빌드 및 이미지 생성하는 수동 빌드 과정 테스트 -2월 중
-* jenkins master / slave 구축 및 빌드 연동 -2월 중
-* git server / github와 jenkins와 연동하여 빌드 연동 -2월 중
+## Community
 
-### Third-party Development Infrastructure 업데이트 계획
+* **Personal Website :** Owner's personam website is [devspoon.com]
+* **Github.io :** Ther are more detail guide [devspoon.github.io]
 
-* git-server, docker-image 컨테이너 
-* Docker 통합 모니터링 솔루션
-* 독립서버, AWS, GCP 기반에 대한 각각의 쿠버네티스 기능을 docker-compose로 개별 관리
+## Demos
 
-## Contribution
+* **[youtube]** - Preparing
+* **[inflearn]** - Demos for Devspoon features and how to use the devspoon's open-source
 
-### 주요 멤버
+## Partners and Users
 
-* 임도현 Owner, Tizen Specialist(심사중), bluebamus@gmail.com
-* 임태연 Member, Tizen Developer
-* 강동훈 Member, Tizen Developer
+Lim Do-Hyun Owner Developer/project Manager, bluebamus@gmail.com
+Lim Tae-youn Member, Tizen Designer
+Kang Dong-hoon Member, Tizen Developer
+
 
 ### How to contributing our project
 
@@ -247,8 +199,16 @@ should includes most of the things you'll need to get your contribution started!
 [Tizen documentation]: https://source.tizen.org/documentation
 [Tizen 공식 사이트]: https://www.tizen.org/ko?langswitch=ko
 [docker-install]: https://hcnam.tistory.com/25 
-[devspoon-web-php]: https://github.com/devspoons/devspoon-web-php
-[devspoon-startup-web-php]: https://github.com/devspoons/devspoon-startup-web-php
-[OpenProject]: http://wiki.webnori.com/display/pms/Open+Project+7
-[Jenkins]: https://jjeongil.tistory.com/810
+[devspoon-web]: https://github.com/devspoons/devspoon-web
+[devspoon-startup-web]: https://github.com/devspoons/devspoon-startup-web
+[OpenProject(KR)]: http://wiki.webnori.com/display/pms/Open+Project+7
+[Jenkins(KR)]: https://jjeongil.tistory.com/810
+[Harbor(KR)]: https://engineering.linecorp.com/ko/blog/harbor-for-private-docker-registry/
+[mailgun]: https://www.mailgun.com/
+[sendgrid]: https://sendgrid.com/
+[OpenProject]: https://docs.openproject.org/user-guide/wiki/
+[Jenkins]: https://en.wikipedia.org/wiki/Jenkins_(software)
+[Gitolite]: https://wiki.archlinux.org/index.php/Gitolite
+[Harbor]: https://en.wikipedia.org/wiki/Harbor
 [Tizen-Builder-Env]: https://source.tizen.org/
+[tizen web-site]: https://www.tizen.org/user/register
