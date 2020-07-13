@@ -26,6 +26,8 @@ devspoon-startup-tizen를 구성하여 내부망으로 이전시, 인터넷이 �
 [devspoon-web]로 제공되는 nginx 웹서버는 shell script를 이용하여 http/https/Reverse Proxy의 conf 파일 자동생성을 지원하며 도메인을 이용하여 프로젝트 관리 솔루션들에 접근할 수 있습니다.  
 최종적으로 만들어진 Tizen 이미지의 다운로드 및 관리를 자체 개발되어 제공되는 Tizen 이미지 관리 솔루션으로 제공받을 수 있습니다.
 
+* You can get more informations at [devspoons.github.io]
+
 ## Project management solutions
 
 * **[OpenProject] :** Open source project management software to help you work on your project efficiently
@@ -225,3 +227,4 @@ should includes most of the things you'll need to get your contribution started!
 [Tizen-Builder-Env]: https://source.tizen.org/
 [tizen web-site]: https://www.tizen.org/user/register
 [bluebamus.github.io]: bluebamus.github.io
+[devspoons.github.io]: devspoons.github.io
