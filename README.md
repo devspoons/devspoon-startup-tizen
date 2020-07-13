@@ -1,21 +1,28 @@
 # devspoon-startup-tizen
-devspoon-startup-tizen is an open source solution that can easily build a reliable Tizen development environment using Docker.  
+-devspoon-startup-tizen is an open source solution that can easily build a reliable Tizen development environment using Docker.  
+
 devspoon-startup-tizen made with the web service building solution supporting php, python based on nginx named [devspoon-web] and integrated management solution(openproject, jenkins, gitolite[private git server], harbor[private docker server]) of project named [devspoon-startup-web].  
+
 devspoon-startup-tizen can easily build the complex configuration required to develop Samsung Tizen-based IoT devices using the already verified Dockerfile and Docker-compose.  
 Development automation (CI:Continuous Integration) can be configured using jenkins provided as [devspoon-startup-web], and projects can be efficiently managed with openproject.  
 Gitolite is linked with openproject and jenkins, and can be used efficiently without repository public and limitations on the capacity restriction of git server and public storage.  
 Using the harbor, you can build an independent docker image according to the type, version, and kernel environment type of the smart TV, IoT development board, and download and install the docker image to any new server at any time from the docker hub.  
 By configuring devspoon-startup-tizen, when moving to the internal network, you can build a development environment under various conditions and manage sources and projects even when there is no Internet connection.  
+
 The nginx web server provided as [devspoon-web] supports automatic creation of http/https/Reverse-proxy conf files using shell scripts, and can access project management solutions using domains.  
 You can download and management of the finally created Tizen image from a Tizen image management solution developed by our self.
 
 devspoon-startup-tizen은 신뢰할 수 있는 Tizen 개발환경을 Docker를 이용하여 쉽게 구축할 수 있는 오픈소스 솔루션입니다.  
+
 devspoon-startup-tizen은 nginx 기반의 php, python 웹 서비스 구축 솔루션 [devspoon-web]와 프로젝트 통합 관리 솔루션(openproject, jenkins, gitolite[private git server], harbor[private docker server]) [devspoon-startup-web]을 기반으로 만들어졌습니다.  
+
 devspoon-startup-tizen은 삼성 Tizen 기반의 IoT 장비들을 개발하기 위해 요구되는 복잡한 환경설정을 이미 검증된 Dockerfile과 Docker-compose를 이용해 쉽게 구축을 할 수 있습니다.   
+
 [devspoon-startup-web]으로 제공되는 jenkins를 이용해 개발 자동화(CI:Continuous Integration)를 구성할 수 있으며 openproject로 프로젝트들을 효율적으로 관리할 수 있습니다.   
 함께 제공되는 gitolite는 openproject, jenkins와 연동이되며 git server의 용량 제한 및 저장소 공개에 제한, 제약없이 효율적으로 사용가능합니다.   
 harbor를 이용해 스마트 TV, IoT 개발보드의 종류, 버전 및 커널 환경의 종류 등에 따라 독립적인 docker 이미지를 빌드, docker hub로 부터 언제 어느 서버에서도 docker 이미지를 다운로드 받아 설치할 수 있습니다.   
 devspoon-startup-tizen를 구성하여 내부망으로 이전시, 인터넷이 연결되지 않는 환경에서도 다양한 조건의 개발 환경을 구축, 소스 및 프로젝트를 관리할 수 있습니다.   
+
 [devspoon-web]로 제공되는 nginx 웹서버는 shell script를 이용하여 http/https/Reverse Proxy의 conf 파일 자동생성을 지원하며 도메인을 이용하여 프로젝트 관리 솔루션들에 접근할 수 있습니다.  
 최종적으로 만들어진 Tizen 이미지의 다운로드 및 관리를 자체 개발되어 제공되는 Tizen 이미지 관리 솔루션으로 제공받을 수 있습니다.
 
@@ -173,6 +180,11 @@ devspoon-startup-tizen를 구성하여 내부망으로 이전시, 인터넷이 �
 ## Partners and Users
 
 * Lim Do-Hyun Owner Developer/project Manager, bluebamus@gmail.com  
+Personal github.io : [bluebamus.github.io]
+
+* 임도현 Owner 개발자/기획자, bluebamus@gmail.com  
+개인 github.io 사이트 : [bluebamus.github.io]
+
 * Lim Tae-youn Member, Tizen Designer  
 * Kang Dong-hoon Member, Tizen Developer
 
@@ -212,3 +224,4 @@ should includes most of the things you'll need to get your contribution started!
 [Harbor]: https://en.wikipedia.org/wiki/Harbor
 [Tizen-Builder-Env]: https://source.tizen.org/
 [tizen web-site]: https://www.tizen.org/user/register
+[bluebamus.github.io]: bluebamus.github.io
