@@ -52,4 +52,6 @@ ADD repo-script/ /root/repo-script/
 
 ADD samples/ /root/samples/
 
+ADD build-script/ /root/build-script/
+
 ENTRYPOINT ["/usr/sbin/sshd","-D"]
