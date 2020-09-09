@@ -3,6 +3,7 @@
 while :
 do 
     echo -n "Enter the service portnumber >"
+    echo -n "* if your webroot has sub-level, you should be insert as \\\/A\\\/B\\\/C"
     read portnumber
     echo  "Entered service portnumber: $portnumber"
     if [[ "$portnumber" != "" ]]; then

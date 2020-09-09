@@ -9,7 +9,7 @@ services:
         - ../../../script/:/script/
         - ../../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
         - ../../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
-        - ../../../config/web-server/nginx/gunicorn/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
+        - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
         - ../../../ssl/:/ssl/
         - ../../../log:/log
     ports:
@@ -19,7 +19,7 @@ services:
         TZ: "Asia/Seoul"
     restart: always
 
-  uwsgi-app:
+  gunicorn-app:
     build: ../../../docker/gunicorn/
     working_dir: /application
     container_name: gunicorn-app    

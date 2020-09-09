@@ -18,6 +18,7 @@ rm *.temp
 while :
 do 
     echo -n "Enter the service web root >"
+    echo -n "* if your webroot has sub-level, you should be insert as \\\/A\\\/B\\\/C"
     read webroot
     echo  "Entered service web root: $webroot"
     if [[ "$webroot" != "" ]]; then
