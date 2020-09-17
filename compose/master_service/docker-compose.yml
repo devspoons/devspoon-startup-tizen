@@ -1,6 +1,6 @@
 version: "3"
 services:
-  nginx-webserver:
+  webserver:
     image: nginx:latest    
     container_name: nginx-webserver      
     volumes:
