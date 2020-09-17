@@ -3,7 +3,7 @@ services:
   webserver:
     image: nginx:latest
     working_dir: /application
-    container_name: nginx-python-webserver      
+    container_name: nginx-gunicorn-webserver      
     volumes:
         - ../../../www:/www
         - ../../../script/:/script/

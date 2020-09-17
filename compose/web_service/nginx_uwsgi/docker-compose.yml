@@ -3,13 +3,13 @@ services:
   webserver:
     image: nginx:latest
     working_dir: /application
-    container_name: nginx-php-webserver      
+    container_name: nginx-uwsgi-webserver      
     volumes:
         - ../../../www:/www
         - ../../../script/:/script/
         - ../../../config/web-server/nginx/uwsgi/conf.d/:/etc/nginx/conf.d/
         - ../../../config/web-server/nginx/uwsgi/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
-        - ../../../config/web-server/nginx/uwsgi/uwsgi_params/uwsgi_params:/etc/nginx/uwsgi_params
+        - ../../../config/web-server/nginx/uwsgi/proxy_params/proxy_params:/etc/nginx/proxy_params
         - ../../../ssl/:/ssl/
         - ../../../log:/log
     ports:

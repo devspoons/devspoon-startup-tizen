@@ -44,7 +44,7 @@ done
 echo "Enter the serviceport"
 echo -n "if you push enter with none, there are no port number >"
 read serviceport
-echo  "Entered proxy port: $serviceport"
+echo "Entered proxy port: $serviceport"
 
 while :
 do 
