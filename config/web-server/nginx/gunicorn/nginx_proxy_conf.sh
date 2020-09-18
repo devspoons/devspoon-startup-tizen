@@ -46,7 +46,7 @@ do
     fi
 done 
 
-sed 's/portnumber/'$portnumber'/g' nginx_proxy_conf.conf > $filename'1'.temp
+sed 's/portnumber/'$portnumber'/g' sample_nginx_proxy.conf > $filename'1'.temp
 sed 's/domain/'$domain'/g' $filename'1'.temp > $filename'2'.temp
 sed 's/proxyurl/'$proxyurl'/g' $filename'2'.temp > $filename'3'.temp
 if [[ "$proxyport" == "" ]]; then
