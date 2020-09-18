@@ -20,7 +20,7 @@ services:
       - openproject
       
   openproject:
-    image: openproject/community:latest
+    image: openproject/community:10
     container_name: openproject
     environment:
       EMAIL_DELIVERY_METHOD: smtp
