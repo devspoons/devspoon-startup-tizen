@@ -1,12 +1,12 @@
 FROM ubuntu:18.04
 
-RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
+RUN apt update
+RUN DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends apt-utils
 # vim
-RUN apt-get install -y vim wget openssh-server git locales
+RUN apt install -y vim wget openssh-server git locales
 
 # Set the locale
-# RUN apt-get install -y locales language-pack-ko
+# RUN apt install -y locales language-pack-ko
 # RUN locale-gen ko_KR.UTF-8
 # ENV LANG ko_KR.UTF-8
 # ENV LANGUAGE ko_KR:kr
@@ -14,12 +14,12 @@ RUN apt-get install -y vim wget openssh-server git locales
 
 ENV OS_LOCALE="en_US.utf8" \
     DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y locales && locale-gen ${OS_LOCALE}
+RUN apt update && apt install -y locales && locale-gen ${OS_LOCALE}
 ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
     LC_ALL=${OS_LOCALE} 
 
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+RUN apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
 
 RUN sed -i 's/^AcceptEnv LANG LC_\*$//g' /etc/ssh/sshd_config
 
