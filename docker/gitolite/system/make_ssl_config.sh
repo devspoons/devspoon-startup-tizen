@@ -36,15 +36,12 @@ do
     fi
 done 
 
-while :
-do  
-    echo -n "Enter a IdentityFile path (default : ~/.ssh/git-manager) >"
-    read identityFile_path
-    echo  "Entered a IdentityFile path: $identityFile_path"
-    if [[ "$identityFile_path" != "" ]]; then
-        identityFile_path="~/.ssh/git-manager"
-    fi
-done 
+echo -n "Enter a IdentityFile path (default : ~/.ssh/git-manager) >"
+read identityFile_path
+echo  "Entered a IdentityFile path: $identityFile_path"
+if [[ "$identityFile_path" == "" ]]; then
+    identityFile_path="~/.ssh/git-manager"
+fi
 
 sed 's/domain/'$domain'/' sample_config > sample_config'1'.temp
 sed 's/portnumber/'$portnumber'/' sample_config'1'.temp > config
