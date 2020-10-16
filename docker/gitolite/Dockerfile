@@ -1,9 +1,7 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 RUN apt update
-RUN DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends apt-utils
-# vim
-RUN apt install -y vim wget openssh-server git locales
+RUN DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends apt-utils vim wget openssh-server git locales
 
 # Set the locale
 # RUN apt install -y locales language-pack-ko
@@ -14,7 +12,7 @@ RUN apt install -y vim wget openssh-server git locales
 
 ENV OS_LOCALE="en_US.utf8" \
     DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt install -y locales && locale-gen ${OS_LOCALE}
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends locales && locale-gen ${OS_LOCALE}
 ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
     LC_ALL=${OS_LOCALE} 

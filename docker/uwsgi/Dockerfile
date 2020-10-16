@@ -1,14 +1,14 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
+RUN apt update
+RUN DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends apt-utils
 
 # curl/wget/git
-RUN apt-get install -y curl wget git tar
+RUN apt install -y curl wget git tar
 # vim
-RUN apt-get install -y vim 
+RUN apt install -y vim 
 # C
-RUN apt-get install -y build-essential gcc
+RUN apt install -y build-essential gcc
 
 # Python
 RUN apt install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev
@@ -31,12 +31,12 @@ RUN ln -s /usr/local/bin/pip3.8 /usr/bin/pip3
 RUN ln -s /usr/local/bin/pip3.8 /usr/local/bin/pip
 RUN ln -s /usr/local/bin/pip3.8 /usr/local/bin/pip3
 
-# update apt-get 
-RUN apt-get update && apt-get -y upgrade
+# update apt 
+RUN apt update && apt -y upgrade
 RUN pip install --upgrade pip
 RUN pip3 install --upgrade pip
 
-RUN apt-get install -y python3-dev libmysqlclient-dev
+RUN apt install -y python3-dev libmysqlclient-dev
 
 RUN pip3 install wheel
 
@@ -54,7 +54,7 @@ RUN pip3 install virtualenv
 RUN pip3 install django
 
 # Set the locale
-# RUN apt-get install -y locales language-pack-ko
+# RUN apt install -y locales language-pack-ko
 # RUN locale-gen ko_KR.UTF-8
 # ENV LANG ko_KR.UTF-8
 # ENV LANGUAGE ko_KR:kr
@@ -62,12 +62,12 @@ RUN pip3 install django
 
 ENV OS_LOCALE="en_US.utf8" \
     DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y locales && locale-gen ${OS_LOCALE}
+RUN apt update && apt install -y locales && locale-gen ${OS_LOCALE}
 ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
     LC_ALL=${OS_LOCALE} 
 
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+RUN apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
 ADD run.sh /tmp/run.sh
 RUN chmod u+x /tmp/run.sh
 
