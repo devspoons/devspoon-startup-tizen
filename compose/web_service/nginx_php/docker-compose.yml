@@ -2,6 +2,11 @@
 services:
   webserver:
     image: nginx:latest
+    logging:
+        driver: "json-file"
+        options:
+          max-file: "5"
+          max-size: "100m"
     working_dir: /application
     container_name: nginx-php-webserver      
     volumes:
@@ -22,6 +27,11 @@ services:
 
   php-app:
     build: ../../../docker/php-fpm/
+    logging:
+        driver: "json-file"
+        options:
+          max-file: "5"
+          max-size: "100m"
     working_dir: /application
     container_name: php-app
     volumes:

@@ -2,6 +2,11 @@ version: "3"
 services:
   nginx-proxy:
     image: nginx:latest
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "100m"
     container_name: nginx-proxy
     volumes:
       - ../../../config/web-server/nginx/php/conf.d/:/etc/nginx/conf.d/
@@ -21,6 +26,11 @@ services:
       
   openproject:
     image: openproject/community:11
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "100m"
     container_name: openproject
     environment:
       EMAIL_DELIVERY_METHOD: smtp

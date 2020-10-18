@@ -2,6 +2,11 @@ version: "3"
 services:
   tizenenv:
     build: ../../../docker/tizen-env/
+    logging:
+      driver: "json-file"
+      options:
+        max-file: "5"
+        max-size: "100m"
     working_dir: /application
     container_name: tizenenv
     privileged: true
