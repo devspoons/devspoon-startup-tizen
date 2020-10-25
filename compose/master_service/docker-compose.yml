@@ -16,14 +16,15 @@ services:
       - ../../config/web-server/nginx/php/conf.d/:/etc/nginx/conf.d/
       - ../../config/web-server/nginx/php/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../config/web-server/nginx/php/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
-      # web gunicorn setting 
-      # - ../../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
-      # - ../../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
-      # - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
+      - ../../config/web-server/nginx/php/proxy_params/proxy_params:/etc/nginx/proxy_params
+       # web gunicorn setting 
+      # - ../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
+      # - ../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
+      # - ../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
       # web uwsgi setting
-      # - ../../../config/web-server/nginx/uwsgi/conf.d/:/etc/nginx/conf.d/
-      # - ../../../config/web-server/nginx/uwsgi/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
-      # - ../../../config/web-server/nginx/uwsgi/proxy_params/proxy_params:/etc/nginx/proxy_params
+      # - ../../config/web-server/nginx/uwsgi/conf.d/:/etc/nginx/conf.d/
+      # - ../../config/web-server/nginx/uwsgi/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
+      # - ../../config/web-server/nginx/uwsgi/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ../../nginx_cache/:/etc/nginx/cache/
       - ../../ssl/letsencrypt/:/etc/letsencrypt/
       - ../../ssl/ssl/:/etc/ssl/
