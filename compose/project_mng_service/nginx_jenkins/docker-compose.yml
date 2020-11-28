@@ -31,7 +31,8 @@ services:
         options:
           max-file: "5"
           max-size: "100m"
-      container_name: 'jenkins'          
+      container_name: 'jenkins'
+      privileged: true
       volumes:
         - './jenkins_home:/var/jenkins_home'
       expose:

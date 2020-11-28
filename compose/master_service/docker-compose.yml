@@ -105,6 +105,7 @@ services:
         max-file: "5"
         max-size: "100m"
     container_name: openproject
+    privileged: true
     environment:
       EMAIL_DELIVERY_METHOD: smtp
       SMTP_ADDRESS: smtp.mailgun.org
@@ -132,7 +133,8 @@ services:
       options:
         max-file: "5"
         max-size: "100m"
-    container_name: jenkins    
+    container_name: jenkins
+    privileged: true
     volumes:
       - ./jenkins_home:/var/jenkins_home
     expose:
