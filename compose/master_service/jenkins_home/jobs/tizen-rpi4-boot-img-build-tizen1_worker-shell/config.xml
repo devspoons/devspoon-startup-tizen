@@ -1,0 +1,39 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <actions/>
+  <description>This will work without having to do the repo process.&#xd;
+It refers to the&apos;tizen-unified_20200521.1_iot-boot-armv7l-rpi4.ks&apos; file, initially finds the modified package or source code, then downloads the remaining reuqired packages from the tizen repository and completes the build process.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>tizen1_worker</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>echo &quot;set workspace for building up boot image&quot;
+if [ ! -d RPi4_boot_img ]; then
+	mkdir ./RPi4_boot_img
+fi</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>echo &quot;copy tizen-unified_20200521.1_iot-boot-armv7l-rpi4.ks file to workspace&quot;
+cd ./RPi4_boot_img
+cp /root/build-script/tizen-unified_20200521.1_iot-boot-armv7l-rpi4.ks ./</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>echo &quot;boot image build&quot;
+cd ./RPi4_boot_img
+mic cr loop tizen-unified_20200521.1_iot-boot-armv7l-rpi4.ks --pack-to=tizen-unified_20200521.1_iot-boot-armv7l-rpi4.tar.gz --logfile=mic_build.log -A armv7l</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

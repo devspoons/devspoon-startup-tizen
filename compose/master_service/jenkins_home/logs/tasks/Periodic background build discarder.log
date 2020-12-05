@@ -16,3 +16,13 @@ Offering ssh-connection-test-tizen1_worker to Project Build Discarder
 Processing tizen-repo-init-default-tizen1_worker-shell
 Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
 Finished at Sat Dec 05 22:49:07 KST 2020. 136ms
+Started at Sat Dec 05 23:49:07 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-repo-init-default-tizen1_worker-shell
+Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-rpi3-tizen1_worker-shell
+Offering tizen-repo-init-rpi3-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-boot-img-build-tizen1_worker-shell
+Offering tizen-rpi4-boot-img-build-tizen1_worker-shell to Project Build Discarder
+Finished at Sat Dec 05 23:49:07 KST 2020. 58ms
