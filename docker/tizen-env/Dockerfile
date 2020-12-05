@@ -74,9 +74,6 @@ RUN git config --global color.ui true
 RUN mkdir ~/bin/
 RUN echo 'PATH=~/bin:$PATH' >> ~/.bashrc
 
-RUN curl http://commondatastorage.googleapis.com/git-repo-downloads/repo > ~/bin/repo && \
-    chmod a+x ~/bin/repo
-
 COPY .ssh /root/.ssh
 
 RUN chmod 700 /root/.ssh/ && chmod 644 /root/.ssh/* && chmod 600 /root/.ssh/id_rsa

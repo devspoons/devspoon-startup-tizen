@@ -1,4 +1,18 @@
-Started at Sat Dec 05 18:39:14 KST 2020
-Processing tizen-rpi4-boot-img-build
-Offering tizen-rpi4-boot-img-build to Project Build Discarder
-Finished at Sat Dec 05 18:39:14 KST 2020. 35ms
+Started at Sat Dec 05 19:49:07 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Finished at Sat Dec 05 19:49:07 KST 2020. 21ms
+Started at Sat Dec 05 20:49:07 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Finished at Sat Dec 05 20:49:07 KST 2020. 23ms
+Started at Sat Dec 05 21:49:07 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Finished at Sat Dec 05 21:49:07 KST 2020. 66ms
+Started at Sat Dec 05 22:49:07 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-repo-init-default-tizen1_worker-shell
+Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
+Finished at Sat Dec 05 22:49:07 KST 2020. 136ms
