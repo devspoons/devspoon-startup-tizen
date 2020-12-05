@@ -1,0 +1,13 @@
+Warning: no key algorithms provided; JENKINS-42959 disabled
+SSHLauncher{host='tizenenv', port=22, credentialsId='tizen1-worker-ssh', jvmOptions='', javaPath='', prefixStartSlaveCmd='', suffixStartSlaveCmd='', launchTimeoutSeconds=60, maxNumRetries=10, retryWaitTime=15, sshHostKeyVerificationStrategy=hudson.plugins.sshslaves.verifiers.KnownHostsFileKeyVerificationStrategy, tcpNoDelay=true, trackCredentials=true}
+[12/05/20 18:55:49] [SSH] Opening SSH connection to tizenenv:22.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 18:55:50] [SSH] WARNING: No entry currently exists in the Known Hosts file for this host. Connections will be denied until this new host and its associated key is added to the Known Hosts file.
+Key exchange was not finished, connection is closed.
+SSH Connection failed with IOException: "Key exchange was not finished, connection is closed.", retrying in 15 seconds. There are 10 more retries left.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 18:56:08] [SSH] WARNING: No entry currently exists in the Known Hosts file for this host. Connections will be denied until this new host and its associated key is added to the Known Hosts file.
+Key exchange was not finished, connection is closed.
+SSH Connection failed with IOException: "Key exchange was not finished, connection is closed.", retrying in 15 seconds. There are 9 more retries left.

@@ -1,0 +1,116 @@
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 18:59:26] [SSH] The SSH key presented by the remote host does not match the key saved in the Known Hosts file against this host. Connections to this host will be denied until the two keys match.
+Key exchange was not finished, connection is closed.
+SSH Connection failed with IOException: "Key exchange was not finished, connection is closed.", retrying in 15 seconds. There are 7 more retries left.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 18:59:41] [SSH] The SSH key presented by the remote host does not match the key saved in the Known Hosts file against this host. Connections to this host will be denied until the two keys match.
+Key exchange was not finished, connection is closed.
+SSH Connection failed with IOException: "Key exchange was not finished, connection is closed.", retrying in 15 seconds. There are 6 more retries left.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 18:59:56] [SSH] The SSH key presented by the remote host does not match the key saved in the Known Hosts file against this host. Connections to this host will be denied until the two keys match.
+Key exchange was not finished, connection is closed.
+SSH Connection failed with IOException: "Key exchange was not finished, connection is closed.", retrying in 15 seconds. There are 5 more retries left.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 19:00:12] [SSH] The SSH key presented by the remote host does not match the key saved in the Known Hosts file against this host. Connections to this host will be denied until the two keys match.
+Key exchange was not finished, connection is closed.
+SSH Connection failed with IOException: "Key exchange was not finished, connection is closed.", retrying in 15 seconds. There are 4 more retries left.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 19:00:28] [SSH] The SSH key presented by the remote host does not match the key saved in the Known Hosts file against this host. Connections to this host will be denied until the two keys match.
+Key exchange was not finished, connection is closed.
+SSH Connection failed with IOException: "Key exchange was not finished, connection is closed.", retrying in 15 seconds. There are 3 more retries left.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 19:00:43] [SSH] The SSH key presented by the remote host does not match the key saved in the Known Hosts file against this host. Connections to this host will be denied until the two keys match.
+Key exchange was not finished, connection is closed.
+SSH Connection failed with IOException: "Key exchange was not finished, connection is closed.", retrying in 15 seconds. There are 2 more retries left.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 19:00:58] [SSH] The SSH key presented by the remote host does not match the key saved in the Known Hosts file against this host. Connections to this host will be denied until the two keys match.
+Key exchange was not finished, connection is closed.
+SSH Connection failed with IOException: "Key exchange was not finished, connection is closed.", retrying in 15 seconds. There are 1 more retries left.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 19:01:13] [SSH] The SSH key presented by the remote host does not match the key saved in the Known Hosts file against this host. Connections to this host will be denied until the two keys match.
+Key exchange was not finished, connection is closed.
+ERROR: Connection is not established!
+java.lang.IllegalStateException: Connection is not established!
+	at com.trilead.ssh2.Connection.getRemainingAuthMethods(Connection.java:988)
+	at com.cloudbees.jenkins.plugins.sshcredentials.impl.TrileadSSHPublicKeyAuthenticator.getRemainingAuthMethods(TrileadSSHPublicKeyAuthenticator.java:88)
+	at com.cloudbees.jenkins.plugins.sshcredentials.impl.TrileadSSHPublicKeyAuthenticator.canAuthenticate(TrileadSSHPublicKeyAuthenticator.java:80)
+	at com.cloudbees.jenkins.plugins.sshcredentials.SSHAuthenticator.newInstance(SSHAuthenticator.java:218)
+	at com.cloudbees.jenkins.plugins.sshcredentials.SSHAuthenticator.newInstance(SSHAuthenticator.java:171)
+	at hudson.plugins.sshslaves.SSHLauncher.openConnection(SSHLauncher.java:863)
+	at hudson.plugins.sshslaves.SSHLauncher$1.call(SSHLauncher.java:435)
+	at hudson.plugins.sshslaves.SSHLauncher$1.call(SSHLauncher.java:422)
+	at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+	at java.lang.Thread.run(Thread.java:748)
+[12/05/20 19:01:28] Launch failed - cleaning up connection
+[12/05/20 19:01:28] [SSH] Connection closed.
+SSHLauncher{host='tizenenv', port=22, credentialsId='tizen1-worker-ssh', jvmOptions='', javaPath='', prefixStartSlaveCmd='', suffixStartSlaveCmd='', launchTimeoutSeconds=60, maxNumRetries=10, retryWaitTime=15, sshHostKeyVerificationStrategy=hudson.plugins.sshslaves.verifiers.KnownHostsFileKeyVerificationStrategy, tcpNoDelay=true, trackCredentials=true}
+[12/05/20 19:01:28] [SSH] Opening SSH connection to tizenenv:22.
+Searching for tizenenv in /var/jenkins_home/.ssh/known_hosts
+Searching for tizenenv:22 in /var/jenkins_home/.ssh/known_hosts
+[12/05/20 19:01:28] [SSH] SSH host key matches key in Known Hosts file. Connection will be allowed.
+[12/05/20 19:01:29] [SSH] Authentication successful.
+[12/05/20 19:01:29] [SSH] The remote user's environment is:
+BASH=/bin/bash
+BASHOPTS=cmdhist:complete_fullquote:extquote:force_fignore:hostcomplete:interactive_comments:progcomp:promptvars:sourcepath
+BASH_ALIASES=()
+BASH_ARGC=()
+BASH_ARGV=()
+BASH_CMDS=()
+BASH_EXECUTION_STRING=set
+BASH_LINENO=()
+BASH_SOURCE=()
+BASH_VERSINFO=([0]="4" [1]="4" [2]="20" [3]="1" [4]="release" [5]="x86_64-pc-linux-gnu")
+BASH_VERSION='4.4.20(1)-release'
+DIRSTACK=()
+EUID=0
+GROUPS=()
+HOME=/root
+HOSTNAME=63abac303c57
+HOSTTYPE=x86_64
+IFS=$' \t\n'
+LOGNAME=root
+MACHTYPE=x86_64-pc-linux-gnu
+MAIL=/var/mail/root
+OPTERR=1
+OPTIND=1
+OSTYPE=linux-gnu
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin
+PIPESTATUS=([0]="0")
+PPID=84
+PS4='+ '
+PWD=/root
+SHELL=/bin/bash
+SHELLOPTS=braceexpand:hashall:interactive-comments
+SHLVL=1
+SSH_CLIENT='172.20.0.2 48444 22'
+SSH_CONNECTION='172.20.0.2 48444 172.20.0.4 22'
+TERM=dumb
+TZ=Asia/Seoul
+UID=0
+USER=root
+_=']'
+[12/05/20 19:01:29] [SSH] Checking java version of /root/jdk/bin/java
+Couldn't figure out the Java version of /root/jdk/bin/java
+bash: /root/jdk/bin/java: No such file or directory
+
+[12/05/20 19:01:29] [SSH] Checking java version of java
+[12/05/20 19:01:31] [SSH] java -version returned 1.8.0_275.
+[12/05/20 19:01:31] [SSH] Starting sftp client.
+[12/05/20 19:01:31] [SSH] Copying latest remoting.jar...
+[12/05/20 19:01:32] [SSH] Copied 1,506,923 bytes.
+Expanded the channel window size to 4MB
+[12/05/20 19:01:32] [SSH] Starting agent process: cd "/root" && java  -jar remoting.jar -workDir /root -jar-cache /root/remoting/jarCache
+Dec 05, 2020 7:01:35 PM org.jenkinsci.remoting.engine.WorkDirManager initializeWorkDir
+INFO: Using /root/remoting as a remoting work directory
+Dec 05, 2020 7:01:35 PM org.jenkinsci.remoting.engine.WorkDirManager setupLogging
+INFO: Both error and output logs will be printed to /root/remoting
