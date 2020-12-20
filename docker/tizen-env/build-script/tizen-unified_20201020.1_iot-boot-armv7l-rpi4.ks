@@ -20,7 +20,7 @@ desktop --autologinuser=guest
 user --name guest  --groups audio,video --password 'tizen'
 
 
-repo --name=unified-standard --baseurl=http://download.tizen.org/releases/milestone/tizen/unified/tizen-unified_20200521.1/repos/standard/packages/ --ssl_verify=no
+repo --name=unified-standard --baseurl=http://download.tizen.org/releases/milestone/tizen/unified/tizen-unified_20201020.1/repos/standard/packages/ --ssl_verify=no
 
 
 %packages

@@ -11,8 +11,8 @@ timezone --utc America/Los_Angeles
 part / --fstype="ext4" --size=3500 --ondisk=mmcblk0 --label rootfs --fsoptions=defaults,noatime
 part /opt --fstype="ext4" --size=512 --ondisk=mmcblk0 --label system-data --fsoptions=defaults,noatime
 part /opt/usr --fstype="ext4" --size=3500 --ondisk=mmcblk0 --label user --fsoptions=defaults,noatime
-part /mnt/initrd --size=7 --ondisk mmcblk0p --fstype=ext4 --label=ramdisk --extoptions="-b 1024"
-part /mnt/initrd-recovery --size=12 --ondisk mmcblk0p --fstype=ext4 --label=ramdisk-recovery --extoptions="-b 1024 -O ^has_journal"
+part /mnt/initrd --size=8 --ondisk mmcblk0p --fstype=ext4 --label=ramdisk --extoptions="-b 1024 -O ^has_journal"
+part /mnt/initrd-recovery --size=32 --ondisk mmcblk0p --fstype=ext4 --label=ramdisk-recovery --extoptions="-b 1024 -O ^has_journal"
 
 
 rootpw tizen 
@@ -23,8 +23,8 @@ desktop --autologinuser=guest
 user --name guest  --groups audio,video --password 'tizen'
 
 
-repo --name=unified-standard --baseurl=http://download.tizen.org/releases/milestone/tizen/unified/tizen-unified_20200521.1/repos/standard/packages/ --ssl_verify=no
-repo --name=base-standard --baseurl=http://download.tizen.org/snapshots/tizen/base/latest/repos/standard/packages/ --ssl_verify=no
+repo --name=unified-standard --baseurl=http://download.tizen.org/releases/milestone/tizen/unified/latest/repos/standard/packages/ --ssl_verify=no
+repo --name=base-standard --baseurl=http://download.tizen.org/releases/milestone/tizen/base/latest/repos/standard/packages/ --ssl_verify=no
 
 
 %packages
@@ -33,7 +33,7 @@ repo --name=base-standard --baseurl=http://download.tizen.org/snapshots/tizen/ba
 building-blocks-root-Preset_iot_core
 # @ IoT Headed Base
 building-blocks-root-Preset_iot_headed
-# @ IoT Adaptation RPI3
+# @ IoT Adaptation RPI
 building-blocks-sub1-Preset_img_headed-rpi3
 # Others
 
@@ -70,7 +70,7 @@ build_date=$(date -u --date @$build_ts +%Y%m%d_%H%M%S)
 build_time=$(date -u --date @$build_ts +%H:%M:%S)
 
 sed -ri \
-	-e 's|@BUILD_ID[@]|tizen-unified_20200521.1|g' \
+	-e 's|@BUILD_ID[@]|tizen-unified_20201020.1|g' \
 	-e "s|@BUILD_DATE[@]|$build_date|g" \
 	-e "s|@BUILD_TIME[@]|$build_time|g" \
 	-e "s|@BUILD_TS[@]|$build_ts|g" \
@@ -304,14 +304,46 @@ security-manager-cmd -b
 
 #!/bin/sh
 
+echo "############### iot-making-ABB-tag.post ################"
+
+if [ -f  /opt/share/bb/make_ABB_tag.sh ]
+then
+    /opt/share/bb/make_ABB_tag.sh /opt/share/bb/mapping-bb-rs.xml > /etc/config/tizen_abb_tag.cfg
+else
+    echo "There is no script file - /opt/share/bb/make_ABB_bb.sh"
+fi
+
+
+#!/bin/sh
+
 echo "############### iot-making-building-blocks-dll.post ################"
+
+export IBCDATA_DIR=/usr/share/dotnet.tizen/ibcdata
 
 if [ -f  /opt/share/bb/make_tizenfx_from_bb.sh ]
 then
 	/opt/share/bb/make_tizenfx_from_bb.sh
 	if [ -f /usr/bin/dotnettool ]
 	then
-		dotnettool --ni-system
+		# remove previous native image
+		dotnettool --ni-reset-system
+
+		dotnettool --ibc-dir $IBCDATA_DIR --ni-dll /usr/share/dotnet.tizen/netcoreapp/System.Private.CoreLib.dll
+		if [ -f /usr/share/dotnet.tizen/netcoreapp/System.Private.CoreLib.dll.Backup ]
+		then
+			# generate native image with ibcdata
+			dotnettool --ibc-dir $IBCDATA_DIR --ni-system
+		else
+			echo "The current ibcdata format does not match in Iot(aarch64) profile. So regenerate native image without ibcdata."
+			# regenerate native image without ibcdata
+			dotnettool --ni-system
+		fi
+
+		# remove ibc data files
+		if [ -d $IBCDATA_DIR ]
+		then
+		    rm -rf $IBCDATA_DIR
+		fi
 	else
 		echo "There is no execute file - /usr/bin/dotnettool"
 	fi
@@ -335,7 +367,7 @@ rm -rf /usr/share/doc
 if [ -n "$IMG_NAME" ]; then
 	echo "BUILD_ID=$IMG_NAME" >> $INSTALL_ROOT/etc/tizen-release
 	echo "BUILD_ID=$IMG_NAME" >> $INSTALL_ROOT/etc/os-release
-	echo "$IMG_NAME tizen-unified_20200521.1" >>$INSTALL_ROOT/etc/tizen-snapshot
+	echo "$IMG_NAME tizen-unified_20201020.1" >>$INSTALL_ROOT/etc/tizen-snapshot
 fi
 
 echo "############### backup-data.nochroot ################"
@@ -351,7 +383,6 @@ date +'[%m/%d %H:%M:%S %Z] backup-data.nochroot nochroot post script - end'
 
 %end
 
-%runscript
 
-%end
+
 
