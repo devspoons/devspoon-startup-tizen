@@ -1,0 +1,54 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>tizen1_worker</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>echo &quot;set workspace for building up anchor5 &apos;peripheral-io&apos; package&quot;
+if [ ! -d tizen_anchor5  ]; then
+	mkdir ./tizen_anchor5 
+fi
+
+cp /root/samples/anchor5/gbsAnchor5.conf ./tizen_anchor5/
+
+cp /root/samples/anchor5/tizen-unified_iot-headed-3parts-armv7l-artik530.ks ./tizen_anchor5/
+</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>echo &quot;clone and checkout &apos;peripheral-io&apos; package&quot;
+
+cd ./tizen_anchor5
+
+git clone ssh://review.tizen.org/platform/core/api/peripheral-io
+
+cd peripheral-io
+
+git checkout -b tizen-port 70dcc13c092288d06b6bb6255756f26ffd07b0fb
+</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>echo &quot;&apos;peripheral-io&apos; package build&quot;
+
+cd ./tizen_anchor5
+
+gbs -c ./gbsAnchor5.conf build -A armv7l --thread=4
+
+mic cr loop tizen-unified_iot-headed-3parts-armv7l-artik530.ks --pack-to=tizen-unified_iot-headed-3parts-armv7l-artik530.tar.gz --logfile=mic_build.log -A armv7l
+</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

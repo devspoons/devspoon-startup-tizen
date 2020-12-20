@@ -1,28 +1,128 @@
-Started at Sat Dec 05 19:49:07 KST 2020
+Started at Sun Dec 20 14:32:15 KST 2020
 Processing ssh-connection-test-tizen1_worker
 Offering ssh-connection-test-tizen1_worker to Project Build Discarder
-Finished at Sat Dec 05 19:49:07 KST 2020. 21ms
-Started at Sat Dec 05 20:49:07 KST 2020
-Processing ssh-connection-test-tizen1_worker
-Offering ssh-connection-test-tizen1_worker to Project Build Discarder
-Finished at Sat Dec 05 20:49:07 KST 2020. 23ms
-Started at Sat Dec 05 21:49:07 KST 2020
-Processing ssh-connection-test-tizen1_worker
-Offering ssh-connection-test-tizen1_worker to Project Build Discarder
-Finished at Sat Dec 05 21:49:07 KST 2020. 66ms
-Started at Sat Dec 05 22:49:07 KST 2020
-Processing ssh-connection-test-tizen1_worker
-Offering ssh-connection-test-tizen1_worker to Project Build Discarder
-Processing tizen-repo-init-default-tizen1_worker-shell
-Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
-Finished at Sat Dec 05 22:49:07 KST 2020. 136ms
-Started at Sat Dec 05 23:49:07 KST 2020
-Processing ssh-connection-test-tizen1_worker
-Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
 Processing tizen-repo-init-default-tizen1_worker-shell
 Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
 Processing tizen-repo-init-rpi3-tizen1_worker-shell
 Offering tizen-repo-init-rpi3-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
 Processing tizen-rpi4-boot-img-build-tizen1_worker-shell
 Offering tizen-rpi4-boot-img-build-tizen1_worker-shell to Project Build Discarder
-Finished at Sat Dec 05 23:49:07 KST 2020. 58ms
+Processing tizen-rpi4-platform-img-build-tizen1_worker-shell
+Offering tizen-rpi4-platform-img-build-tizen1_worker-shell to Project Build Discarder
+Finished at Sun Dec 20 14:32:15 KST 2020. 30ms
+Started at Sun Dec 20 15:32:15 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-default-tizen1_worker-shell
+Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-rpi3-tizen1_worker-shell
+Offering tizen-repo-init-rpi3-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-boot-img-build-tizen1_worker-shell
+Offering tizen-rpi4-boot-img-build-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-platform-img-build-tizen1_worker-shell
+Offering tizen-rpi4-platform-img-build-tizen1_worker-shell to Project Build Discarder
+Finished at Sun Dec 20 15:32:15 KST 2020. 42ms
+Started at Sun Dec 20 16:32:15 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-default-tizen1_worker-shell
+Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-rpi3-tizen1_worker-shell
+Offering tizen-repo-init-rpi3-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-boot-img-build-tizen1_worker-shell
+Offering tizen-rpi4-boot-img-build-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-platform-img-build-tizen1_worker-shell
+Offering tizen-rpi4-platform-img-build-tizen1_worker-shell to Project Build Discarder
+Finished at Sun Dec 20 16:32:15 KST 2020. 60ms
+Started at Sun Dec 20 17:32:15 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-default-tizen1_worker-shell
+Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-rpi3-tizen1_worker-shell
+Offering tizen-repo-init-rpi3-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-boot-img-build-tizen1_worker-shell
+Offering tizen-rpi4-boot-img-build-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-platform-img-build-tizen1_worker-shell
+Offering tizen-rpi4-platform-img-build-tizen1_worker-shell to Project Build Discarder
+Finished at Sun Dec 20 17:32:15 KST 2020. 19ms
+Started at Sun Dec 20 18:32:15 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-default-tizen1_worker-shell
+Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-rpi3-tizen1_worker-shell
+Offering tizen-repo-init-rpi3-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-boot-img-build-tizen1_worker-shell
+Offering tizen-rpi4-boot-img-build-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-platform-img-build-tizen1_worker-shell
+Offering tizen-rpi4-platform-img-build-tizen1_worker-shell to Project Build Discarder
+Finished at Sun Dec 20 18:32:15 KST 2020. 18ms
+Started at Sun Dec 20 19:32:15 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-default-tizen1_worker-shell
+Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-rpi3-tizen1_worker-shell
+Offering tizen-repo-init-rpi3-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-boot-img-build-tizen1_worker-shell
+Offering tizen-rpi4-boot-img-build-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-platform-img-build-tizen1_worker-shell
+Offering tizen-rpi4-platform-img-build-tizen1_worker-shell to Project Build Discarder
+Finished at Sun Dec 20 19:32:15 KST 2020. 29ms
+Started at Sun Dec 20 20:32:15 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-default-tizen1_worker-shell
+Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-rpi3-tizen1_worker-shell
+Offering tizen-repo-init-rpi3-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-boot-img-build-tizen1_worker-shell
+Offering tizen-rpi4-boot-img-build-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-platform-img-build-tizen1_worker-shell
+Offering tizen-rpi4-platform-img-build-tizen1_worker-shell to Project Build Discarder
+Finished at Sun Dec 20 20:32:15 KST 2020. 19ms
+Started at Sun Dec 20 21:32:15 KST 2020
+Processing ssh-connection-test-tizen1_worker
+Offering ssh-connection-test-tizen1_worker to Project Build Discarder
+Processing tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-default-tizen1_worker-shell
+Offering tizen-repo-init-default-tizen1_worker-shell to Project Build Discarder
+Processing tizen-repo-init-rpi3-tizen1_worker-shell
+Offering tizen-repo-init-rpi3-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell
+Offering tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-boot-img-build-tizen1_worker-shell
+Offering tizen-rpi4-boot-img-build-tizen1_worker-shell to Project Build Discarder
+Processing tizen-rpi4-platform-img-build-tizen1_worker-shell
+Offering tizen-rpi4-platform-img-build-tizen1_worker-shell to Project Build Discarder
+Finished at Sun Dec 20 21:32:15 KST 2020. 92ms

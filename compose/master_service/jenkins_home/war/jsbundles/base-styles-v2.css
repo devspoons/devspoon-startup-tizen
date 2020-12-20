@@ -2974,9 +2974,6 @@ sans-serif
 #search-box.main-search__input:-ms-input-placeholder {
   font-weight: normal;
 }
-#search-box.main-search__input::-ms-input-placeholder {
-  font-weight: normal;
-}
 #search-box.main-search__input::placeholder {
   font-weight: normal;
 }

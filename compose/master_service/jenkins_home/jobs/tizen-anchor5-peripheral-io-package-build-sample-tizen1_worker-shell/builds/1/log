@@ -1,0 +1,62 @@
+Started by user [8mha:////4Gdkq9rwdePs+taDItQTTtP+LfxRpfBMsmswrsKKD33iAAAAlx+LCAAAAAAAAP9b85aBtbiIQTGjNKU4P08vOT+vOD8nVc83PyU1x6OyILUoJzMv2y+/JJUBAhiZGBgqihhk0NSjKDWzXb3RdlLBUSYGJk8GtpzUvPSSDB8G5tKinBIGIZ+sxLJE/ZzEvHT94JKizLx0a6BxUmjGOUNodHsLgAzWEgZu/dLi1CL9xJTczDwAj6GcLcAAAAA=[0madmin
+Running as SYSTEM
+Building remotely on [8mha:////4FZ7Nr4PhFhcTgIqo/1FmspWRGssN1u+YQdonCFGv94uAAAAox+LCAAAAAAAAP9b85aBtbiIQTGjNKU4P08vOT+vOD8nVc83PyU1x6OyILUoJzMv2y+/JJUBAhiZGBgqihhk0NSjKDWzXb3RdlLBUSYGJk8GtpzUvPSSDB8G5tKinBIGIZ+sxLJE/ZzEvHT94JKizLx0a6BxUmjGOUNodHsLgAzeEgZx/eT83ILSktQi/ZLMqtQ8w/jy/KLs1CIAfrpe7cwAAAA=[0mtizen1_worker (tizen1) in workspace /root/workspace/tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell
+[tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell] $ /bin/sh -xe /tmp/jenkins3261011894105696908.sh
++ echo set workspace for building up anchor5 'peripheral-io' package
+set workspace for building up anchor5 'peripheral-io' package
++ [ ! -d tizen_anchor5 ]
++ mkdir ./tizen_anchor5
++ cp /root/samples/anchor5/gbsAnchor5.conf ./tizen_anchor5/
++ cp /root/samples/anchor5/tizen-unified_iot-headed-3parts-armv7l-artik530.ks ./tizen_anchor5/
+[tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell] $ /bin/sh -xe /tmp/jenkins2028689991392015978.sh
++ echo clone and checkout 'peripheral-io' package
+clone and checkout 'peripheral-io' package
++ cd ./tizen_anchor5
++ git clone ssh://review.tizen.org/platform/core/api/peripheral-io
+Cloning into 'peripheral-io'...
+Total 1363 (delta 2), reused 1361 (delta 2)
++ cd peripheral-io
++ git checkout -b tizen-port 70dcc13c092288d06b6bb6255756f26ffd07b0fb
+Switched to a new branch 'tizen-port'
+[tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell] $ /bin/sh -xe /tmp/jenkins8168972246882823787.sh
++ echo 'peripheral-io' package build
+'peripheral-io' package build
++ cd ./tizen_anchor5
++ gbs -c ./gbsAnchor5.conf build -A armv7l --thread=4
+info: generate repositories ...
+warning: No local package repository for arch armv7l
+info: build conf has been downloaded at:
+      /var/tmp/root-gbs/tizen_anchor5.conf
+[32minfo: [0mstart building packages from: /root/workspace/tizen-anchor5-peripheral-io-package-build-sample-tizen1_worker-shell/tizen_anchor5 (git)
+2020-12-05 15:54 +0000
+gbs 0.25.13
+[32minfo: [0mprepare sources...
+[32minfo: [0mretrieving repo metadata...
+Wide character in print at /usr/lib/build/Build.pm line 826.
+Wide character in print at /usr/lib/build/Build.pm line 826.
+Wide character in print at /usr/lib/build/Build.pm line 826.
+[32minfo: [0mparsing package data...
+[32minfo: [0mbuilding repo metadata ...
+[32minfo: [0mresolving skipped packages ...
+[32minfo: [0mpackage dependency resolving ...
+[32minfo: [0mthere is no circle in 1 packages
+[32minfo: [0m*** [1/1] building capi-system-peripheral-io-0.1.0-0 armv7l tizen_anchor5 (worker: 0) ***
+[33mwarning: [0mbuild failed, Leaving the logs in /root/GBS-ANCHOR5-ROOT/tizen_anchor5/local/repos/tizen_anchor5/armv7l/logs/fail/capi-system-peripheral-io-0.1.0-0/log.txt
+File::Glob::glob() will disappear in perl 5.30. Use File::Glob::bsd_glob() instead. at /usr/bin/depanneur line 2154.
+[32minfo: [0m*** Build Status Summary ***
+=== the following packages failed to build due to rpmbuild issue (1) ===
+capi-system-peripheral-io: /root/GBS-ANCHOR5-ROOT/tizen_anchor5/local/repos/tizen_anchor5/armv7l/logs/fail/capi-system-peripheral-io-0.1.0-0/log.txt
+=== Total succeeded built packages: (0) ===
+[32minfo: [0mgenerated html format report:
+     /root/GBS-ANCHOR5-ROOT/tizen_anchor5/local/repos/tizen_anchor5/armv7l/index.html
+[32minfo: [0mgenerated RPM packages can be found from local repo:
+     /root/GBS-ANCHOR5-ROOT/tizen_anchor5/local/repos/tizen_anchor5/armv7l/RPMS
+[32minfo: [0mgenerated source RPM packages can be found from local repo:
+     /root/GBS-ANCHOR5-ROOT/tizen_anchor5/local/repos/tizen_anchor5/armv7l/SRPMS
+[32minfo: [0mbuild logs can be found in:
+     /root/GBS-ANCHOR5-ROOT/tizen_anchor5/local/repos/tizen_anchor5/armv7l/logs
+[32minfo: [0mbuild roots located in:
+     /root/GBS-ANCHOR5-ROOT/tizen_anchor5/local/BUILD-ROOTS/scratch.armv7l.*
+error: <gbs>some packages failed to be built
+Build step 'Execute shell' marked build as failure
+Finished: FAILURE

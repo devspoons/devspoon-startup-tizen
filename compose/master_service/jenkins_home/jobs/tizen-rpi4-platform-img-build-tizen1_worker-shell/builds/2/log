@@ -1,0 +1,47 @@
+Started by user [8mha:////4Gdkq9rwdePs+taDItQTTtP+LfxRpfBMsmswrsKKD33iAAAAlx+LCAAAAAAAAP9b85aBtbiIQTGjNKU4P08vOT+vOD8nVc83PyU1x6OyILUoJzMv2y+/JJUBAhiZGBgqihhk0NSjKDWzXb3RdlLBUSYGJk8GtpzUvPSSDB8G5tKinBIGIZ+sxLJE/ZzEvHT94JKizLx0a6BxUmjGOUNodHsLgAzWEgZu/dLi1CL9xJTczDwAj6GcLcAAAAA=[0madmin
+Running as SYSTEM
+Building remotely on [8mha:////4FZ7Nr4PhFhcTgIqo/1FmspWRGssN1u+YQdonCFGv94uAAAAox+LCAAAAAAAAP9b85aBtbiIQTGjNKU4P08vOT+vOD8nVc83PyU1x6OyILUoJzMv2y+/JJUBAhiZGBgqihhk0NSjKDWzXb3RdlLBUSYGJk8GtpzUvPSSDB8G5tKinBIGIZ+sxLJE/ZzEvHT94JKizLx0a6BxUmjGOUNodHsLgAzeEgZx/eT83ILSktQi/ZLMqtQ8w/jy/KLs1CIAfrpe7cwAAAA=[0mtizen1_worker (tizen1) in workspace /root/workspace/tizen-rpi4-platform-img-build-tizen1_worker-shell
+[tizen-rpi4-platform-img-build-tizen1_worker-shell] $ /bin/sh -xe /tmp/jenkins4177158134814866195.sh
++ echo set workspace for building up platform image
+set workspace for building up platform image
++ [ ! -d RPi4_platform_img ]
+[tizen-rpi4-platform-img-build-tizen1_worker-shell] $ /bin/sh -xe /tmp/jenkins6138796592489882615.sh
++ echo copy tizen-unified_20200521.1_iot-boot-armv7l-rpi4.ks file to workspace
+copy tizen-unified_20200521.1_iot-boot-armv7l-rpi4.ks file to workspace
++ cd ./RPi4_platform_img
++ cp /root/build-script/tizen-unified_20200521.1_iot-headed-3parts-armv7l-rpi3.ks ./
+[tizen-rpi4-platform-img-build-tizen1_worker-shell] $ /bin/sh -xe /tmp/jenkins8005593265652027639.sh
++ echo boot image build
+boot image build
++ cd ./RPi4_platform_img
++ mic cr loop tizen-unified_20200521.1_iot-headed-3parts-armv7l-rpi3.ks --pack-to=tizen-unified_20200521.1_iot-headed-3parts-armv7l-rpi3.tar.gz --logfile=mic_build.log -A armv7l
+mic 0.28.10 (63abac303c57 Ubuntu 18.04 bionic)
+INFO: Retrieving repo metadata:
+INFO: Retrieving repomd.xml ...
+INFO: Retrieving 70ae01417473e1952dc18e07f497c176aafeb4453b9000a5c9ba9dfb9e04023a- ...
+INFO: Retrieving 3df52aba3d53bebc33a53f13a644d00ce6389b22ebcc3437368fc64add2d2320- ...
+INFO: Retrieving 876368735a0f5905a5caba01cc43f74f40fb0da439837b4cfcbab931443b0929- ...
+INFO: Retrieving repomd.xml ...
+ DONE
+INFO: Creating tizen bootstrap ...
+INFO: Retrieving mic-bootstrap-x86-arm-1.0-9.40.armv7l.rpm ...
+INFO: Next install: mic-bootstrap-x86-arm 
+INFO: Installing: mic-bootstrap-x86-arm                              ++++++++++++++++++++++++++++++++++++++ [1/1]
+
+INFO: Copy host mic to bootstrap
+INFO: Start mic in bootstrap: /var/tmp/mic-bootstrap/tizenftXXsd/bootstrap
+
+mic 0.28.10 (63abac303c57 tizen bootstrap)
+INFO: Retrieving repo metadata:
+INFO: Retrieving repomd.xml ...
+INFO: Retrieving repomd.xml ...
+ DONE
+INFO: Refreshing repository: unified-standard ...
+INFO: Refreshing repository: base-standard ...
+INFO: zypp architecture is <armv7l>
+WARNING: repo problem: nothing provides libffi.so.6 needed by libgobject-2.62.3-28.16.armv7l, 
+WARNING: repo problem: nothing provides libffi.so.6 needed by libgobject-2.62.3-28.16.armv7l, 
+WARNING: repo problem: nothing provides libffi.so.6 needed by libwayland-server-1.18.0-34.2.armv7l, 
+ERROR: found 3 resolver problem, abort!
+Build step 'Execute shell' marked build as failure
+Finished: FAILURE

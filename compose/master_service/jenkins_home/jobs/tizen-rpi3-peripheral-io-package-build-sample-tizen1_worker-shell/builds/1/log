@@ -1,0 +1,60 @@
+Started by user [8mha:////4Gdkq9rwdePs+taDItQTTtP+LfxRpfBMsmswrsKKD33iAAAAlx+LCAAAAAAAAP9b85aBtbiIQTGjNKU4P08vOT+vOD8nVc83PyU1x6OyILUoJzMv2y+/JJUBAhiZGBgqihhk0NSjKDWzXb3RdlLBUSYGJk8GtpzUvPSSDB8G5tKinBIGIZ+sxLJE/ZzEvHT94JKizLx0a6BxUmjGOUNodHsLgAzWEgZu/dLi1CL9xJTczDwAj6GcLcAAAAA=[0madmin
+Running as SYSTEM
+Building remotely on [8mha:////4FZ7Nr4PhFhcTgIqo/1FmspWRGssN1u+YQdonCFGv94uAAAAox+LCAAAAAAAAP9b85aBtbiIQTGjNKU4P08vOT+vOD8nVc83PyU1x6OyILUoJzMv2y+/JJUBAhiZGBgqihhk0NSjKDWzXb3RdlLBUSYGJk8GtpzUvPSSDB8G5tKinBIGIZ+sxLJE/ZzEvHT94JKizLx0a6BxUmjGOUNodHsLgAzeEgZx/eT83ILSktQi/ZLMqtQ8w/jy/KLs1CIAfrpe7cwAAAA=[0mtizen1_worker (tizen1) in workspace /root/workspace/tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell
+[tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell] $ /bin/sh -xe /tmp/jenkins1675544575733402055.sh
++ echo set workspace for building up rpi3 'peripheral-io' package
+set workspace for building up rpi3 'peripheral-io' package
++ [ ! -d tizen_rpi3 ]
++ mkdir ./tizen_rpi3
++ cp /root/samples/rpi3/.gbs.conf ./tizen_rpi3/
++ cp /root/samples/rpi3/tizen-unified_20191031.1_iot-headed-3parts-armv7l-rpi3.ks ./tizen_rpi3/
+[tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell] $ /bin/sh -xe /tmp/jenkins7344107030579534958.sh
++ echo clone and checkout 'peripheral-io' package
+clone and checkout 'peripheral-io' package
++ cd ./tizen_rpi3
++ git clone ssh://review.tizen.org/platform/core/api/peripheral-io
+Cloning into 'peripheral-io'...
+Total 1363 (delta 2), reused 1361 (delta 2)
++ cd ./peripheral-io
++ git checkout -b tizen-port 70dcc13c092288d06b6bb6255756f26ffd07b0fb
+Switched to a new branch 'tizen-port'
+[tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell] $ /bin/sh -xe /tmp/jenkins2943719580041678854.sh
++ echo 'peripheral-io' package build
+'peripheral-io' package build
++ cd ./tizen_rpi3/
++ gbs build -A armv7l --thread=4 --clean
+info: generate repositories ...
+warning: No local package repository for arch armv7l
+info: build conf has been downloaded at:
+      /var/tmp/root-gbs/unified_standard.conf
+[32minfo: [0mstart building packages from: /root/workspace/tizen-rpi3-peripheral-io-package-build-sample-tizen1_worker-shell/tizen_rpi3 (git)
+2020-12-05 15:42 +0000
+gbs 0.25.13
+[32minfo: [0mprepare sources...
+[32minfo: [0mretrieving repo metadata...
+[32minfo: [0mparsing package data...
+[32minfo: [0mbuilding repo metadata ...
+[32minfo: [0mresolving skipped packages ...
+[32minfo: [0mskipping capi-system-peripheral-io-0.1.0-0 armv7l 
+[32minfo: [0mpackage dependency resolving ...
+[32minfo: [0mthere is no circle in 0 packages
+File::Glob::glob() will disappear in perl 5.30. Use File::Glob::bsd_glob() instead. at /usr/bin/depanneur line 2154.
+[32minfo: [0m*** Build Status Summary ***
+=== Total succeeded built packages: (0) ===
+[32minfo: [0mgenerated html format report:
+     /root/GBS-ROOT/local/repos/unified_standard/armv7l/index.html
+[32minfo: [0mgenerated RPM packages can be found from local repo:
+     /root/GBS-ROOT/local/repos/unified_standard/armv7l/RPMS
+[32minfo: [0mgenerated source RPM packages can be found from local repo:
+     /root/GBS-ROOT/local/repos/unified_standard/armv7l/SRPMS
+[32minfo: [0mbuild logs can be found in:
+     /root/GBS-ROOT/local/repos/unified_standard/armv7l/logs
+[32minfo: [0mbuild roots located in:
+     /root/GBS-ROOT/local/BUILD-ROOTS/scratch.armv7l.*
+info: Done
++ mic cr loop tizen-unified_20191031.1_iot-headed-3parts-armv7l-rpi3.ks --pack-to=iot-boot-armv7l-rpi3.tar.gz --logfile=mic_build.log -A armv7l
+mic 0.28.10 (63abac303c57 Ubuntu 18.04 bionic)
+INFO: Retrieving repo metadata:
+ERROR: [Errno 14] HTTP Error 404 - Not Found on http://download.tizen.org/snapshots/tizen/unified/latest/repos/standard/packages/repodata/repodata/repomd.xml
+Build step 'Execute shell' marked build as failure
+Finished: FAILURE

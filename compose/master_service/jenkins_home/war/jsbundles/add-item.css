@@ -434,8 +434,8 @@
 #jenkins .jenkins-config .config-table p,
 #jenkins .jenkins-config .config-table .help,
 #jenkins .jenkins-config .config-table .setting-description {
-  font-size: 1rem;
-  font-size: var(--font-size-base);
+  font-size: 0.875rem;
+  font-size: var(--font-size-sm);
 }
 #jenkins .jenkins-config .config-table tr.help-area,
 #jenkins .jenkins-config .config-table .tr.help-area {

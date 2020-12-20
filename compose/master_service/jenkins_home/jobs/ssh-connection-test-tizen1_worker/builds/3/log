@@ -1,0 +1,9 @@
+Started by user [8mha:////4Gdkq9rwdePs+taDItQTTtP+LfxRpfBMsmswrsKKD33iAAAAlx+LCAAAAAAAAP9b85aBtbiIQTGjNKU4P08vOT+vOD8nVc83PyU1x6OyILUoJzMv2y+/JJUBAhiZGBgqihhk0NSjKDWzXb3RdlLBUSYGJk8GtpzUvPSSDB8G5tKinBIGIZ+sxLJE/ZzEvHT94JKizLx0a6BxUmjGOUNodHsLgAzWEgZu/dLi1CL9xJTczDwAj6GcLcAAAAA=[0madmin
+Running as SYSTEM
+Building on master in workspace /var/jenkins_home/workspace/ssh-connection-test-tizen1_worker
+[ssh-connection-test-tizen1_worker] $ /bin/sh -xe /tmp/jenkins943905628286949103.sh
++ ssh root@tizenenv
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+Host key verification failed.
+Build step 'Execute shell' marked build as failure
+Finished: FAILURE

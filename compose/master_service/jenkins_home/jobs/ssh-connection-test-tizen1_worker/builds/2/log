@@ -1,0 +1,31 @@
+Started by user [8mha:////4Gdkq9rwdePs+taDItQTTtP+LfxRpfBMsmswrsKKD33iAAAAlx+LCAAAAAAAAP9b85aBtbiIQTGjNKU4P08vOT+vOD8nVc83PyU1x6OyILUoJzMv2y+/JJUBAhiZGBgqihhk0NSjKDWzXb3RdlLBUSYGJk8GtpzUvPSSDB8G5tKinBIGIZ+sxLJE/ZzEvHT94JKizLx0a6BxUmjGOUNodHsLgAzWEgZu/dLi1CL9xJTczDwAj6GcLcAAAAA=[0madmin
+Running as SYSTEM
+Building on master in workspace /var/jenkins_home/workspace/ssh-connection-test-tizen1_worker
+[ssh-connection-test-tizen1_worker] $ /bin/sh -xe /tmp/jenkins8867020642291559264.sh
++ ssh root@tizenenv
+Pseudo-terminal will not be allocated because stdin is not a terminal.
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@       WARNING: POSSIBLE DNS SPOOFING DETECTED!          @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+The RSA host key for tizenenv has changed,
+and the key for the corresponding IP address 172.21.0.6
+is unknown. This could either mean that
+DNS SPOOFING is happening or the IP address for the host
+and its host key have changed at the same time.
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+Someone could be eavesdropping on you right now (man-in-the-middle attack)!
+It is also possible that a host key has just been changed.
+The fingerprint for the RSA key sent by the remote host is
+SHA256:l+05TY5boU0yDqPzNGFoskjHsxtc/43aIWbfnDPOQIU.
+Please contact your system administrator.
+Add correct host key in /var/jenkins_home/.ssh/known_hosts to get rid of this message.
+Offending RSA key in /var/jenkins_home/.ssh/known_hosts:1
+  remove with:
+  ssh-keygen -f "/var/jenkins_home/.ssh/known_hosts" -R tizenenv
+RSA host key for tizenenv has changed and you have requested strict checking.
+Host key verification failed.
+Build step 'Execute shell' marked build as failure
+Finished: FAILURE

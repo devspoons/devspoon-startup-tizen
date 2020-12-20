@@ -59,3 +59,5 @@ ssh root@tizenenv
 exit
 ssh-keyscan -t rsa tizenenv >> ~/.ssh/known_hosts
 exit
+ssh root@tizenenv
+exit
