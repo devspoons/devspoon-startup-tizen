@@ -5,7 +5,7 @@ set -e
 echo 'step 1. prefare'
 
 echo "Set a workspace for building up boot image"
-if [ ! -d /rootRPi4_boot_img ]; then
+if [ ! -d /root/RPi4_boot_img ]; then
     mkdir /root/RPi4_boot_img
 fi
 
