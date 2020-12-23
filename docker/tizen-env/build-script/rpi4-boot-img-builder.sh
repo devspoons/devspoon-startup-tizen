@@ -13,6 +13,7 @@ echo "Download a git repository"
 
 echo "git clone the package of linux-rpi"
 cd /root/RPi4_boot_img
+rm linux-rpi -rf
 git clone ssh://review.tizen.org/platform/kernel/linux-rpi
 
 echo "git checkout the package of linux-rpi"
@@ -25,10 +26,10 @@ echo 'step 2. build up'
 echo "gbs building up refering the .gbs.conf file"
 cd /root/RPi4_boot_img
 cp /root/build-script/.gbs.conf ./
-time gbs build -A armv7l --buildroot=/root/GBS-RPI4-ROOT/tizen_rpi4 --include-all --thread=4 --clean
+gbs build -A armv7l --buildroot=/root/GBS-RPI4-ROOT/tizen_rpi4 --include-all --thread=1 --clean
 
 echo 'step 3. make a image'
 
 echo "mic building up refering the ks file to make a tizen image" 
 cp /root/build-script/tizen-unified_iot-boot-armv7l-rpi4.ks ./
-time mic cr loop tizen-unified_iot-boot-armv7l-rpi4.ks --pack-to=tizen-unified_iot-boot-armv7l-rpi4.tar.gz --logfile=mic_build.log -A armv7l
+mic cr loop tizen-unified_iot-boot-armv7l-rpi4.ks --pack-to=tizen-unified_iot-boot-armv7l-rpi4.tar.gz --logfile=mic_build.log -A armv7l

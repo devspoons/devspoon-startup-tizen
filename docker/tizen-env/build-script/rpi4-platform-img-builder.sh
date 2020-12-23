@@ -13,6 +13,7 @@ echo "Download a git repository"
 
 echo "git clone the package of peripheral-io"
 cd /root/RPi4_platform_img
+rm peripheral-io -rf
 git clone ssh://review.tizen.org/platform/core/api/peripheral-io
 
 echo "git checkout the package of peripheral-io"
@@ -24,7 +25,7 @@ echo 'step 2. build up'
 echo "gbs building up refering the .gbs.conf file"
 cd /root/RPi4_platform_img
 cp /root/build-script/.gbs.conf ./
-gbs build -A armv7l --buildroot=/root/GBS-RPI4-ROOT/tizen_rpi4 --include-all --thread=4 --clean
+gbs build -A armv7l --buildroot=/root/GBS-RPI4-ROOT/tizen_rpi4 --include-all --thread=1 --clean
 
 echo 'step 3. make a image'
 
