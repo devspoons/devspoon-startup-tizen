@@ -1,0 +1,51 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<project>
+  <description>It try to process &quot;repo init&quot; at root folder.&#xd;
+The -j option can set the number of threads, so it should be handled by referring to the number of CPU cores.</description>
+  <keepDependencies>false</keepDependencies>
+  <properties/>
+  <scm class="hudson.scm.NullSCM"/>
+  <assignedNode>tizen_worker</assignedNode>
+  <canRoam>false</canRoam>
+  <disabled>false</disabled>
+  <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
+  <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+  <triggers/>
+  <concurrentBuild>false</concurrentBuild>
+  <builders>
+    <hudson.tasks.Shell>
+      <command>echo &quot;repo init&quot; 
+if [ ! -d /root/tizen_src ]; then
+	mkdir /root/tizen_src
+fi
+cd /root/tizen_src
+repo init -u tizen:scm/manifest -b tizen -m unified_standard.xml</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>echo &quot;wget tizen-unified_20190807.5_standard_preloadapp.xml&quot; 
+cd /root/tizen_src
+wget http://download.tizen.org/releases/weekly/tizen/unified/tizen-unified_20190807.5/builddata/manifest/tizen-unified_20190807.5_standard_preloadapp.xml -O /root/.repo/manifests/unified/standard/projects.xml</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>echo &quot;update some lines information&quot;
+cd /root/tizen_src
+sed -i &apos;3,4d&apos; /root/.repo/manifests/unified/standard/projects.xml</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>echo &quot;repo sync&quot;
+cd /root/tizen_src
+repo sync -j 4</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+    <hudson.tasks.Shell>
+      <command>echo &quot;exchange .gbs.conf&quot;
+cp /root/repo-script/.gbs.conf /root/tizen_src</command>
+      <configuredLocalRules/>
+    </hudson.tasks.Shell>
+  </builders>
+  <publishers/>
+  <buildWrappers/>
+</project>

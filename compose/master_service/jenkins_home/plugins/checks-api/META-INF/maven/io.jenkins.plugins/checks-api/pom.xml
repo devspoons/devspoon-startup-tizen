@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.jenkins.plugins</groupId>
   <artifactId>checks-api</artifactId>
-  <version>1.1.1</version>
+  <version>1.2.0</version>
   <packaging>hpi</packaging>
   <name>Checks API plugin</name>
   <description>Defines an API for Jenkins to publish checks to SCM platforms.</description>
@@ -26,7 +26,7 @@
   <scm>
     <connection>scm:git:git://github.com/jenkinsci/checks-api-plugin.git</connection>
     <developerConnection>scm:git:git@github.com:jenkinsci/checks-api-plugin.git</developerConnection>
-    <tag>v1.1.1</tag>
+    <tag>v1.2.0</tag>
     <url>https://github.com/jenkinsci/checks-api-plugin</url>
   </scm>
   <distributionManagement>
@@ -43,7 +43,13 @@
     <dependency>
       <groupId>io.jenkins.plugins</groupId>
       <artifactId>plugin-util-api</artifactId>
-      <version>1.4.0</version>
+      <version>1.6.0</version>
+      <scope>compile</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.jenkins-ci.plugins</groupId>
+      <artifactId>display-url-api</artifactId>
+      <version>2.3.3</version>
       <scope>compile</scope>
     </dependency>
     <dependency>

@@ -4,7 +4,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.jenkins-ci.plugins</groupId>
   <artifactId>ldap</artifactId>
-  <version>2.1</version>
+  <version>2.2</version>
   <packaging>hpi</packaging>
   <name>LDAP Plugin</name>
   <description>Adds LDAP authentication to Jenkins</description>
@@ -20,7 +20,7 @@
   <scm>
     <connection>scm:git:git://github.com/jenkinsci/ldap-plugin.git</connection>
     <developerConnection>scm:git:git@github.com:jenkinsci/ldap-plugin.git</developerConnection>
-    <tag>ldap-2.1</tag>
+    <tag>ldap-2.2</tag>
     <url>https://github.com/jenkinsci/ldap-plugin</url>
   </scm>
   <distributionManagement>
@@ -67,7 +67,7 @@
     <dependency>
       <groupId>org.jenkins-ci.plugins</groupId>
       <artifactId>mailer</artifactId>
-      <version>1.20</version>
+      <version>1.32.1</version>
       <scope>compile</scope>
     </dependency>
     <dependency>
@@ -133,7 +133,7 @@
       <plugin>
         <groupId>org.jenkins-ci.tools</groupId>
         <artifactId>maven-hpi-plugin</artifactId>
-        <version>3.15</version>
+        <version>3.17</version>
         <extensions>true</extensions>
       </plugin>
       <plugin>

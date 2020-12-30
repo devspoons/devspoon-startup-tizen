@@ -91,6 +91,8 @@ devspoon-startup-tizen를 구성하여 내부망으로 이전시, 인터넷이 �
 ### How to build project management solutions(openproject, jenkins, gitolite[private git server], harbor[private docker server])
 
 * Refer the guide : [devspoon-startup-web]
+* I have sample code on junkins_home. If you want the reset environment, delete all the contents.
+* Sample Jenkins account info **ID: admin PASSWORD: 1324**
 
 ### How to build Tizen development environment
 

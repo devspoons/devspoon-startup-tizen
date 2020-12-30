@@ -1,2 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<l:dependencies xmlns:l='licenses' groupId='org.jenkins-ci.plugins' artifactId='ssh-slaves' version='1.31.2'><l:dependency name='SSH Build Agents plugin' groupId='org.jenkins-ci.plugins' artifactId='ssh-slaves' version='1.31.2' url='https://github.com/jenkinsci/ssh-slaves-plugin'><l:description>Allows to launch agents over SSH, using a Java implementation of the SSH protocol</l:description><l:license name='MIT License' url='https://opensource.org/licenses/MIT'/></l:dependency><l:dependency name='SLF4J JDK14 Binding' groupId='org.slf4j' artifactId='slf4j-jdk14' version='1.7.26' url='http://www.slf4j.org'><l:description>SLF4J JDK14 Binding</l:description><l:license name='MIT License' url='http://www.opensource.org/licenses/mit-license.php'/></l:dependency><l:dependency name='JCL 1.2 implemented over SLF4J' groupId='org.slf4j' artifactId='jcl-over-slf4j' version='1.7.26' url='http://www.slf4j.org'><l:description>JCL 1.2 implemented over SLF4J</l:description><l:license name='MIT License' url='http://www.opensource.org/licenses/mit-license.php'/></l:dependency><l:dependency name='Log4j Implemented Over SLF4J' groupId='org.slf4j' artifactId='log4j-over-slf4j' version='1.7.26' url='http://www.slf4j.org'><l:description>Log4j implemented over SLF4J</l:description><l:license name='Apache Software Licenses' url='http://www.apache.org/licenses/LICENSE-2.0.txt'/></l:dependency><l:dependency name='SLF4J API Module' groupId='org.slf4j' artifactId='slf4j-api' version='1.7.26' url='http://www.slf4j.org'><l:description>The slf4j API</l:description><l:license name='MIT License' url='http://www.opensource.org/licenses/mit-license.php'/></l:dependency></l:dependencies>
+<l:dependencies xmlns:l='licenses' groupId='org.jenkins-ci.plugins' artifactId='ssh-slaves' version='1.31.4'><l:dependency name='SSH Build Agents plugin' groupId='org.jenkins-ci.plugins' artifactId='ssh-slaves' version='1.31.4' url='https://github.com/jenkinsci/ssh-slaves-plugin'><l:description>Allows to launch agents over SSH, using a Java implementation of the SSH protocol</l:description><l:license name='MIT License' url='https://opensource.org/licenses/MIT'/></l:dependency><l:dependency name='JSON in Java' groupId='org.json' artifactId='json' version='20190722' url='https://github.com/douglascrockford/JSON-java'><l:description>JSON is a light-weight, language independent, data interchange format.
+		See http://www.JSON.org/
+
+		The files in this package implement JSON encoders/decoders in Java.
+		It also includes the capability to convert between JSON and XML, HTTP
+		headers, Cookies, and CDL.
+
+		This is a reference implementation. There is a large number of JSON packages
+		in Java. Perhaps someday the Java community will standardize on one. Until
+		then, choose carefully.
+
+		The license includes this restriction: "The software shall be used for good,
+		not evil." If your conscience cannot live with that, then choose a different
+		package.</l:description><l:license name='The JSON License' url='http://json.org/license.html'/></l:dependency></l:dependencies>
