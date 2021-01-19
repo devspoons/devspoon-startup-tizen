@@ -9,10 +9,11 @@ if [ -f $requirements_file ]; then
         pip install -r requirements.txt
 fi
 
-gunicorn --workers 4 --bind 0.0.0.0:8000 project_name.wsgi:application --daemon --reload
+gunicorn --workers 4 --bind 0.0.0.0:8000 wsgi --access-logfile /log/gunicorn/project_name.access.log --error-logfile /log/gunicorn/project_name.error.log --daemon --reload
 
 while true; 
 do 
     echo "still live"; 
     sleep 6000; 
 done
+
