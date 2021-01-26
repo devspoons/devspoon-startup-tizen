@@ -41,10 +41,10 @@ if ! test -d /ssl/letsencrypt/$domain/letsencrypt ; then
         echo "create domain folder: /ssl/letsencrypt/"$domain"/"
         mkdir -p /ssl/letsencrypt/$domain/
     fi
-    cp /etc/letsencrypt/ /ssl/letsencrypt/$domain/ -rf 
+    cp /etc/letsencrypt/ /ssl/letsencrypt/$domain/ -r
 else
     echo "copy letsencrypt folder by already maden"
-    cp /ssl/letsencrypt/$domain/ /etc/letsencrypt/-rf
+    cp /ssl/letsencrypt/$domain/ /etc/letsencrypt/ -r
 fi
 
 #if ! test -f /etc/ssl/certs/dhparam.pem ; 
@@ -55,10 +55,10 @@ if ! test -f /ssl/certs/$domain/dhparam.pem ; then
         echo "create domain folder: /ssl/certs/"$domain"/"
         mkdir -p /ssl/certs/$domain/
     fi
-    cp /etc/ssl/certs/dhparam.pem /ssl/certs/$domain/ -f
+    cp /etc/ssl/certs/dhparam.pem /ssl/certs/$domain/ -r
 else
     echo "copy ssl folder by already maden"
-    cp /ssl/certs/$domain/dhparam.pem /etc/ssl/certs/dhparam.pem -f
+    cp /ssl/certs/$domain/dhparam.pem /etc/ssl/certs/dhparam.pem -r
 fi
 
 cat <(crontab -l) <(echo "0 5 * * 1 certbot renew --quiet --renew-hook "service nginx reload"") | crontab -
