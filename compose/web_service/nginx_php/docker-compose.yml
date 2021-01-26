@@ -1,4 +1,4 @@
-ㅈversion: "3"
+version: "3"
 services:
   webserver:
     image: nginx:latest

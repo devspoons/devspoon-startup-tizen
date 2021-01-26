@@ -1,12 +1,6 @@
 #!/bin/bash
 
-apt-get update  &&  apt-get install -y sendmail wget vim cron ca-certificates
-
-wget --no-check-certificate https://dl.eff.org/certbot-auto \
- && mv certbot-auto /usr/local/bin/certbot-auto \
- && chown root /usr/local/bin/certbot-auto \
- && chmod 0755 /usr/local/bin/certbot-auto \
- && certbot-auto --version -n
+apt-get update  &&  apt-get install -y sendmail wget vim cron certbot python3-certbot-nginx
 
 while :
 do 
@@ -39,23 +33,32 @@ do
 done 
 
 #if ! test -d /etc/letsencrypt/live/test.com ; 
-if ! test -d /ssl/letsencrypt/live/domain ; then 
-    echo "try to get authentication key using certbot-auto "
-    certbot-auto -n certonly -n --webroot -w /www/webroot_folder/ -d domain --agree-tos -m mail; 
-    cp /etc/letsencrypt/ /ssl/letsencrypt/ -rf 
+if ! test -d /ssl/letsencrypt/live/$domain ; then 
+    echo "try to get authentication key using certbot "
+    certbot certonly --agree-tos --email $mail --webroot -w $webroot_folder -d $domain
+    #echo "certbot certonly --agree-tos --email "$mail" --webroot -w "$webroot_folder" -d "$domain
+    if ! test -d /ssl/letsencrypt/$domain/ ; then
+        echo "create domain folder: /ssl/letsencrypt/"$domain"/"
+        mkdir -p /ssl/letsencrypt/$domain/
+    fi
+    cp /etc/letsencrypt/ /ssl/letsencrypt/$domain/ -rf 
 else
     echo "copy letsencrypt folder by already maden"
-    cp /ssl/letsencrypt/ /etc/letsencrypt/ -rf
+    cp /ssl/letsencrypt/$domain/ /etc/letsencrypt/-rf
 fi
 
 #if ! test -f /etc/ssl/certs/dhparam.pem ; 
-if test -f /ssl/ssl/certs/dhparam.pem ; then 
+if test -f /ssl/certs/dhparam.pem ; then 
     echo "try to get ssl key using openssl "
-    openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096; 
-    cp /etc/ssl/certs/dhparam.pem /ssl/certs/dhparam.pem -rf
+    openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096;
+    if ! test -d /ssl/certs/$domain/ ; then
+        echo "create domain folder: /ssl/certs/"$domain"/"
+        mkdir -p /ssl/certs/$domain/
+    fi
+    cp /etc/ssl/certs/dhparam.pem /ssl/certs/$domain/ -rf
 else
     echo "copy ssl folder by already maden"
-    cp /ssl/certs/dhparam.pem /etc/ssl/certs/dhparam.pem -rf
+    cp /ssl/certs/$domain/dhparam.pem /etc/ssl/certs/dhparam.pem -rf
 fi
 
-cat <(crontab -l) <(echo "0 5 * * 1 certbot-auto renew --quiet --renew-hook "/etc/init.d/nginx reload"") | crontab -
+cat <(crontab -l) <(echo "0 5 * * 1 certbot renew --quiet --renew-hook "service nginx reload"") | crontab -
