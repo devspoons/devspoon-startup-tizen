@@ -13,6 +13,7 @@ done
 
 while :
 do 
+    echo -n "If you want to add subdomain, insert it after '-d' option 'aaa.com -d www.aaa.com -d sub.aaa.com'"
     echo -n "Enter the service domain >"
     read domain
     echo  "Entered service domain: $domain"
