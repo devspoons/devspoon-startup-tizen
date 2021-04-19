@@ -8,12 +8,6 @@ log/
 # web root #
 www/
 
-# compose folders #
-compose/
-
-# nginx sites-available #
-config/site-available/
-
 # nginx cache #
 nginx_cache/
 
