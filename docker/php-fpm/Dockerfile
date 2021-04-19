@@ -1,4 +1,5 @@
-FROM romeoz/docker-phpfpm:7.3
+FROM tobi312/php:8.0-fpm
+# https://hub.docker.com/r/tobi312/php
 
 ENV OS_LOCALE="en_US.utf8" \
     DEBIAN_FRONTEND=noninteractive
@@ -7,15 +8,10 @@ ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
     LC_ALL=${OS_LOCALE} 	
 
-RUN	\
-	BUILD_DEPS='software-properties-common wget gnupg' \
-    && dpkg-reconfigure locales \
-	&& apt-get install --no-install-recommends -y $BUILD_DEPS \    	 
+RUN dpkg-reconfigure locales \
+    && apt-get install --no-install-recommends -y software-properties-common wget gnupg \
     && apt-get install -y sendmail
-	# Cleaning
 
-RUN	apt-get purge -y --auto-remove $BUILD_DEPS \
-	&& apt-get autoremove -y && apt-get clean \
-	&& rm -rf /var/lib/apt/lists/* 	
-	
-RUN ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime
+RUN apt-get purge -y --auto-remove software-properties-common wget gnupg \
+    && apt-get autoremove -y && apt-get clean \
+    && rm -rf /var/lib/apt/lists/* 	
