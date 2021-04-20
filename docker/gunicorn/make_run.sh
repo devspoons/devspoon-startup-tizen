@@ -54,9 +54,20 @@ else
     echo  "flask wsgi: $wsgi"
 fi
 
+while :
+do 
+    echo -n "Enter the service port number >"
+    read server_port
+    echo  "Entered service port number: $server_port"
+    if [[ "$server_port" != "" ]]; then
+        break
+    fi
+done 
+
 sed 's/project_path/'$project_path'/g' sample_run > $project_name'1'.temp
 sed 's/wsgi/'$wsgi'/g' $project_name'1'.temp > $project_name'2'.temp
 sed 's/project_name/'$project_name'/g' $project_name'2'.temp > $project_name'3'.temp
-sed 's/worker_number/'$p_num'/g' $project_name'3'.temp > run.sh
+sed 's/server_port/'$server_port'/g' $project_name'3'.temp > $project_name'4'.temp
+sed 's/worker_number/'$p_num'/g' $project_name'4'.temp > run.sh
 
 rm *.temp

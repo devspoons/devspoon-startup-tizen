@@ -9,7 +9,7 @@ if [ -f $requirements_file ]; then
         pip install -r requirements.txt
 fi
 
-gunicorn --workers 4 --bind 0.0.0.0:8000 wsgi --access-logfile /log/gunicorn/project_name.access.log --error-logfile /log/gunicorn/project_name.error.log --daemon --reload
+gunicorn --workers worker_number --bind 0.0.0.0:server_port wsgi --access-logfile /log/gunicorn/project_name.access.log --error-logfile /log/gunicorn/project_name.error.log --daemon --reload
 
 while true; 
 do 
