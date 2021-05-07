@@ -67,10 +67,4 @@ ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
     LC_ALL=${OS_LOCALE} 
 
-RUN apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
-ADD run.sh /tmp/run.sh
-RUN chmod u+x /tmp/run.sh
-
-# start run!
-#CMD ["/tmp/run.sh"]
-
+RUN apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

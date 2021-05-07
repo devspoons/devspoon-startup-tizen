@@ -3,10 +3,10 @@ services:
   nginx-proxy:
     image: nginx:latest
     logging:
-      driver: "json-file"
+      driver: "${LOG_DRIVER}"
       options:
-        max-file: "5"
-        max-size: "100m"
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
     container_name: nginx-proxy
     volumes:
       - ../../../config/web-server/nginx/php/conf.d/:/etc/nginx/conf.d/
@@ -22,25 +22,16 @@ services:
     restart: always
     depends_on:
       - openproject
-      
+
   openproject:
     image: openproject/community:11
     logging:
-      driver: "json-file"
+      driver: "${LOG_DRIVER}"
       options:
-        max-file: "5"
-        max-size: "100m"
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
     container_name: openproject
     privileged: true
-    environment:
-      EMAIL_DELIVERY_METHOD: smtp
-      SMTP_ADDRESS: smtp.mailgun.org
-      SMTP_PORT: 587
-      SMTP_DOMAIN: "domain"
-      SMTP_AUTHENTICATION: login
-      SMTP_ENABLE_STARTTLS_AUTO: "true"
-      SMTP_USER_NAME: "id"
-      SMTP_PASSWORD: "api key"
     volumes:
       - ./pgdata/:/var/openproject/pgdata/
       - ../../../log/supervisor/:/var/log/supervisor/
@@ -48,8 +39,14 @@ services:
     expose:
       - "8080"
     environment:
+      EMAIL_DELIVERY_METHOD: ${EMAIL_DELIVERY_METHOD}
+      SMTP_ADDRESS: ${SMTP_ADDRESS}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_DOMAIN: "${SMTP_DOMAIN}"
+      SMTP_AUTHENTICATION: ${SMTP_AUTHENTICATION}
+      SMTP_ENABLE_STARTTLS_AUTO: "${SMTP_ENABLE_STARTTLS_AUTO}"
+      SMTP_USER_NAME: "${SMTP_USER_NAME}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
       TZ: "Asia/Seoul"
-      PASSENGER_START_TIMEOUT: 3000
+      PASSENGER_START_TIMEOUT: ${PASSENGER_START_TIMEOUT}
     restart: always
-
-

@@ -3,10 +3,10 @@ services:
   gitolite:
     build: ../../../docker/gitolite
     logging:
-      driver: "json-file"
-      options:
-        max-file: "5"
-        max-size: "100m"
+      driver: "${LOG_DRIVER}"
+     options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
     working_dir: /application
     container_name: gitolite
     volumes:

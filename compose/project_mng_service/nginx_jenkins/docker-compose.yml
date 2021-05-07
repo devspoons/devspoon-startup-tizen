@@ -1,41 +1,41 @@
 version: "3"
 services:
-    nginx-proxy:
-      image: nginx:latest
-      logging:
-        driver: "json-file"
-        options:
-          max-file: "5"
-          max-size: "100m"
-      container_name: nginx-proxy
-      volumes:
-        - ../../../config/web-server/nginx/php/conf.d/:/etc/nginx/conf.d/
-        - ../../../config/web-server/nginx/php/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
-        - ../../../config/web-server/nginx/php/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
-        - ../../../ssl:/etc/nginx/ssl/
-        - ../../../log/nginx/:/log/nginx/
-      ports:
-        - "80:80"
-        - "443:443"
-      environment:
-        TZ: "Asia/Seoul"
-      restart: always
-      depends_on:
-        - jenkins
-        
-    jenkins:
-      image: 'jenkins/jenkins:latest'
-      logging:
-        driver: "json-file"
-        options:
-          max-file: "5"
-          max-size: "100m"
-      container_name: 'jenkins'
-      privileged: true
-      volumes:
-        - './jenkins_home:/var/jenkins_home'
-      expose:
-        - "8080"
-      environment:
-        TZ: "Asia/Seoul"
-      restart: always
+  nginx-proxy:
+    image: nginx:latest
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    container_name: nginx-proxy
+    volumes:
+      - ../../../config/web-server/nginx/php/conf.d/:/etc/nginx/conf.d/
+      - ../../../config/web-server/nginx/php/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
+      - ../../../config/web-server/nginx/php/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
+      - ../../../ssl:/etc/nginx/ssl/
+      - ../../../log/nginx/:/log/nginx/
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      TZ: "Asia/Seoul"
+    restart: always
+    depends_on:
+      - jenkins
+
+  jenkins:
+    image: "jenkins/jenkins:latest"
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    container_name: "jenkins"
+    privileged: true
+    volumes:
+      - "./jenkins_home:/var/jenkins_home"
+    expose:
+      - "8080"
+    environment:
+      TZ: "Asia/Seoul"
+    restart: always

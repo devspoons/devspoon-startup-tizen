@@ -3,42 +3,40 @@ services:
   webserver:
     image: nginx:latest
     logging:
-        driver: "json-file"
-        options:
-          max-file: "5"
-          max-size: "100m"
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
     working_dir: /application
-    container_name: nginx-gunicorn-webserver      
+    container_name: nginx-gunicorn-webserver
     volumes:
-        - ../../../www:/www
-        - ../../../script/:/script/
-        - ../../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
-        - ../../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
-        - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
-        - ../../../ssl/:/ssl/
-        - ../../../log:/log
+      - ../../../www:/www
+      - ../../../script/:/script/
+      - ../../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
+      - ../../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
+      - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
+      - ../../../ssl/:/ssl/
+      - ../../../log:/log
     ports:
-        - "80:80"
-        - "443:443"
+      - "80:80"
+      - "443:443"
     environment:
-        TZ: "Asia/Seoul"
+      TZ: "Asia/Seoul"
     restart: always
 
   gunicorn-app:
     build: ../../../docker/gunicorn/
     logging:
-        driver: "json-file"
-        options:
-          max-file: "5"
-          max-size: "100m"
-    working_dir: /application
-    container_name: gunicorn-app    
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    working_dir: /www/${PROJECT_DIR}
+    container_name: gunicorn-app
     volumes:
-        - ../../../www:/www
-        - ../../../log:/log        
-    command:
-        - /tmp/run.sh    
+      - ../../../www:/www
+      - ../../../log:/log
+    command: bash -c "pip install -r requirements.txt && gunicorn --workers ${WORKERS} --bind 0.0.0.0:${GUNICORN_PORT} ${PROJECT_NAME}.wsgi:application ${GUNICORN_OPITON}"
     environment:
-        TZ: "Asia/Seoul"
+      TZ: "Asia/Seoul"
     restart: always
-
