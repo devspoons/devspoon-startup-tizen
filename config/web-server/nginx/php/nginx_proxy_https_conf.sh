@@ -53,6 +53,7 @@ if [[ "$proxyport" == "" ]]; then
 else
     sed 's/proxyport/'$proxyport'/g' $filename'3'.temp > $filename'4'.temp
 fi
-sed 's/filename/'$filename'/g' $filename'4'.temp > ./conf.d/$filename'_proxy_https_ng'.conf
+sed 's/crontab_folder/'$crontab_folder'/g' $filename'4'.temp > $filename'5'.temp
+sed 's/filename/'$filename'/g' $filename'5'.temp > ./conf.d/$filename'_proxy_https_ng'.conf
 
 rm *.temp

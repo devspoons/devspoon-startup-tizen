@@ -2,6 +2,17 @@
 
 while :
 do 
+    echo "* if your the location of crontab's '.well-known' folder has sub-level, you should be insert as \\\/A\\\/B\\\/C"
+    echo -n "Enter the crontab folder location >"
+    read crontab_folder
+    echo  "Entered the crontab folder location: $crontab_folder"
+    if [[ "$crontab_folder" != "" ]]; then
+        break
+    fi
+done
+
+while :
+do 
     echo -n "Enter the service portnumber >"
     read portnumber
     echo  "Entered service portnumber: $portnumber"
@@ -53,6 +64,7 @@ if [[ "$proxyport" == "" ]]; then
 else
     sed 's/proxyport/'$proxyport'/g' $filename'3'.temp > $filename'4'.temp
 fi
-sed 's/filename/'$filename'/g' $filename'4'.temp > ./conf.d/$filename'_proxy_https_ng'.conf
+sed 's/crontab_folder/'$crontab_folder'/g' $filename'4'.temp > $filename'5'.temp
+sed 's/filename/'$filename'/g' $filename'5'.temp > ./conf.d/$filename'_proxy_https_ng'.conf
 
 rm *.temp
