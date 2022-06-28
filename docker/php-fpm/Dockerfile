@@ -1,5 +1,4 @@
-FROM tobi312/php:8.0-fpm
-# https://hub.docker.com/r/tobi312/php
+FROM romeoz/docker-phpfpm:7.3
 
 ENV OS_LOCALE_COUNTRY="en_US"
 ENV OS_LOCALE_ENCODING="UTF-8"
@@ -10,6 +9,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ap
 
 RUN apt-get install -y --no-install-recommends locales
 
+RUN localedef -i ${OS_LOCALE_COUNTRY} -f ${OS_LOCALE_ENCODING} ${OS_LOCALE}
+
 ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
     LC_ALL=${OS_LOCALE} \
@@ -19,12 +20,9 @@ ENV LANG=${OS_LOCALE} \
 RUN	\
 	BUILD_DEPS='software-properties-common wget gnupg' \
 	&& apt-get install --no-install-recommends -y $BUILD_DEPS \
-    && apt-get install -y sendmail \
-    && apt-get install -y cron \
-    && apt-get install -y certbot
+    && apt-get install -y sendmail
 
 RUN apt-get install -yq tzdata && \
-    ln -sf /usr/share/zoneinfo/Asia/Seoul /etc/localtime > /etc/timezone && \
     dpkg-reconfigure -f noninteractive tzdata
 
 ENV TZ="Asia/Seoul"

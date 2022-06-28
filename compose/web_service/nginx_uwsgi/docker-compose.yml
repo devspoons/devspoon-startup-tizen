@@ -15,8 +15,7 @@ services:
       - ../../../config/web-server/nginx/uwsgi/conf.d/:/etc/nginx/conf.d/
       - ../../../config/web-server/nginx/uwsgi/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../../config/web-server/nginx/uwsgi/uwsgi_params/uwsgi_params:/etc/nginx/uwsgi_params
-      - ../../../ssl/certs/:/etc/ssl/certs/
-      - ../../../ssl/letsencrypt:/etc/letsencrypt/
+      - ../../../ssl/:/ssl/
       - ../../../log:/log
     ports:
       - "80:80"

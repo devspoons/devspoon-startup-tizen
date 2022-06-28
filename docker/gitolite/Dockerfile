@@ -8,7 +8,10 @@ ENV OS_LOCALE_COUNTRY="en_US"
 ENV OS_LOCALE_ENCODING="UTF-8"
 ENV OS_LOCALE="en_US.UTF-8"
 
-RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends locales 
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends locales
+
+RUN localedef -i ${OS_LOCALE_COUNTRY} -f ${OS_LOCALE_ENCODING} ${OS_LOCALE}
+
 ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
     LC_ALL=${OS_LOCALE} \
