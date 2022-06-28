@@ -1,17 +1,17 @@
 FROM ubuntu:20.04
 
-RUN apt update
-RUN DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends apt-utils
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
 
 # curl/wget/git
-RUN apt install -y curl wget git tar
+RUN apt-get install -y curl wget git tar
 # vim
-RUN apt install -y vim 
+RUN apt-get install -y vim
 # C
-RUN apt install -y build-essential gcc
+RUN apt-get install -y build-essential gcc
 
 # Python
-RUN apt install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev
+RUN apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev
 RUN cd /usr/src ; wget https://www.python.org/ftp/python/3.8.5/Python-3.8.5.tar.xz ; tar -xf Python-3.8.5.tar.xz ; cd Python-3.8.5 ; ./configure ; make altinstall
 
 # be sure it's 3.8 and not 3.6
@@ -31,12 +31,12 @@ RUN ln -s /usr/local/bin/pip3.8 /usr/bin/pip3
 RUN ln -s /usr/local/bin/pip3.8 /usr/local/bin/pip
 RUN ln -s /usr/local/bin/pip3.8 /usr/local/bin/pip3
 
-#update apt 
-RUN apt update && apt -y upgrade
+#update apt-get
+RUN apt-get update && apt-get -y upgrade
 RUN pip install --upgrade pip
 RUN pip3 install --upgrade pip
 
-RUN apt install -y python3-dev libmysqlclient-dev
+RUN apt-get install -y python3-dev libmysqlclient-dev
 
 RUN pip3 install wheel
 
@@ -53,18 +53,19 @@ RUN pip3 install gunicorn
 RUN pip3 install virtualenv
 RUN pip3 install django
 
-# Set the locale
-# RUN apt install -y locales language-pack-ko
-# RUN locale-gen ko_KR.UTF-8
-# ENV LANG ko_KR.UTF-8
-# ENV LANGUAGE ko_KR:kr
-# ENV LC_ALL ko_KR.UTF-8
+ENV OS_LOCALE_COUNTRY="en_US"
+ENV OS_LOCALE_ENCODING="UTF-8"
+ENV OS_LOCALE="en_US.UTF-8"
 
-ENV OS_LOCALE="en_US.utf8" \
-    DEBIAN_FRONTEND=noninteractive
-RUN apt update && apt install -y locales && locale-gen ${OS_LOCALE}
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
+
+RUN apt-get install -y --no-install-recommends locales
+
 ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
-    LC_ALL=${OS_LOCALE} 
+    LC_ALL=${OS_LOCALE} \
+    LC_CTYPE=${OS_LOCALE} \
+    LC_MESSAGES=${OS_LOCALE}
 
-RUN apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*

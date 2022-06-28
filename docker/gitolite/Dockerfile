@@ -4,20 +4,18 @@ RUN apt update
 RUN DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends apt-utils vim wget openssh-server git locales
 
 # Set the locale
-# RUN apt install -y locales language-pack-ko
-# RUN locale-gen ko_KR.UTF-8
-# ENV LANG ko_KR.UTF-8
-# ENV LANGUAGE ko_KR:kr
-# ENV LC_ALL ko_KR.UTF-8
+ENV OS_LOCALE_COUNTRY="en_US"
+ENV OS_LOCALE_ENCODING="UTF-8"
+ENV OS_LOCALE="en_US.UTF-8"
 
-ENV OS_LOCALE="en_US.utf8" \
-    DEBIAN_FRONTEND=noninteractive
-RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends locales && locale-gen ${OS_LOCALE}
+RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends locales 
 ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
-    LC_ALL=${OS_LOCALE} 
+    LC_ALL=${OS_LOCALE} \
+    LC_CTYPE=${OS_LOCALE} \
+    LC_MESSAGES=${OS_LOCALE}
 
-RUN apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 
+RUN apt clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN sed -i 's/^AcceptEnv LANG LC_\*$//g' /etc/ssh/sshd_config
 
@@ -53,7 +51,7 @@ RUN cp /home/git-manager/.ssh/git-manager.pub /home/gitolite-creator/gitolite-cr
 
 WORKDIR /home/gitolite-creator
 
-RUN su gitolite-creator -c "mkdir bin" 
+RUN su gitolite-creator -c "mkdir bin"
 
 RUN su gitolite-creator -c "git clone git://github.com/sitaramc/gitolite"
 

@@ -65,4 +65,4 @@ else
     cp /ssl/letsencrypt/$domain/ /etc/letsencrypt/ -r
 fi
 
-cat <(crontab -l) <(echo "0 5 * * 1 certbot renew --quiet --renew-hook \"service nginx reload\"") | crontab -
+# cat <(crontab -l) <(echo "0 5 * * 1 certbot renew --quiet --renew-hook \"service nginx reload\"") | crontab -

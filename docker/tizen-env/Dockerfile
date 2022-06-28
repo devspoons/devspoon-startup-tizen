@@ -2,29 +2,25 @@ FROM ubuntu:18.04
 
 RUN echo 'deb [trusted=yes] http://download.tizen.org/tools/latest-release/Ubuntu_18.04/ /' >> /etc/apt/sources.list && \
     apt-get update && \
-    apt-get install -y git wget curl vim ssh gbs mic python python-pip build-essential openssh-server locales repo && \    
+    apt-get install -y git wget curl vim ssh gbs mic python python-pip build-essential openssh-server locales repo && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils && \
     apt-get clean;
-    
 
 # Set the locale
-# RUN apt-get install -y locales language-pack-ko
-# RUN locale-gen ko_KR.UTF-8
-# ENV LANG ko_KR.UTF-8
-# ENV LANGUAGE ko_KR:kr
-# ENV LC_ALL ko_KR.UTF-8
+ENV OS_LOCALE_COUNTRY="en_US"
+ENV OS_LOCALE_ENCODING="UTF-8"
+ENV OS_LOCALE="en_US.UTF-8"
 
-ENV OS_LOCALE="en_US.utf8" \
-    DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
 
-RUN apt-get update && \
-    apt-get install -y \
-    locales && locale-gen ${OS_LOCALE} && \
-    apt-get clean;
+RUN apt-get install -y --no-install-recommends locales
 
 ENV LANG=${OS_LOCALE} \
     LANGUAGE=${OS_LOCALE} \
-    LC_ALL=${OS_LOCALE} 
+    LC_ALL=${OS_LOCALE} \
+    LC_CTYPE=${OS_LOCALE} \
+    LC_MESSAGES=${OS_LOCALE}
 
 # Install "software-properties-common" (for the "add-apt-repository")
 RUN apt-get update && \
@@ -55,7 +51,7 @@ ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
 RUN export JAVA_HOME
 
 RUN apt-get autoremove -y && apt-get clean \
-	&& rm -rf /var/lib/apt/lists/* 	
+	&& rm -rf /var/lib/apt/lists/*
 
 RUN sed -i 's/^AcceptEnv LANG LC_\*$//g' /etc/ssh/sshd_config
 
@@ -63,11 +59,11 @@ RUN mkdir /var/run/sshd
 
 ADD system/sshd_config /etc/ssh/sshd_config
 
-#ex) test_tizen 
-RUN git config --global user.name "USERNAME" 
+#ex) test_tizen
+RUN git config --global user.name "USERNAME"
 
-#ex) test_tizen@gmail.com 
-RUN git config --global user.email "E-MAIL" 
+#ex) test_tizen@gmail.com
+RUN git config --global user.email "E-MAIL"
 
 RUN git config --global color.ui true
 
