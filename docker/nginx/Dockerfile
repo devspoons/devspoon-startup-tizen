@@ -37,3 +37,6 @@ RUN	apt-get purge -y --auto-remove $BUILD_DEPS \
 	&& rm -rf /var/lib/apt/lists/*
 
 RUN sed -i'' -r -e "/set/i\cron" docker-entrypoint.sh
+
+RUN wget --no-check-certificate https://curl.haxx.se/ca/cacert.pem
+RUN cp cacert.pem  /etc/ssl/certs/ca-certificates.crt
