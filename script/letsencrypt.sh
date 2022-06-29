@@ -33,36 +33,36 @@ do
 done 
 
 #if ! test -f /etc/ssl/certs/dhparam.pem ; 
-if ! test -f /ssl/certs/$domain/dhparam.pem ; then 
+if ! test -f /etc/ssl/certs/$domain/dhparam.pem ; then 
     echo "try to create ssl key using openssl "
     if ! test -d /etc/ssl/certs/ ; then
         echo "create domain folder: /etc/ssl/certs/"
         mkdir -p /etc/ssl/certs/
     fi
     openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
-    if ! test -d /ssl/certs/$domain/ ; then
-        echo "create domain folder: /ssl/certs/"$domain"/"
-        mkdir -p /ssl/certs/$domain/
-    fi
-    cp /etc/ssl/certs/dhparam.pem /ssl/certs/$domain/ -r
-else
-    echo "copy ssl folder by already maden"
-    cp /ssl/certs/$domain/dhparam.pem /etc/ssl/certs/dhparam.pem -r
+    # if ! test -d /ssl/certs/$domain/ ; then
+    #     echo "create domain folder: /ssl/certs/"$domain"/"
+    #     mkdir -p /ssl/certs/$domain/
+    # fi
+    # cp /etc/ssl/certs/dhparam.pem /ssl/certs/$domain/ -r
+# else
+#     echo "copy ssl folder by already maden"
+#     cp /ssl/certs/$domain/dhparam.pem /etc/ssl/certs/dhparam.pem -r
 fi
 
 #if ! test -d /etc/letsencrypt/live/test.com ; 
-if ! test -d /ssl/letsencrypt/$domain/letsencrypt ; then 
+if ! test -d /etc/ssl/letsencrypt/$domain/letsencrypt ; then 
     echo "try to create authentication key using certbot "
     certbot certonly --agree-tos --email $mail --webroot -w $webroot_folder -d $domain
     echo "certbot certonly --agree-tos --email "$mail" --webroot -w "$webroot_folder" -d "$domain
-    if ! test -d /ssl/letsencrypt/$domain/ ; then
-        echo "create domain folder: /ssl/letsencrypt/"$domain"/"
-        mkdir -p /ssl/letsencrypt/$domain/
-    fi
-    cp /etc/letsencrypt/ /ssl/letsencrypt/$domain/ -r
-else
-    echo "copy letsencrypt folder by already maden"
-    cp /ssl/letsencrypt/$domain/ /etc/letsencrypt/ -r
+    # if ! test -d /ssl/letsencrypt/$domain/ ; then
+    #     echo "create domain folder: /ssl/letsencrypt/"$domain"/"
+    #     mkdir -p /ssl/letsencrypt/$domain/
+    # fi
+    #cp /etc/letsencrypt/ /ssl/letsencrypt/$domain/ -r
+# else
+#     echo "copy letsencrypt folder by already maden"
+#     cp /ssl/letsencrypt/$domain/ /etc/letsencrypt/ -r
 fi
 
 # cat <(crontab -l) <(echo "0 5 * * 1 certbot renew --quiet --renew-hook \"service nginx reload\"") | crontab -
