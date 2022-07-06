@@ -1,6 +1,0 @@
-Started at Tue Dec 29 00:39:53 KST 2020
-Processing 0_ssh-connection-test_agent-node
-Offering 0_ssh-connection-test_agent-node to Project Build Discarder
-Processing 1_tizen-repo-init-default_agent-node_shell
-Offering 1_tizen-repo-init-default_agent-node_shell to Project Build Discarder
-Finished at Tue Dec 29 00:39:53 KST 2020. 55ms
