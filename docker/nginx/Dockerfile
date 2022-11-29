@@ -30,7 +30,7 @@ RUN	\
     && apt-get install -y cron certbot
 	# Cleaning
 
-RUN crontab -l | { cat; echo "0 5 * * 1 certbot renew --quiet --renew-hook \"service nginx reload\""; } | crontab -
+RUN crontab -l | { cat; echo "0 5 * * 1 certbot renew --quiet --renew-hook \"service nginx restart\" > /log/nginx/crontab_$(date +\%Y\%m\%d).log 2>&1"; } | crontab -
 
 RUN	apt-get purge -y --auto-remove $BUILD_DEPS \
 	&& apt-get autoremove -y && apt-get clean \
