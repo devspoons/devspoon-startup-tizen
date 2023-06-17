@@ -1,4 +1,4 @@
-FROM romeoz/docker-phpfpm:7.3
+FROM romeoz/docker-phpfpm:latest
 
 ENV OS_LOCALE_COUNTRY="en_US"
 ENV OS_LOCALE_ENCODING="UTF-8"
@@ -18,8 +18,8 @@ ENV LANG=${OS_LOCALE} \
     LC_MESSAGES=${OS_LOCALE}
 
 RUN	\
-	BUILD_DEPS='software-properties-common wget gnupg' \
-	&& apt-get install --no-install-recommends -y $BUILD_DEPS \
+    BUILD_DEPS='software-properties-common wget gnupg' \
+    && apt-get install --no-install-recommends -y $BUILD_DEPS \
     && apt-get install -y sendmail
 
 RUN apt-get install -yq tzdata && \

@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM ubuntu:latest
 
 RUN apt update
 RUN DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends apt-utils vim wget openssh-server git locales
