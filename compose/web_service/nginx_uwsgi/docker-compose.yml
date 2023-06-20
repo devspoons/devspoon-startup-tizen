@@ -41,3 +41,30 @@ services:
     environment:
       TZ: "Asia/Seoul"
     restart: always
+
+  redis:
+    image: redis:latest
+    container_name: redis_db
+    ports:
+      - 6379:6379
+    volumes:
+      - ./redis/data:/data
+      - ./redis/conf/:/user/local/conf/
+    labels:
+      - "name=redis"
+      - "mode=standalone"
+    restart: unless-stopped
+    command: redis-server
+
+  redis-stats:
+    image: insready/redis-stat:latest
+    container_name: redis-stats
+    ports:
+      - '63790:63790'
+    command: [
+        '--verbose',
+        '--server',
+        'redis:6379',
+      ]
+    depends_on:
+      - redis
