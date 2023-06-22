@@ -12,9 +12,9 @@ services:
     privileged: true
     volumes:
       - ../../../log/tizen/:/log/tizen/
-    ports:        
-      - "2222:22"
+    ports:
+      - 2222:22
     environment:
-      TZ: "Asia/Seoul"      
+      TZ: "Asia/Seoul"
     restart: always
-    
+

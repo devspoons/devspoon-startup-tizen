@@ -15,8 +15,8 @@ services:
       - ../../../ssl/:/ssl/
       - ../../../log/nginx/:/log/nginx/
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -37,7 +37,7 @@ services:
       - ../../../log/supervisor/:/var/log/supervisor/
       - ./static/:/var/openproject/assets/
     expose:
-      - "8080"
+      - 8080
     environment:
       EMAIL_DELIVERY_METHOD: ${EMAIL_DELIVERY_METHOD}
       SMTP_ADDRESS: ${SMTP_ADDRESS}

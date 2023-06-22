@@ -18,8 +18,8 @@ services:
       - ../../../ssl/:/ssl/
       - ../../../log:/log
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -57,6 +57,8 @@ services:
     labels:
       - "name=redis"
       - "mode=standalone"
+    environment:
+      TZ: "Asia/Seoul"
     restart: always
     command: redis-server /usr/local/etc/redis/redis.conf
 
@@ -69,12 +71,14 @@ services:
         max-size: "${LOG_OPT_MAXS}"
     container_name: redis-stats
     ports:
-      - '63790:63790'
+      - 63790:63790
     command: [
         '--verbose',
         '--server',
         'redis:6379',
       ]
+    environment:
+      TZ: "Asia/Seoul"
     depends_on:
       - redis
     restart: always

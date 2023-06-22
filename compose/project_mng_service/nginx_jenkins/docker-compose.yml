@@ -15,8 +15,8 @@ services:
       - ../../../ssl/:/ssl/
       - ../../../log/nginx/:/log/nginx/
     ports:
-      - "80:80"
-      - "443:443"
+      - 80:80
+      - 443:443
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -35,7 +35,7 @@ services:
     volumes:
       - "./jenkins_home:/var/jenkins_home"
     expose:
-      - "8080"
+      - 8080
     environment:
       TZ: "Asia/Seoul"
     restart: always
