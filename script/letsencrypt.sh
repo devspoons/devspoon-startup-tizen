@@ -69,8 +69,8 @@ fi
 #if ! test -d /etc/letsencrypt/live/test.com ; 
 if ! test -d /etc/ssl/letsencrypt/$domain/letsencrypt ; then 
     echo "try to create authentication key using certbot "
-    certbot certonly --agree-tos --email $mail --webroot -w $webroot_folder $domain
-    echo "certbot certonly --agree-tos --email "$mail" --webroot -w "$webroot_folder$domain_string
+    certbot certonly --agree-tos --email $mail --webroot -w /www/$webroot_folder $domain
+    echo "certbot certonly --agree-tos --email "$mail" --webroot -w /www/"$webroot_folder$domain_string
     # if ! test -d /ssl/letsencrypt/$domain/ ; then
     #     echo "create domain folder: /ssl/letsencrypt/"$domain"/"
     #     mkdir -p /ssl/letsencrypt/$domain/
