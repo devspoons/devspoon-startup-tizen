@@ -18,6 +18,7 @@ done
 while :
 do 
     echo -n "To add a subdomain, type something like 'aaa.com www.aaa.com sub.aaa.com', but all domains refer to the same web root"
+    echo -n "A domain in aaa.com format must be entered first."
     echo -n "Enter the service domain >"
     read domain
     echo  "Entered service domain: $domain"
@@ -45,25 +46,25 @@ done
 # Remove leading space
 # domain_string="${domain_string# }"
 
-for element in "${my_array[@]}"; do
-    #if ! test -f /etc/ssl/certs/dhparam.pem ; 
-    if ! test -f /etc/ssl/certs/$element/dhparam.pem ; then 
-        echo "try to create ssl key using openssl "
-        if ! test -d /etc/ssl/certs/$element/ ; then
-            echo "create domain folder: /etc/ssl/certs/"$element"/"
-            mkdir -p /etc/ssl/certs/$element/
-        fi
-        openssl dhparam -out /etc/ssl/certs/$element/dhparam.pem 4096
-        # if ! test -d /ssl/certs/$domain/ ; then
-        #     echo "create domain folder: /ssl/certs/"$domain"/"
-        #     mkdir -p /ssl/certs/$domain/
-        # fi
-        # cp /etc/ssl/certs/dhparam.pem /ssl/certs/$domain/ -r
-    # else
-    #     echo "copy ssl folder by already maden"
-    #     cp /ssl/certs/$domain/dhparam.pem /etc/ssl/certs/dhparam.pem -r
+# for element in "${my_array[@]}"; do
+#if ! test -f /etc/ssl/certs/dhparam.pem ; 
+if ! test -f /etc/ssl/certs/${my_array[0]}/dhparam.pem ; then 
+    echo "try to create ssl key using openssl "
+    if ! test -d /etc/ssl/certs/${my_array[0]}/ ; then
+        echo "create domain folder: /etc/ssl/certs/"${my_array[0]}"/"
+        mkdir -p /etc/ssl/certs/${my_array[0]}/
     fi
-done
+    openssl dhparam -out /etc/ssl/certs/${my_array[0]}/dhparam.pem 4096
+    # if ! test -d /ssl/certs/$domain/ ; then
+    #     echo "create domain folder: /ssl/certs/"$domain"/"
+    #     mkdir -p /ssl/certs/$domain/
+    # fi
+    # cp /etc/ssl/certs/dhparam.pem /ssl/certs/$domain/ -r
+# else
+#     echo "copy ssl folder by already maden"
+#     cp /ssl/certs/$domain/dhparam.pem /etc/ssl/certs/dhparam.pem -r
+fi
+# done
 
 #if ! test -d /etc/letsencrypt/live/test.com ; 
 if ! test -d /etc/ssl/letsencrypt/$domain/letsencrypt ; then 
