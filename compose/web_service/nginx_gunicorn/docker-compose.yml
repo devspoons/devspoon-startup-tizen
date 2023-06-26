@@ -36,7 +36,7 @@ services:
     volumes:
       - ../../../www:/www
       - ../../../log:/log
-    command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn --workers ${WORKERS} --bind 0.0.0.0:${GUNICORN_PORT} ${PROJECT_NAME}.wsgi:application ${GUNICORN_OPITON}"
+    command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn --workers ${WORKERS} --bind 0.0.0.0:${GUNICORN_PORT} ${PROJECT_NAME}.wsgi:application"
     environment:
       TZ: "Asia/Seoul"
     restart: always
