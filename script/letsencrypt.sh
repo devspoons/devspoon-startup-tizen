@@ -17,7 +17,7 @@ done
 
 while :
 do 
-    echo -n "To add a subdomain, type something like 'aaa.com www.aaa.com sub.aaa.com'."
+    echo -n "To add a subdomain, type something like 'aaa.com www.aaa.com sub.aaa.com', but all domains refer to the same web root"
     echo -n "Enter the service domain >"
     read domain
     echo  "Entered service domain: $domain"
@@ -49,9 +49,9 @@ for element in "${my_array[@]}"; do
     #if ! test -f /etc/ssl/certs/dhparam.pem ; 
     if ! test -f /etc/ssl/certs/$element/dhparam.pem ; then 
         echo "try to create ssl key using openssl "
-        if ! test -d /etc/ssl/certs/ ; then
-            echo "create domain folder: /etc/ssl/certs/"
-            mkdir -p /etc/ssl/certs/
+        if ! test -d /etc/ssl/certs/$element/ ; then
+            echo "create domain folder: /etc/ssl/certs/"$element"/"
+            mkdir -p /etc/ssl/certs/$element/
         fi
         openssl dhparam -out /etc/ssl/certs/$element/dhparam.pem 4096
         # if ! test -d /ssl/certs/$domain/ ; then
@@ -69,7 +69,7 @@ done
 if ! test -d /etc/ssl/letsencrypt/$domain/letsencrypt ; then 
     echo "try to create authentication key using certbot "
     certbot certonly --agree-tos --email $mail --webroot -w $webroot_folder $domain
-    echo "certbot certonly --agree-tos --email "$mail" --webroot -w "$webroot_folder" -d "$domain_string
+    echo "certbot certonly --agree-tos --email "$mail" --webroot -w "$webroot_folder$domain_string
     # if ! test -d /ssl/letsencrypt/$domain/ ; then
     #     echo "create domain folder: /ssl/letsencrypt/"$domain"/"
     #     mkdir -p /ssl/letsencrypt/$domain/
@@ -81,5 +81,3 @@ if ! test -d /etc/ssl/letsencrypt/$domain/letsencrypt ; then
 fi
 
 # cat <(crontab -l) <(echo "0 5 * * 1 certbot renew --quiet --renew-hook \"service nginx reload\"") | crontab -
-
-done 
