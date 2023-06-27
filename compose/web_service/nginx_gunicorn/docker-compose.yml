@@ -15,7 +15,7 @@ services:
       - ../../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
       - ../../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
-      - ../../../ssl/:/ssl/
+      - ../../../ssl/:/etc/ssl/
       - ../../../log:/log
     ports:
       - 80:80
