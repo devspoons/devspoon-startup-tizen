@@ -12,4 +12,4 @@ www/
 nginx_cache/
 
 # ssl files
-ssl/
+**/ssl/
