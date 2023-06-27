@@ -47,7 +47,7 @@ done
 # domain_string="${domain_string# }"
 
 # for element in "${my_array[@]}"; do
-if ! test -f /ssl/${my_array[0]}/dhparam.pem ;
+if ! test -f /ssl/${my_array[0]}/dhparam.pem ; then
     if ! test -f /etc/ssl/certs/${my_array[0]}/dhparam.pem ; then
         echo "try to create ssl key using openssl "
         if ! test -d /etc/ssl/certs/${my_array[0]}/ ; then
