@@ -15,8 +15,8 @@ services:
       - ../../../config/web-server/nginx/php/conf.d/:/etc/nginx/conf.d/
       - ../../../config/web-server/nginx/php/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../../config/web-server/nginx/php/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
-      - ./ssl/cert/:/etc/ssl/certs/
-      - ./ssl/cert/:/etc/ssl/letsencrypt/
+      - ./ssl/certs/:/etc/ssl/certs/
+      - ./ssl/letsencrypt/:/etc/ssl/letsencrypt/
       - ../../../log:/log
     ports:
       - 80:80
