@@ -36,8 +36,10 @@ services:
     container_name: gunicorn-app
     volumes:
       - ../../../www:/www
-      - ../../../log:/log
-    command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn --workers ${WORKERS} --bind 0.0.0.0:${GUNICORN_PORT} ${PROJECT_NAME}.wsgi:application"
+      - ../../../log:/
+      - ../../../config/app-server/gunicorn/:/gunicorn
+    # command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn --workers ${WORKERS} --bind 0.0.0.0:${GUNICORN_PORT} ${PROJECT_NAME}.wsgi:application"
+    command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn -c /gunicorn/gunicorn_config.py"
     environment:
       TZ: "Asia/Seoul"
     restart: always
