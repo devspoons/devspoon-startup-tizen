@@ -36,12 +36,11 @@ RUN apt-get update && apt-get -y upgrade
 RUN pip install --upgrade pip
 RUN pip3 install --upgrade pip
 
-RUN apt-get install -y python3-dev libmysqlclient-dev
+RUN apt-get install -y python3-dev libmysqlclient-dev pkg-config
 
 RUN pip3 install wheel
 
 # SQLAlchemy
-RUN pip3 install SQLAlchemy
 RUN pip3 install sqlalchemy
 RUN pip3 install sqlalchemy --upgrade
 RUN pip3 install mysqlclient
