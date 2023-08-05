@@ -15,7 +15,7 @@ services:
       - ../../../config/web-server/nginx/uwsgi/conf.d/:/etc/nginx/conf.d/
       - ../../../config/web-server/nginx/uwsgi/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../../config/web-server/nginx/uwsgi/uwsgi_params/uwsgi_params:/etc/nginx/uwsgi_params
-      - ./ssl/certs/:/ssl/
+      - ./ssl/certs/:/etc/ssl/certs/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
       - ../../../log:/log
     ports:
@@ -74,11 +74,7 @@ services:
     container_name: redis-stats
     ports:
       - 63790:63790
-    command: [
-        '--verbose',
-        '--server',
-        'redis:6379',
-      ]
+    command: ["--verbose", "--server", "redis:6379"]
     environment:
       TZ: "Asia/Seoul"
     depends_on:
