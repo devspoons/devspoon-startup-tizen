@@ -24,17 +24,21 @@ RUN apt-get install -yq tzdata && \
 ENV TZ="Asia/Seoul"
 
 RUN	\
-	BUILD_DEPS='software-properties-common wget gnupg' \
-	&& apt-get install --no-install-recommends -y $BUILD_DEPS \
+    BUILD_DEPS='software-properties-common wget gnupg' \
+    && apt-get install --no-install-recommends -y $BUILD_DEPS \
     && apt-get install -y sendmail \
-    && apt-get install -y cron certbot
-	# Cleaning
+    && apt-get install -y cron certbot \
+    && apt-get install wget
+# Cleaning
+RUN	apt-get purge -y --auto-remove $BUILD_DEPS \
+    && apt-get autoremove -y && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN wget --no-check-certificate https://curl.haxx.se/ca/cacert.pem
+
+RUN sudo cp cacert.pem  /etc/ssl/certs/ca-certificates.crt
 
 RUN crontab -l | { cat; echo "0 5 * * 1 certbot renew --quiet --renew-hook \"service nginx restart\" > /log/nginx/crontab_$(date +\%Y\%m\%d).log 2>&1"; } | crontab -
-
-RUN	apt-get purge -y --auto-remove $BUILD_DEPS \
-	&& apt-get autoremove -y && apt-get clean \
-	&& rm -rf /var/lib/apt/lists/*
 
 RUN sed -i'' -r -e "/set/i\cron" docker-entrypoint.sh
 
