@@ -50,7 +50,7 @@ RUN pip3 install gunicorn
 
 # pip3 package
 RUN pip3 install virtualenv
-RUN pip3 install django
+RUN pip3 install django poetry
 
 ENV OS_LOCALE_COUNTRY="en_US"
 ENV OS_LOCALE_ENCODING="UTF-8"
@@ -59,7 +59,7 @@ ENV OS_LOCALE="en_US.UTF-8"
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
 
-RUN apt-get install -y --no-install-recommends locales poetry
+RUN apt-get install -y --no-install-recommends locales
 
 RUN localedef -i ${OS_LOCALE_COUNTRY} -f ${OS_LOCALE_ENCODING} ${OS_LOCALE}
 
