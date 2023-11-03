@@ -59,7 +59,7 @@ ENV OS_LOCALE="en_US.UTF-8"
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
 
-RUN apt-get install -y --no-install-recommends locales
+RUN apt-get install -y --no-install-recommends locales poetry
 
 RUN localedef -i ${OS_LOCALE_COUNTRY} -f ${OS_LOCALE_ENCODING} ${OS_LOCALE}
 
