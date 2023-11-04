@@ -39,7 +39,9 @@ services:
       - ../../../log:/log
       - ../../../config/app-server/gunicorn/:/gunicorn
     # command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn --workers ${WORKERS} --bind 0.0.0.0:${GUNICORN_PORT} ${PROJECT_NAME}.wsgi:application"
-    command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn -c /gunicorn/gunicorn_config.py"
+    # command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn -c /gunicorn/gunicorn_config.py"
+    # command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && chmod 777 /www/${PROJECT_DIR}/celery_etc/celery_run.sh && /www/${PROJECT_DIR}/celery_etc/celery_run.sh &&  gunicorn -c /gunicorn/gunicorn_config.py"
+    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && gunicorn -c /gunicorn/gunicorn_config.py"
     environment:
       TZ: "Asia/Seoul"
     restart: always
