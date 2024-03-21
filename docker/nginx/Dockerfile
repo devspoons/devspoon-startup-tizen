@@ -43,3 +43,4 @@ RUN crontab -l | { cat; echo "0 5 * * 1 certbot renew --quiet --renew-hook \"ser
 RUN sed -i'' -r -e "/set/i\cron" docker-entrypoint.sh
 
 RUN cp cacert.pem  /etc/ssl/certs/ca-certificates.crt
+RUN update-ca-certificates

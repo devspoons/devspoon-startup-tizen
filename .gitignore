@@ -6,10 +6,18 @@ log/
 *.swp
 
 # web root #
-www/
+# www/
 
 # nginx cache #
 nginx_cache/
 
 # ssl files
 **/ssl/
+
+# data
+compose/web_service/nginx_gunicorn/ssl/
+compose/web_service/nginx_gunicorn/redis/
+compose/web_service/nginx_php/ssl/
+compose/web_service/nginx_php/redis/
+compose/web_service/nginx_uwsgi/ssl/
+compose/web_service/nginx_uwsgi/redis/

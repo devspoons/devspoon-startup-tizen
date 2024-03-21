@@ -30,3 +30,4 @@ ENV TZ="Asia/Seoul"
 RUN apt-get purge -y --auto-remove software-properties-common wget gnupg \
     && apt-get autoremove -y && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
+RUN update-ca-certificates

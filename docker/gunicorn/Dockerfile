@@ -70,3 +70,4 @@ ENV LANG=${OS_LOCALE} \
     LC_MESSAGES=${OS_LOCALE}
 
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN update-ca-certificates
