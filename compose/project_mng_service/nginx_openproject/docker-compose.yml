@@ -24,7 +24,7 @@ services:
       - openproject
 
   openproject:
-    image: openproject/community:11
+    image: openproject/community:13
     logging:
       driver: "${LOG_DRIVER}"
       options:
