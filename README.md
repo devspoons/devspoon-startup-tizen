@@ -2,16 +2,6 @@
 
 devspoon-startup-tizen is an open source solution that can easily build a reliable Tizen development environment using Docker.
 
-- devspoon-startup-tizen can easily build the complex configuration required to develop Samsung Tizen-based IoT devices using the already verified Dockerfile and Docker-compose.
-
-- Development automation (CI:Continuous Integration) can be configured using jenkins provided as [devspoon-startup-web], and projects can be efficiently managed with openproject.
-
-- Gitolite is linked with openproject and jenkins, and can be used efficiently without repository public and limitations on the capacity restriction of git server and public storage.
-
-- Using the harbor, you can build an independent docker image according to the type, version, and kernel environment type of the smart TV, IoT development board, and download and install the docker image to any new server at any time from the docker hub.
-
-- By configuring devspoon-startup-tizen, when moving to the internal network, you can build a development environment under various conditions and manage sources and projects even when there is no Internet connection.
-
 ## based project
 
 devspoon-startup-tizen is built on top of the open source project [devspoon-startup-web], an integrated management solution catered to startups. It provides nginx-based PHP and Python platforms to develop web and API services. It also enables installing, backing up and managing project solutions critical for startups such as OpenProject, Jenkins, Gitolite (private Git server), and Harbour (private Docker server).
@@ -26,13 +16,13 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 
 ## Project management solutions
 
-- **[OpenProject] :** Open source project management software to help you work on your project efficiently
+- **[OpenProject]** : Open source project management software to help you work on your project efficiently
 
-- **[Jenkins] :** As one of the CI tools, CI (Continuous Integration) refers to continuous integration, which is an automated process for developers, and new code changes are automatically built and tested regularly to notify developers to solve problems that can occur when multiple developers develop simultaneously. Software that helps secure development stability and reliability
+- **[Jenkins]** : As one of the CI tools, CI (Continuous Integration) refers to continuous integration, which is an automated process for developers, and new code changes are automatically built and tested regularly to notify developers to solve problems that can occur when multiple developers develop simultaneously. Software that helps secure development stability and reliability
 
-- **[Gitolite] :** Configuration Management Tool. user can install git server software at own server
+- **[Gitolite]** : Configuration Management Tool. user can install git server software at own server
 
-- **[Harbor] :** The Private Docker Registry Server for businesses that store and distribute Docker Images
+- **[Harbor]** : The Private Docker Registry Server for businesses that store and distribute Docker Images
 
 ## Features
 
@@ -41,6 +31,16 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 - **Efficiently dockerfile configuration for development and service operation** : The log folder is interlocked by "volumes" in docker-compose.yml so that user can can be tracked problems even when the docker container is stopped. Webroot, nginx config, etc. are frequently modified during development so these are interlocked by "volumes"
 
 - **Provide reverse proxy function** : Through a single nginx, you can provide multiple web and app services using PHP and Python, as well as project management services at the same time. Provides a shell script to easily create proxy configuration files for integration with the web UI of other services.
+
+- devspoon-startup-tizen can easily build the complex configuration required to develop Samsung Tizen-based IoT devices using the already verified Dockerfile and Docker-compose.
+
+- Development automation (CI:Continuous Integration) can be configured using jenkins provided as [devspoon-startup-web], and projects can be efficiently managed with openproject.
+
+- Gitolite is linked with openproject and jenkins, and can be used efficiently without repository public and limitations on the capacity restriction of git server and public storage.
+
+- Using the harbor, you can build an independent docker image according to the type, version, and kernel environment type of the smart TV, IoT development board, and download and install the docker image to any new server at any time from the docker hub.
+
+- By configuring devspoon-startup-tizen, when moving to the internal network, you can build a development environment under various conditions and manage sources and projects even when there is no Internet connection.
 
 ## Considerations
 
@@ -140,7 +140,7 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 
 ## Community
 
-- **Personal Website :** Owner's personal website is [devspoon.com](devspoon.com)
+- **Personal Website** : Owner's personal website is [devspoon.com](devspoon.com)
 
 ## Partners and Users
 
