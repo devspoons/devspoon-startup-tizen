@@ -25,6 +25,8 @@ RUN ln -s /usr/local/bin/python3.11.4 /usr/bin/python3
 RUN ln -s /usr/local/bin/python3.11.4 /usr/local/bin/python
 RUN ln -s /usr/local/bin/python3.11.4 /usr/local/bin/python3
 
+ENV PYTHONUNBUFFERED 1
+
 # create links to pip3.11
 RUN ln -s /usr/local/bin/pip3.11 /usr/bin/pip
 RUN ln -s /usr/local/bin/pip3.11 /usr/bin/pip3
