@@ -12,18 +12,18 @@ RUN apt-get install -y build-essential gcc
 
 # Python
 RUN apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev
-RUN cd /usr/src ; wget https://www.python.org/ftp/python/3.11.4/Python-3.11.4.tar.xz  ; tar -xf Python-3.11.4.tar.xz ; cd Python-3.11.4 ; ./configure ; make altinstall
+RUN cd /usr/src ; wget https://www.python.org/ftp/python/3.12.4/Python-3.12.4.tar.xz  ; tar -xf Python-3.12.4.tar.xz ; cd Python-3.12.4 ; ./configure ; make altinstall
 
-# be sure it's 3.11.4
-RUN ! ls /usr/local/bin/python3.11.4 && ls /usr/src/Python-3.11.4/python && cp /usr/src/Python-3.11.4/python /usr/local/bin/python3.11.4 ; exit 0
+# be sure it's 3.12.4
+RUN ! ls /usr/local/bin/python3.12.4 && ls /usr/src/Python-3.12.4/python && cp /usr/src/Python-3.12.4/python /usr/local/bin/python3.12.4 ; exit 0
 
-# replace python version to have 3.11.4 as default
+# replace python version to have 3.12.4 as default
 RUN rm -f /usr/bin/python
 RUN rm -f /usr/bin/python3
-RUN ln -s /usr/local/bin/python3.11.4 /usr/bin/python
-RUN ln -s /usr/local/bin/python3.11.4 /usr/bin/python3
-RUN ln -s /usr/local/bin/python3.11.4 /usr/local/bin/python
-RUN ln -s /usr/local/bin/python3.11.4 /usr/local/bin/python3
+RUN ln -s /usr/local/bin/python3.12.4 /usr/bin/python
+RUN ln -s /usr/local/bin/python3.12.4 /usr/bin/python3
+RUN ln -s /usr/local/bin/python3.12.4 /usr/local/bin/python
+RUN ln -s /usr/local/bin/python3.12.4 /usr/local/bin/python3
 
 ENV PYTHONUNBUFFERED 1
 
