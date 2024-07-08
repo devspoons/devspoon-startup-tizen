@@ -25,11 +25,13 @@ RUN ln -s /usr/local/bin/python3.12.4 /usr/bin/python3
 RUN ln -s /usr/local/bin/python3.12.4 /usr/local/bin/python
 RUN ln -s /usr/local/bin/python3.12.4 /usr/local/bin/python3
 
-# create links to pip3.11
-RUN ln -s /usr/local/bin/pip3.11 /usr/bin/pip
-RUN ln -s /usr/local/bin/pip3.11 /usr/bin/pip3
-RUN ln -s /usr/local/bin/pip3.11 /usr/local/bin/pip
-RUN ln -s /usr/local/bin/pip3.11 /usr/local/bin/pip3
+ENV PYTHONUNBUFFERED 1
+
+# create links to pip3.12
+RUN ln -s /usr/local/bin/pip3.12 /usr/bin/pip
+RUN ln -s /usr/local/bin/pip3.12 /usr/bin/pip3
+RUN ln -s /usr/local/bin/pip3.12 /usr/local/bin/pip
+RUN ln -s /usr/local/bin/pip3.12 /usr/local/bin/pip3
 
 # update apt-get
 RUN apt-get update && apt-get -y upgrade
