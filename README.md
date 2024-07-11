@@ -115,7 +115,10 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 
    ```sh
    $ cd compose/master_service
-   $ docker-compose up -d
+   $ docker-compose -f docker-compose-php.yml up -d # php service
+   $ docker-compose -f docker-compose-php.yml --profile celery up -d # with celery, celerybeat, flower
+   $ docker-compose -f docker-compose-php.yml --profile redis up -d # with redis, redis-stats
+   $ docker-compose -f docker-compose-php.yml --profile celery --profile redis up -d # all of service
    ```
 
 5. A user selection
