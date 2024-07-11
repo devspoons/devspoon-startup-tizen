@@ -53,7 +53,7 @@ RUN pip3 install uwsgi
 
 # pip3 package
 RUN pip3 install virtualenv
-RUN pip3 install django
+RUN pip3 install django poetry
 
 # Set the locale
 ENV OS_LOCALE_COUNTRY="en_US"

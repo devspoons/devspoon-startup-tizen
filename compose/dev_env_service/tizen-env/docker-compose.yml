@@ -1,4 +1,4 @@
-version: "3"
+version: "3.9"
 services:
   tizenenv:
     build: ../../../docker/tizen-env/
@@ -17,4 +17,3 @@ services:
     environment:
       TZ: "Asia/Seoul"
     restart: always
-

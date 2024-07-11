@@ -1,32 +1,36 @@
 version: "3.9"
 services:
   webserver:
-    build: ../../../docker/nginx/
+    build: ../../docker/nginx/
     logging:
       driver: "${LOG_DRIVER}"
       options:
         max-file: "${LOG_OPT_MAXF}"
         max-size: "${LOG_OPT_MAXS}"
-    working_dir: /application
-    container_name: nginx-gunicorn-webserver
+    container_name: nginx-webserver
     volumes:
-      - ../../../www:/www
-      - ../../../script/:/script/
-      - ../../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
-      - ../../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
-      - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
+      - ../../www:/www
+      - ../../script/:/script/
+      - ../../bin/certbot-auto:/usr/local/bin/certbot-auto
+      - ../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
+      - ../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
+      - ../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ./ssl/certs/:/etc/ssl/certs/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
-      - ../../../log:/log
+      - ../../log/nginx/:/log/nginx/
     ports:
       - 80:80
       - 443:443
     environment:
       TZ: "Asia/Seoul"
     restart: always
+    depends_on:
+      - openproject
+      - jenkins
+      - gunicorn-app
 
   gunicorn-app:
-    build: ../../../docker/gunicorn/
+    build: ../../docker/gunicorn/
     logging:
       driver: "${LOG_DRIVER}"
       options:
@@ -35,12 +39,11 @@ services:
     working_dir: /www/${PROJECT_DIR}
     container_name: gunicorn-app
     volumes:
-      - ../../../www:/www
-      - ../../../log:/log
-      - ../../../config/app-server/gunicorn/:/gunicorn
-    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root && gunicorn -c /gunicorn/gunicorn_config.py"
+      - ../../www:/www
+      - ../../log:/log
     environment:
       TZ: "Asia/Seoul"
+    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && gunicorn -c /gunicorn/gunicorn_config.py"
     restart: always
 
   celery:
@@ -152,3 +155,83 @@ services:
     restart: always
     profiles:
       - redis
+
+  openproject:
+    image: openproject/community:11
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    container_name: openproject
+    privileged: true
+    volumes:
+      - ./pgdata/:/var/openproject/pgdata/
+      - ../../log/supervisor/:/var/log/supervisor/
+      - ./static/:/var/openproject/assets/
+    expose:
+      - 8080
+    environment:
+      EMAIL_DELIVERY_METHOD: ${EMAIL_DELIVERY_METHOD}
+      SMTP_ADDRESS: ${SMTP_ADDRESS}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_DOMAIN: "${SMTP_DOMAIN}"
+      SMTP_AUTHENTICATION: ${SMTP_AUTHENTICATION}
+      SMTP_ENABLE_STARTTLS_AUTO: "${SMTP_ENABLE_STARTTLS_AUTO}"
+      SMTP_USER_NAME: "${SMTP_USER_NAME}"
+      SMTP_PASSWORD: "${SMTP_PASSWORD}"
+      TZ: "Asia/Seoul"
+      PASSENGER_START_TIMEOUT: ${PASSENGER_START_TIMEOUT}
+    restart: always
+
+  jenkins:
+    image: jenkins/jenkins:latest
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    container_name: jenkins
+    privileged: true
+    volumes:
+      - ./jenkins_home:/var/jenkins_home
+    expose:
+      - 8080
+    environment:
+      TZ: "Asia/Seoul"
+    restart: always
+
+  gitolite:
+    build: ../../docker/gitolite
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    working_dir: /application
+    container_name: gitolite
+    volumes:
+      - ./storage:/home/gitolite-creator/repositories
+    ports:
+      - 2222:22
+    environment:
+      TZ: "Asia/Seoul"
+    restart: always
+
+  tizenenv:
+    build: ../../docker/tizen-env/
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    working_dir: /application
+    container_name: tizenenv
+    privileged: true
+    volumes:
+      - ../../log/tizen/:/log/tizen/
+    ports:
+      - 2221:22
+    environment:
+      TZ: "Asia/Seoul"
+    restart: always
