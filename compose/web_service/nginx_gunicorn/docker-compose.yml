@@ -38,13 +38,80 @@ services:
       - ../../../www:/www
       - ../../../log:/log
       - ../../../config/app-server/gunicorn/:/gunicorn
-    # command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn --workers ${WORKERS} --bind 0.0.0.0:${GUNICORN_PORT} ${PROJECT_NAME}.wsgi:application"
-    # command: bash -c "pip install -r ${REQUIREMENTS} && gunicorn -c /gunicorn/gunicorn_config.py"
-    # command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && chmod 777 ./celery_etc/celery_run.sh && ./celery_etc/celery_run.sh &&  gunicorn -c /gunicorn/gunicorn_config.py"
     command: bash -c "poetry config virtualenvs.create false && poetry install --no-root && gunicorn -c /gunicorn/gunicorn_config.py"
     environment:
       TZ: "Asia/Seoul"
     restart: always
+
+  celery:
+    build: ../../../docker/gunicorn/
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    working_dir: /www/${PROJECT_DIR}
+    container_name: celery-app
+    volumes:
+      - ../../../www:/www
+      - ../../../log:/log
+    command: bash -c "poetry config virtualenvs.create false && \
+      poetry install --no-root && \
+      celery -A config worker \
+      --loglevel=INFO \
+      --logfile=/log/gunicorn/celery/worker-%n%I.log "
+    environment:
+      TZ: "Asia/Seoul"
+    restart: always
+    depends_on:
+      - redis
+      - gunicorn-app
+    profiles:
+      - celery
+
+  celery-beat:
+    build: ../../../docker/gunicorn/
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    working_dir: /www/${PROJECT_DIR}
+    container_name: celerybeat-app
+    volumes:
+      - ../../../www:/www
+      - ../../../log:/log
+    command: bash -c "poetry config virtualenvs.create false && \
+      poetry install --no-root && \
+      celery -A config beat \
+      --loglevel=INFO \
+      --scheduler django_celery_beat.schedulers:DatabaseScheduler \
+      --logfile=/log/gunicorn/celerybeat/celerybeat.log "
+    environment:
+      TZ: "Asia/Seoul"
+    restart: always
+    depends_on:
+      - celery
+    profiles:
+      - celery
+
+  flower:
+    image: mher/flower:master
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    container_name: flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/3
+    restart: always
+    depends_on:
+      - celery-beat
+    profiles:
+      - celery
 
   redis:
     image: redis:latest
@@ -83,3 +150,5 @@ services:
     depends_on:
       - redis
     restart: always
+    profiles:
+      - redis
