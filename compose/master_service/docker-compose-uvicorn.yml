@@ -27,9 +27,9 @@ services:
     depends_on:
       - openproject
       - jenkins
-      - gunicorn-app
+      - uvicorn-app
 
-  gunicorn-app:
+  uvicorn-app:
     build: ../../docker/gunicorn/
     logging:
       driver: "${LOG_DRIVER}"
@@ -37,13 +37,13 @@ services:
         max-file: "${LOG_OPT_MAXF}"
         max-size: "${LOG_OPT_MAXS}"
     working_dir: /www/${PROJECT_DIR}
-    container_name: gunicorn-app
+    container_name: uvicorn-app
     volumes:
       - ../../www:/www
       - ../../log:/log
     environment:
       TZ: "Asia/Seoul"
-    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && gunicorn -c /gunicorn/gunicorn.conf.py"
+    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && gunicorn -c /uvicorn/gunicorn.conf.py"
     restart: always
 
   celery:
@@ -62,13 +62,13 @@ services:
       poetry install --no-root && \
       celery -A config worker \
       --loglevel=INFO \
-      --logfile=/log/gunicorn/celery/worker-%n%I.log "
+      --logfile=/log/uvicorn/celery/worker-%n%I.log "
     environment:
       TZ: "Asia/Seoul"
     restart: always
     depends_on:
       - redis
-      - gunicorn-app
+      - uvicorn-app
     profiles:
       - celery
 
@@ -89,7 +89,7 @@ services:
       celery -A config beat \
       --loglevel=INFO \
       --scheduler django_celery_beat.schedulers:DatabaseScheduler \
-      --logfile=/log/gunicorn/celerybeat/celerybeat.log "
+      --logfile=/log/uvicorn/celerybeat/celerybeat.log "
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -214,24 +214,6 @@ services:
       - ./storage:/home/gitolite-creator/repositories
     ports:
       - 2222:22
-    environment:
-      TZ: "Asia/Seoul"
-    restart: always
-
-  tizenenv:
-    build: ../../docker/tizen-env/
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
-    working_dir: /application
-    container_name: tizenenv
-    privileged: true
-    volumes:
-      - ../../log/tizen/:/log/tizen/
-    ports:
-      - 2221:22
     environment:
       TZ: "Asia/Seoul"
     restart: always
