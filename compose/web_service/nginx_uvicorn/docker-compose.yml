@@ -25,7 +25,7 @@ services:
       TZ: "Asia/Seoul"
     restart: always
 
-  uvicorn-app:
+  gunicorn-app:
     build: ../../../docker/gunicorn/
     logging:
       driver: "${LOG_DRIVER}"
@@ -33,7 +33,7 @@ services:
         max-file: "${LOG_OPT_MAXF}"
         max-size: "${LOG_OPT_MAXS}"
     working_dir: /www/${PROJECT_DIR}
-    container_name: uvicorn-app
+    container_name: gunicorn-app
     volumes:
       - ../../../www:/www
       - ../../../log:/log
@@ -65,7 +65,7 @@ services:
     restart: always
     depends_on:
       - redis
-      - uvicorn-app
+      - gunicorn-app
     profiles:
       - celery
 
