@@ -41,10 +41,9 @@ services:
     volumes:
       - ../../www:/www
       - ../../log:/log
-      - ../../config/app-server/uvicorn/:/uvicorn
     environment:
       TZ: "Asia/Seoul"
-    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && gunicorn -c /uvicorn/gunicorn.conf.py"
+    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && daphne -p 8000 -b 0.0.0.0 --websocket_timeout 60 --websocket_connect_timeout 20 -v 2 -t 120 --access-log /log/uvicorn/daphne.log --ping-interval 20 --ping-timeout 30 --application-close-timeout 30 -s config config.asgi:application"-c /uvicorn/gunicorn.conf.py"
     restart: always
 
   celery:
@@ -63,7 +62,7 @@ services:
       poetry install --no-root && \
       celery -A config worker \
       --loglevel=INFO \
-      --logfile=/log/uvicorn/celery/worker-%n%I.log "
+      --logfile=/log/daphne/celery/worker-%n%I.log "
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -90,7 +89,7 @@ services:
       celery -A config beat \
       --loglevel=INFO \
       --scheduler django_celery_beat.schedulers:DatabaseScheduler \
-      --logfile=/log/uvicorn/celerybeat/celerybeat.log "
+      --logfile=/log/daphne/celerybeat/celerybeat.log "
     environment:
       TZ: "Asia/Seoul"
     restart: always

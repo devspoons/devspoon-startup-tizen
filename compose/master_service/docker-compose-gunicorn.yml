@@ -41,6 +41,7 @@ services:
     volumes:
       - ../../www:/www
       - ../../log:/log
+      - ../../config/app-server/gunicorn/:/gunicorn
     environment:
       TZ: "Asia/Seoul"
     command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && gunicorn -c /gunicorn/gunicorn.conf.py"
