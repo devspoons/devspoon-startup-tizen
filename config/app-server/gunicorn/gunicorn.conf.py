@@ -31,6 +31,8 @@ preload_app = False  # 앱 로딩 지연 설정
 reload = True
 
 # 로깅 설정
+# Whether to send Django output to the error log 
+capture_output = False
 loglevel = "info"  # 로그 레벨
 accesslog = f"/log/gunicorn/access_{datetime.now().strftime('%Y-%m-%d_%H')}.log"
 errorlog = f"/log/gunicorn/error_{datetime.now().strftime('%Y-%m-%d_%H')}.log"
