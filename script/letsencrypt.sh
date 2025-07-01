@@ -88,4 +88,4 @@ if ! test -d /etc/letsencrypt/${my_array[0]}/letsencrypt ; then
 #     cp /ssl/letsencrypt/$domain/ /etc/letsencrypt/ -r
 fi
 
-# cat <(crontab -l) <(echo "0 5 * * 1 certbot renew --quiet --renew-hook \"service nginx reload\"") | crontab -
+cat <(crontab -l) <(echo '0 5 * * 1 certbot renew --quiet --deploy-hook "service nginx restart" > /log/nginx/crontab_renew.log 2>&1') | crontab -
