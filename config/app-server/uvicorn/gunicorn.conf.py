@@ -15,7 +15,7 @@ worker_class = "uvicorn.workers.UvicornWorker"  # Uvicorn 워커 클래스 사�
 # pidfile = '/tmp/gunicorn.pid' # 백그라운드에서 pid 파일 생성 (데몬 모드와 함께 사용)
 daemon = False  # 데몬 모드 설정 (True일 경우 백그라운드 실행)
 
-# ASGI 애플리케이션 경로 설정
+# ASGI, WSGI 애플리케이션 경로 설정
 wsgi_app = "config.asgi:application"
 
 # 타임아웃 설정
@@ -32,6 +32,8 @@ preload_app = False  # 앱 로딩 지연 설정
 reload = True
 
 # 로깅 설정
+# Whether to send Django output to the error log 
+capture_output = False
 loglevel = "info"  # 로그 레벨
 accesslog = f"/log/uvicorn/access_{datetime.now().strftime('%Y-%m-%d_%H')}.log"
 errorlog = f"/log/uvicorn/error_{datetime.now().strftime('%Y-%m-%d_%H')}.log"
