@@ -38,7 +38,7 @@ RUN wget --no-check-certificate https://curl.haxx.se/ca/cacert.pem
 
 RUN cp cacert.pem  /etc/ssl/certs/ca-certificates.crt
 
-RUN crontab -l | { cat; echo "0 5 * * 1 certbot renew --quiet --renew-hook \"service nginx restart\" > /log/nginx/crontab_$(date +\%Y\%m\%d).log 2>&1"; } | crontab -
+RUN crontab -l | { cat; echo "0 5 * * 1 certbot renew --quiet --deploy-hook "nginx -t && service nginx reload" >> /log/nginx/crontab_$(date +\%Y\%m\%d).log 2>&1"; } | crontab -
 
 RUN sed -i'' -r -e "/set/i\cron" docker-entrypoint.sh
 
