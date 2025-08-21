@@ -28,15 +28,16 @@ RUN	\
     && apt-get install --no-install-recommends -y $BUILD_DEPS \
     && apt-get install -y sendmail \
     && apt-get install -y cron certbot \
-    && apt-get install wget
+    && apt-get install wget \
+    && apt-get install python3-certbot-nginx
+
+RUN apt-get update && apt-get install -y ca-certificates \
+    && update-ca-certificates \
+    && chmod 644 /etc/ssl/certs/ca-certificates.crt
 # Cleaning
 RUN	apt-get purge -y --auto-remove $BUILD_DEPS \
     && apt-get autoremove -y && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-
-RUN wget --no-check-certificate https://curl.haxx.se/ca/cacert.pem
-
-RUN cp cacert.pem  /etc/ssl/certs/ca-certificates.crt
 
 RUN crontab -l | { cat; echo "0 5 * * 1 certbot renew --quiet --deploy-hook "nginx -t && service nginx reload" >> /log/nginx/crontab_$(date +\%Y\%m\%d).log 2>&1"; } | crontab -
 
