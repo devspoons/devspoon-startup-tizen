@@ -16,7 +16,8 @@ services:
       - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ./ssl/certs/:/etc/ssl/certs/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
-      - ../../../log:/log
+      - ../../../log/:/log/
+      - ../../../script/logrotate/nginx/nginx:/etc/logrotate.d/nginx
     ports:
       - 80:80
       - 443:443
@@ -24,7 +25,7 @@ services:
       TZ: "Asia/Seoul"
     restart: always
 
-  gunicorn-app:
+  daphne-app:
     build: ../../../docker/gunicorn/
     logging:
       driver: "${LOG_DRIVER}"
@@ -32,11 +33,26 @@ services:
         max-file: "${LOG_OPT_MAXF}"
         max-size: "${LOG_OPT_MAXS}"
     working_dir: /www/${PROJECT_DIR}
-    container_name: gunicorn-app
+    container_name: daphne-app
     volumes:
       - ../../../www:/www
       - ../../../log:/log
-    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && daphne -p 8000 -b 0.0.0.0 --websocket_timeout 60 --websocket_connect_timeout 20 -v 2 -t 120 --access-log /log/uvicorn/daphne.log --ping-interval 20 --ping-timeout 30 --application-close-timeout 30 -s config config.asgi:application"
+      - ../../../script/logrotate/daphne/daphne:/etc/logrotate.d/daphne
+    command: |
+      bash -c "
+        poetry config virtualenvs.create false &&
+        poetry install --no-root --without test &&
+        export PYTHONUNBUFFERED=1 &&
+        exec daphne -p 8000 -b 0.0.0.0 \
+          --websocket_timeout 60 \
+          --websocket_connect_timeout 20 \
+          -v 2 -t 120 \
+          --access-log /log/daphne/access.log \
+          --ping-interval 20 --ping-timeout 30 \
+          --application-close-timeout 30 \
+          config.asgi:application \
+          >>/log/daphne/stdout.log 2>>/log/daphne/error.log
+      "
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -53,6 +69,7 @@ services:
     volumes:
       - ../../../www:/www
       - ../../../log:/log
+      - ../../../script/logrotate/daphne/celery/daphne-celery:/etc/logrotate.d/daphne-celery
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
       celery -A config worker \
@@ -63,7 +80,7 @@ services:
     restart: always
     depends_on:
       - redis
-      - gunicorn-app
+      - daphne-app
     profiles:
       - celery
 
@@ -79,6 +96,7 @@ services:
     volumes:
       - ../../../www:/www
       - ../../../log:/log
+      - ../../../script/logrotate/daphne/celerybeat/daphne-celerybeat:/etc/logrotate.d/daphne-celerybeat
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
       celery -A config beat \

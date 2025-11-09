@@ -17,7 +17,8 @@ services:
       - ../../config/web-server/nginx/php/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ./ssl/certs/:/etc/ssl/certs/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
-      - ../../log/nginx/:/log/nginx/
+      - ../../log/:/log/
+      - ../../script/logrotate/nginx/nginx:/etc/logrotate.d/nginx
     ports:
       - 80:80
       - 443:443
@@ -42,6 +43,8 @@ services:
       - ../../www/:/www/
       - ../../config/app-server/php/pool.d/:/etc/php/7.3/fpm/pool.d
       - ../../config/app-server/php/php_ini/php.ini:/etc/php/7.3/fpm/php.ini
+      - ../../log:/log
+      - ../../script/logrotate/php-fpm/php-fpm:/etc/logrotate.d/php-fpm
     environment:
       TZ: "Asia/Seoul"
     restart: always

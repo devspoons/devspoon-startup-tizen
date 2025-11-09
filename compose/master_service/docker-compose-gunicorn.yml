@@ -16,7 +16,8 @@ services:
       - ../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ./ssl/certs/:/etc/ssl/certs/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
-      - ../../log/nginx/:/log/nginx/
+      - ../../log/:/log/
+      - ../../script/logrotate/nginx/nginx:/etc/logrotate.d/nginx
     ports:
       - 80:80
       - 443:443
@@ -41,13 +42,14 @@ services:
       - ../../www:/www
       - ../../log:/log
       - ../../config/app-server/gunicorn/:/gunicorn
+      - ../../script/logrotate/gunicorn/gunicorn:/etc/logrotate.d/gunicorn
     environment:
       TZ: "Asia/Seoul"
     command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && gunicorn -c /gunicorn/gunicorn.conf.py"
     restart: always
 
   celery:
-    build: ../../../docker/gunicorn/
+    build: ../../docker/gunicorn/
     logging:
       driver: "${LOG_DRIVER}"
       options:
@@ -56,8 +58,9 @@ services:
     working_dir: /www/${PROJECT_DIR}
     container_name: celery-app
     volumes:
-      - ../../../www:/www
-      - ../../../log:/log
+      - ../../www:/www
+      - ../../log:/log
+      - ../../script/logrotate/gunicorn/celery/gunicorn-celery:/etc/logrotate.d/gunicorn-celery
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
       celery -A config worker \
@@ -73,7 +76,7 @@ services:
       - celery
 
   celery-beat:
-    build: ../../../docker/gunicorn/
+    build: ../../docker/gunicorn/
     logging:
       driver: "${LOG_DRIVER}"
       options:
@@ -82,8 +85,9 @@ services:
     working_dir: /www/${PROJECT_DIR}
     container_name: celerybeat-app
     volumes:
-      - ../../../www:/www
-      - ../../../log:/log
+      - ../../www:/www
+      - ../../log:/log
+      - ../../script/logrotate/gunicorn/celerybeat/gunicorn-celerybeat:/etc/logrotate.d/gunicorn-celerybeat
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
       celery -A config beat \

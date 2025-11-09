@@ -1,0 +1,14 @@
+# Daphne 로그 로테이션 설정
+# - Docker 컨테이너 환경에서 무중단 운영을 위해 copytruncate 방식 사용
+# - copytruncate: 로그 파일을 복사 후 원본을 비우는 방식 (서비스 재시작 불필요)
+# - 로테이션 순간 극소량의 로그가 누락될 수 있으나 서비스는 중단되지 않음
+/log/daphne/*.log {
+    daily
+    size 100M
+    rotate 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}

@@ -17,7 +17,8 @@ services:
       - ../../config/web-server/nginx/uwsgi/uwsgi_params/uwsgi_params:/etc/nginx/uwsgi_params
       - ./ssl/certs/:/etc/ssl/certs/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
-      - ../../log/nginx/:/log/nginx/
+      - ../../log/:/log/
+      - ../../script/logrotate/nginx/nginx:/etc/logrotate.d/nginx
     ports:
       - 80:80
       - 443:443
@@ -42,13 +43,14 @@ services:
       - ../../www:/www
       - ../../config/app-server/uwsgi/uwsgi.ini:/application/uwsgi.ini
       - ../../log:/log
+      - ../../script/logrotate/uwsgi/uwsgi:/etc/logrotate.d/uwsgi
     command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && uwsgi --ini /application/uwsgi.ini"
     environment:
       TZ: "Asia/Seoul"
     restart: always
 
   celery:
-    build: ../../../docker/uwsgi/
+    build: ../../docker/uwsgi/
     logging:
       driver: "${LOG_DRIVER}"
       options:
@@ -57,8 +59,9 @@ services:
     working_dir: /www/${PROJECT_DIR}
     container_name: celery-app
     volumes:
-      - ../../../www:/www
-      - ../../../log:/log
+      - ../../www:/www
+      - ../../log:/log
+      - ../../script/logrotate/uwsgi/celery/uwsgi-celery:/etc/logrotate.d/uwsgi-celery
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
       celery -A config worker \
@@ -74,7 +77,7 @@ services:
       - celery
 
   celery-beat:
-    build: ../../../docker/uwsgi/
+    build: ../../docker/uwsgi/
     logging:
       driver: "${LOG_DRIVER}"
       options:
@@ -83,8 +86,9 @@ services:
     working_dir: /www/${PROJECT_DIR}
     container_name: celerybeat-app
     volumes:
-      - ../../../www:/www
-      - ../../../log:/log
+      - ../../www:/www
+      - ../../log:/log
+      - ../../script/logrotate/uwsgi/celerybeat/uwsgi-celerybeat:/etc/logrotate.d/uwsgi-celerybeat
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
       celery -A config beat \

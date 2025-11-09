@@ -1,0 +1,49 @@
+# /etc/logrotate.d/php-fpm
+
+# Access log (트래픽 로그 - 짧게 보관)
+/log/php-fpm/access.log {
+    daily
+    size 100M
+    rotate 7
+    maxage 7
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0640 www-data www-data
+    postrotate
+        kill -USR1 1 2>/dev/null || true
+    endscript
+}
+
+# Error log (에러 로그 - 길게 보관)
+/log/php-fpm/www-error.log {
+    daily
+    size 50M
+    rotate 30
+    maxage 30
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0640 www-data www-data
+    postrotate
+        kill -USR1 1 2>/dev/null || true
+    endscript
+}
+
+# Slow log (나중에 활성화 대비)
+/log/php-fpm/slow.log {
+    daily
+    size 50M
+    rotate 90
+    maxage 90
+    missingok
+    notifempty
+    compress
+    delaycompress
+    create 0640 www-data www-data
+    postrotate
+        kill -USR1 1 2>/dev/null || true
+    endscript
+}

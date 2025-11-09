@@ -16,7 +16,8 @@ services:
       - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ./ssl/certs/:/etc/ssl/certs/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
-      - ../../../log:/log
+      - ../../../log/:/log/
+      - ../../../script/logrotate/nginx/nginx:/etc/logrotate.d/nginx
     ports:
       - 80:80
       - 443:443
@@ -37,7 +38,8 @@ services:
       - ../../../www:/www
       - ../../../log:/log
       - ../../../config/app-server/gunicorn/:/gunicorn
-    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root && gunicorn -c /gunicorn/gunicorn.conf.py"
+      - ../../../script/logrotate/gunicorn/gunicorn:/etc/logrotate.d/gunicorn
+    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && gunicorn -c /gunicorn/gunicorn.conf.py"
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -54,6 +56,7 @@ services:
     volumes:
       - ../../../www:/www
       - ../../../log:/log
+      - ../../../script/logrotate/gunicorn/celery/gunicorn-celery:/etc/logrotate.d/gunicorn-celery
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
       celery -A config worker \
@@ -80,6 +83,7 @@ services:
     volumes:
       - ../../../www:/www
       - ../../../log:/log
+      - ../../../script/logrotate/gunicorn/celerybeat/gunicorn-celerybeat:/etc/logrotate.d/gunicorn-celerybeat
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
       celery -A config beat \
