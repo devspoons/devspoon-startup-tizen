@@ -53,6 +53,20 @@ services:
           config.asgi:application \
           >>/log/daphne/stdout.log 2>>/log/daphne/error.log
       "
+    # command: |
+    #   bash -c "
+    #     uv sync --system --frozen --no-dev &&
+    #     export PYTHONUNBUFFERED=1 &&
+    #     exec daphne -p 8000 -b 0.0.0.0 \
+    #       --websocket_timeout 60 \
+    #       --websocket_connect_timeout 20 \
+    #       -v 2 -t 120 \
+    #       --access-log /log/daphne/access.log \
+    #       --ping-interval 20 --ping-timeout 30 \
+    #       --application-close-timeout 30 \
+    #       config.asgi:application \
+    #       >>/log/daphne/stdout.log 2>>/log/daphne/error.log
+    #   "
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -74,7 +88,11 @@ services:
       poetry install --no-root && \
       celery -A config worker \
       --loglevel=INFO \
-      --logfile=/log/daphne/celery/worker-%n%I.log "
+      --logfile=/log/daphne/celery/worker-%n%I.log"
+    # command: bash -c "uv sync --system --frozen --no-dev && \
+    #   exec celery -A config worker \
+    #   --loglevel=INFO \
+    #   --logfile=/log/daphne/celery/worker-%n%I.log"
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -102,7 +120,12 @@ services:
       celery -A config beat \
       --loglevel=INFO \
       --scheduler django_celery_beat.schedulers:DatabaseScheduler \
-      --logfile=/log/daphne/celerybeat/celerybeat.log "
+      --logfile=/log/daphne/celerybeat/celerybeat.log"
+    # command: bash -c "uv sync --system --frozen --no-dev && \
+    #   exec celery -A config beat \
+    #   --loglevel=INFO \
+    #   --scheduler django_celery_beat.schedulers:DatabaseScheduler \
+    #   --logfile=/log/daphne/celerybeat/celerybeat.log"
     environment:
       TZ: "Asia/Seoul"
     restart: always

@@ -45,7 +45,8 @@ services:
       - ../../script/logrotate/gunicorn/gunicorn:/etc/logrotate.d/gunicorn
     environment:
       TZ: "Asia/Seoul"
-    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && gunicorn -c /gunicorn/gunicorn.conf.py"
+    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && exec gunicorn -c /gunicorn/gunicorn.conf.py"
+    # command: bash -c "uv sync --system --frozen --no-dev && exec gunicorn -c /gunicorn/gunicorn.conf.py"
     restart: always
 
   celery:
@@ -63,9 +64,13 @@ services:
       - ../../script/logrotate/gunicorn/celery/gunicorn-celery:/etc/logrotate.d/gunicorn-celery
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
-      celery -A config worker \
+      exec celery -A config worker \
       --loglevel=INFO \
-      --logfile=/log/gunicorn/celery/worker-%n%I.log "
+      --logfile=/log/gunicorn/celery/worker-%n%I.log"
+    # command: bash -c "uv sync --system --frozen --no-dev && \
+    #   exec celery -A config worker \
+    #   --loglevel=INFO \
+    #   --logfile=/log/gunicorn/celery/worker-%n%I.log"
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -90,10 +95,15 @@ services:
       - ../../script/logrotate/gunicorn/celerybeat/gunicorn-celerybeat:/etc/logrotate.d/gunicorn-celerybeat
     command: bash -c "poetry config virtualenvs.create false && \
       poetry install --no-root && \
-      celery -A config beat \
+      exec celery -A config beat \
       --loglevel=INFO \
       --scheduler django_celery_beat.schedulers:DatabaseScheduler \
       --logfile=/log/gunicorn/celerybeat/celerybeat.log "
+    # command: bash -c "uv sync --system --frozen --no-dev && \
+    #   exec celery -A config beat \
+    #   --loglevel=INFO \
+    #   --scheduler django_celery_beat.schedulers:DatabaseScheduler \
+    #   --logfile=/log/gunicorn/celerybeat/celerybeat.log"
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -219,24 +229,6 @@ services:
       - ./storage:/home/gitolite-creator/repositories
     ports:
       - 2222:22
-    environment:
-      TZ: "Asia/Seoul"
-    restart: always
-
-  tizenenv:
-    build: ../../docker/tizen-env/
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
-    working_dir: /application
-    container_name: tizenenv
-    privileged: true
-    volumes:
-      - ../../log/tizen/:/log/tizen/
-    ports:
-      - 2221:22
     environment:
       TZ: "Asia/Seoul"
     restart: always
