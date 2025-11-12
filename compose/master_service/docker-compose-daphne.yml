@@ -61,7 +61,7 @@ services:
       "
     # command: |
     #   bash -c "
-    #     uv sync --system --frozen --no-dev &&
+    #     uv pip install --system --no-cache . &&
     #     export PYTHONUNBUFFERED=1 &&
     #     exec daphne -p 8000 -b 0.0.0.0 \
     #       --websocket_timeout 60 \
@@ -93,7 +93,7 @@ services:
       exec celery -A config worker \
       --loglevel=INFO \
       --logfile=/log/daphne/celery/worker-%n%I.log"
-    # command: bash -c "uv sync --system --frozen --no-dev && \
+    # command: bash -c "uv pip install --system --no-cache . && \
     #   exec celery -A config worker \
     #   --loglevel=INFO \
     #   --logfile=/log/daphne/celery/worker-%n%I.log"
@@ -125,7 +125,7 @@ services:
       --loglevel=INFO \
       --scheduler django_celery_beat.schedulers:DatabaseScheduler \
       --logfile=/log/daphne/celerybeat/celerybeat.log"
-    # command: bash -c "uv sync --system --frozen --no-dev && \
+    # command: bash -c "uv pip install --system --no-cache . && \
     #   exec celery -A config beat \
     #   --loglevel=INFO \
     #   --scheduler django_celery_beat.schedulers:DatabaseScheduler \

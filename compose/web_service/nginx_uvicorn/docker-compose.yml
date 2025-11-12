@@ -40,7 +40,7 @@ services:
       - ../../../config/app-server/uvicorn/:/uvicorn
       - ../../../script/logrotate/uvicorn/uvicorn:/etc/logrotate.d/uvicorn
     command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && exec gunicorn -c /uvicorn/gunicorn_uvicorn.conf.py"
-    # command: bash -c "uv sync --system --frozen --no-dev && exec gunicorn -c /uvicorn/gunicorn_uvicorn.conf.py"
+    # command: bash -c "uv pip install --system --no-cache . && exec gunicorn -c /uvicorn/gunicorn_uvicorn.conf.py"
     environment:
       TZ: "Asia/Seoul"
     restart: always
@@ -63,7 +63,7 @@ services:
       exec celery -A config worker \
       --loglevel=INFO \
       --logfile=/log/uvicorn/celery/worker-%n%I.log "
-    # command: bash -c "uv sync --system --frozen --no-dev && \
+    # command: bash -c "uv pip install --system --no-cache . && \
     #   exec celery -A config worker \
     #   --loglevel=INFO \
     #   --logfile=/log/uvicorn/celery/worker-%n%I.log"
@@ -95,7 +95,7 @@ services:
       --loglevel=INFO \
       --scheduler django_celery_beat.schedulers:DatabaseScheduler \
       --logfile=/log/uvicorn/celerybeat/celerybeat.log "
-    # command: bash -c "uv sync --system --frozen --no-dev && \
+    # command: bash -c "uv pip install --system --no-cache . && \
     #   exec celery -A config beat \
     #   --loglevel=INFO \
     #   --scheduler django_celery_beat.schedulers:DatabaseScheduler \
