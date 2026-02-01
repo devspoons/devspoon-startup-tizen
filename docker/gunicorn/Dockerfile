@@ -1,74 +1,128 @@
-FROM ubuntu:latest
+FROM ubuntu:24.04
 
-RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
-
+# ========================================
+# 1. Base setup and timezone configuration
+# ========================================
 ENV TZ=Asia/Seoul
-
-RUN apt-get install -yq tzdata 
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
-
-# curl/wget/git/gnupg2/lsb-release/lz4/zstd
-RUN apt-get install -y curl wget git tar gnupg2 lsb-release lz4 zstd
-# vim
-RUN apt-get install -y vim
-
-# Python
-RUN apt-get install -y build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev libsqlite3-dev
-RUN cd /usr/src ; wget https://www.python.org/ftp/python/3.14.0/Python-3.14.0.tar.xz  ; tar -xf Python-3.14.0.tar.xz ; cd Python-3.14.0 ; ./configure ; make altinstall
-
-# be sure it's 3.14.0
-RUN ! ls /usr/local/bin/python3.14.0 && ls /usr/src/Python-3.14.0/python && cp /usr/src/Python-3.14.0/python /usr/local/bin/python3.14.0 ; exit 0
-
-# replace python version to have 3.14.0 as default
-RUN rm -f /usr/bin/python
-RUN rm -f /usr/bin/python3
-RUN ln -s /usr/local/bin/python3.14.0 /usr/bin/python
-RUN ln -s /usr/local/bin/python3.14.0 /usr/bin/python3
-RUN ln -s /usr/local/bin/python3.14.0 /usr/local/bin/python
-RUN ln -s /usr/local/bin/python3.14.0 /usr/local/bin/python3
-
+ENV DEBIAN_FRONTEND=noninteractive
 ENV PYTHONUNBUFFERED=1
+ENV PYTHON_VERSION=3.13.1
 
-# create links to pip3.12
-RUN ln -s /usr/local/bin/pip3.14 /usr/bin/pip
-RUN ln -s /usr/local/bin/pip3.14 /usr/bin/pip3
-RUN ln -s /usr/local/bin/pip3.14 /usr/local/bin/pip
-RUN ln -s /usr/local/bin/pip3.14 /usr/local/bin/pip3
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends apt-utils && \
+    apt-get install -yq tzdata && \
+    ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-#update apt-get
-RUN apt-get update && apt-get -y upgrade
-RUN pip install --upgrade pip
-RUN pip3 install --upgrade pip
+# ========================================
+# 2. Install essential tools
+# ========================================
+RUN apt-get install -y --no-install-recommends \
+    curl \
+    wget \
+    git \
+    tar \
+    gnupg2 \
+    lsb-release \
+    lz4 \
+    zstd \
+    vim \
+    ca-certificates
 
-RUN apt-get install -y python3-dev libmysqlclient-dev pkg-config
+# ========================================
+# 3. Install Python build dependencies and compile Python
+# ========================================
+RUN apt-get install -y --no-install-recommends \
+    build-essential \
+    zlib1g-dev \
+    libncurses5-dev \
+    libgdbm-dev \
+    libnss3-dev \
+    libssl-dev \
+    libreadline-dev \
+    libffi-dev \
+    libsqlite3-dev \
+    libbz2-dev \
+    liblzma-dev && \
+    cd /usr/src && \
+    wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tar.xz && \
+    tar -xf Python-${PYTHON_VERSION}.tar.xz && \
+    cd Python-${PYTHON_VERSION} && \
+    ./configure --enable-optimizations && \
+    make -j$(nproc) altinstall && \
+    rm -rf /usr/src/Python-${PYTHON_VERSION} /usr/src/Python-${PYTHON_VERSION}.tar.xz
 
-RUN pip3 install wheel
+# ========================================
+# 4. Setup Python symlinks
+# ========================================
+RUN rm -f /usr/bin/python /usr/bin/python3 && \
+    ln -s /usr/local/bin/python3.13 /usr/bin/python && \
+    ln -s /usr/local/bin/python3.13 /usr/bin/python3 && \
+    ln -s /usr/local/bin/python3.13 /usr/local/bin/python && \
+    ln -s /usr/local/bin/python3.13 /usr/local/bin/python3
 
-# SQLAlchemy
-RUN pip3 install sqlalchemy alembic pydantic
+# ========================================
+# 5. Setup pip symlinks
+# ========================================
+RUN ln -s /usr/local/bin/pip3.13 /usr/bin/pip && \
+    ln -s /usr/local/bin/pip3.13 /usr/bin/pip3 && \
+    ln -s /usr/local/bin/pip3.13 /usr/local/bin/pip && \
+    ln -s /usr/local/bin/pip3.13 /usr/local/bin/pip3
 
-# postgresql 동기 / 비동기
-RUN pip3 install psycopg2-binary asyncpg 
+# ========================================
+# 6. Upgrade pip and install wheel
+# ========================================
+RUN pip install --no-cache-dir --upgrade pip wheel
 
-# mysql 동기 / 비동기
-RUN pip3 install mysqlclient asyncmy
+# ========================================
+# 7. Install MySQL client dependencies
+# ========================================
+RUN apt-get install -y --no-install-recommends \
+    python3-dev \
+    libmysqlclient-dev \
+    pkg-config
 
-# mysql 백업
-RUN curl -O https://repo.percona.com/apt/percona-release_latest.generic_all.deb
-RUN apt-get install -y ./percona-release_latest.generic_all.deb
-RUN apt update
-RUN percona-release enable pxb-84-lts
-RUN apt-get install -y percona-xtrabackup-84
+# ========================================
+# 8. Install Python packages - ORM and Database drivers
+# ========================================
+RUN pip3 install --no-cache-dir \
+    sqlalchemy \
+    alembic \
+    pydantic \
+    psycopg2-binary \
+    asyncpg \
+    mysqlclient \
+    asyncmy
 
-# postgresql 백업
-RUN apt-get -y install pgbackrest
+# ========================================
+# 9. Install MySQL backup tool (Percona XtraBackup)
+# ========================================
+RUN curl -O https://repo.percona.com/apt/percona-release_latest.generic_all.deb && \
+    apt-get install -y ./percona-release_latest.generic_all.deb && \
+    rm -f percona-release_latest.generic_all.deb && \
+    apt-get update && \
+    percona-release enable pxb-84-lts && \
+    apt-get install -y percona-xtrabackup-84
 
-# gunicorn & uvicorn 
-RUN pip3 install gunicorn uvicorn[standard]
+# ========================================
+# 10. Install PostgreSQL backup tool
+# ========================================
+RUN apt-get install -y --no-install-recommends pgbackrest
 
-# pip3 package
-RUN pip3 install fastapi uv
+# ========================================
+# 11. Install Python web frameworks and tools
+# ========================================
+RUN pip3 install --no-cache-dir \
+    gunicorn \
+    "uvicorn[standard]" \
+    fastapi \
+    django \
+    poetry \
+    uv
 
-RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
-RUN update-ca-certificates
+# ========================================
+# 12. Cleanup
+# ========================================
+RUN apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* && \
+    update-ca-certificates

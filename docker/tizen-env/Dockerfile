@@ -1,21 +1,44 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
-RUN echo 'deb [trusted=yes] http://download.tizen.org/tools/latest-release/Ubuntu_18.04/ /' >> /etc/apt/sources.list && \
-    apt-get update && \
-    apt-get install -y git wget curl vim ssh gbs mic python python-pip build-essential openssh-server locales repo && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils && \
-    apt-get clean;
+# ========================================
+# NOTE: Ubuntu 20.04 is required for Tizen SDK compatibility
+# Tizen tools (gbs, mic) have specific Ubuntu version requirements
+# ========================================
 
-# Set the locale
+# ========================================
+# 1. Environment configuration
+# ========================================
 ENV OS_LOCALE_COUNTRY="en_US"
 ENV OS_LOCALE_ENCODING="UTF-8"
 ENV OS_LOCALE="en_US.UTF-8"
+ENV DEBIAN_FRONTEND=noninteractive
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64/
 
-RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
+# ========================================
+# 2. Add Tizen repository and install base tools
+# ========================================
+RUN echo 'deb [trusted=yes] http://download.tizen.org/tools/latest-release/Ubuntu_20.04/ /' >> /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+    apt-utils \
+    git \
+    wget \
+    curl \
+    vim \
+    ssh \
+    gbs \
+    mic \
+    python3 \
+    python3-pip \
+    build-essential \
+    openssh-server \
+    locales \
+    software-properties-common \
+    ca-certificates
 
-RUN apt-get install -y --no-install-recommends locales
-
+# ========================================
+# 3. Locale configuration
+# ========================================
 RUN localedef -i ${OS_LOCALE_COUNTRY} -f ${OS_LOCALE_ENCODING} ${OS_LOCALE}
 
 ENV LANG=${OS_LOCALE} \
@@ -24,62 +47,56 @@ ENV LANG=${OS_LOCALE} \
     LC_CTYPE=${OS_LOCALE} \
     LC_MESSAGES=${OS_LOCALE}
 
-# Install "software-properties-common" (for the "add-apt-repository")
+# ========================================
+# 4. Install OpenJDK 11 (LTS version)
+# ========================================
 RUN apt-get update && \
-    apt-get install -y \
-    software-properties-common && \
-    apt-get clean;
+    apt-get install -y --no-install-recommends \
+    openjdk-11-jdk \
+    ant \
+    ca-certificates-java && \
+    update-ca-certificates -f
 
-# Add the "JAVA" ppa
-RUN add-apt-repository -y \
-    ppa:webupd8team/java
-
-RUN apt-get --allow-releaseinfo-change update
-
-# Install OpenJDK-8
-RUN apt-get update && \
-    apt-get install -y openjdk-8-jdk && \
-    apt-get install -y ant && \
-    apt-get clean;
-
-# Fix certificate issues
-RUN apt-get update && \
-    apt-get install ca-certificates-java && \
+# ========================================
+# 5. Cleanup APT cache
+# ========================================
+RUN apt-get autoremove -y && \
     apt-get clean && \
-    update-ca-certificates -f;
+    rm -rf /var/lib/apt/lists/*
 
-# Setup JAVA_HOME -- useful for docker commandline
-ENV JAVA_HOME /usr/lib/jvm/java-8-openjdk-amd64/
-RUN export JAVA_HOME
-
-RUN apt-get autoremove -y && apt-get clean \
-	&& rm -rf /var/lib/apt/lists/*
-
-RUN sed -i 's/^AcceptEnv LANG LC_\*$//g' /etc/ssh/sshd_config
-
-RUN mkdir /var/run/sshd
+# ========================================
+# 6. SSH configuration
+# ========================================
+RUN sed -i 's/^AcceptEnv LANG LC_\*$//g' /etc/ssh/sshd_config && \
+    mkdir -p /var/run/sshd
 
 ADD system/sshd_config /etc/ssh/sshd_config
 
-#ex) test_tizen
-RUN git config --global user.name "USERNAME"
+# ========================================
+# 7. Git configuration
+# IMPORTANT: Replace USERNAME and E-MAIL with your actual values
+# ========================================
+RUN git config --global user.name "USERNAME" && \
+    git config --global user.email "E-MAIL" && \
+    git config --global color.ui true
 
-#ex) test_tizen@gmail.com
-RUN git config --global user.email "E-MAIL"
+# ========================================
+# 8. Setup PATH
+# ========================================
+RUN mkdir -p ~/bin && \
+    echo 'PATH=~/bin:$PATH' >> ~/.bashrc
 
-RUN git config --global color.ui true
-
-RUN mkdir ~/bin/
-RUN echo 'PATH=~/bin:$PATH' >> ~/.bashrc
-
+# ========================================
+# 9. Copy SSH keys and scripts
+# ========================================
 COPY .ssh /root/.ssh
 
-RUN chmod 700 /root/.ssh/ && chmod 644 /root/.ssh/* && chmod 600 /root/.ssh/id_rsa
+RUN chmod 700 /root/.ssh/ && \
+    chmod 644 /root/.ssh/* && \
+    chmod 600 /root/.ssh/id_rsa
 
 ADD repo-script/ /root/repo-script/
-
 ADD samples/ /root/samples/
-
 ADD build-script/ /root/build-script/
 
-ENTRYPOINT ["/usr/sbin/sshd","-D"]
+ENTRYPOINT ["/usr/sbin/sshd", "-D"]

@@ -1,51 +1,55 @@
 FROM nginx:latest
 
 # ========================================
-# 1. APT 업데이트
-# ========================================
-RUN apt-get update
-
-# ========================================
-# 2. APT 기본 도구 설치 (경고 제거용)
-# ========================================
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
-
-# ========================================
-# 3. 타임존 설정 (Asia/Seoul)
+# 1. Environment configuration
 # ========================================
 ENV TZ=Asia/Seoul
-RUN apt-get install -yq tzdata
+ENV DEBIAN_FRONTEND=noninteractive
+
+# ========================================
+# 2. APT update and install base tools
+# ========================================
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    apt-utils \
+    tzdata \
+    sendmail \
+    wget \
+    gnupg \
+    ca-certificates
+
+# ========================================
+# 3. Timezone configuration
+# ========================================
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # ========================================
-# 4. 필요한 패키지 설치
+# 4. Install Cron and Certbot for SSL auto-renewal
 # ========================================
-RUN apt-get install -y sendmail wget gnupg
+RUN apt-get install -y --no-install-recommends \
+    cron \
+    certbot \
+    python3-certbot-nginx
 
 # ========================================
-# 7. Cron 및 Certbot 설치 (SSL 인증서 자동 갱신)
+# 5. Update CA certificates
 # ========================================
-RUN apt-get install -y cron certbot python3-certbot-nginx
+RUN update-ca-certificates && \
+    chmod 644 /etc/ssl/certs/ca-certificates.crt
 
 # ========================================
-# 8. CA 인증서 설치 및 업데이트
+# 6. Cleanup APT cache
 # ========================================
-RUN apt-get update && apt-get install -y ca-certificates
-RUN update-ca-certificates
-RUN chmod 644 /etc/ssl/certs/ca-certificates.crt
+RUN apt-get autoremove -y && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 # ========================================
-# 9. APT 캐시 정리
+# 7. Register Certbot auto-renewal cron job
 # ========================================
-RUN apt-get autoremove -y && apt-get clean
-RUN rm -rf /var/lib/apt/lists/*
+RUN (crontab -l 2>/dev/null || true; echo "0 5 * * 1 certbot renew --quiet --deploy-hook \"nginx -t && service nginx reload\" >> /var/log/nginx/certbot_renew.log 2>&1") | crontab -
 
 # ========================================
-# 10. Certbot 자동 갱신 Cron 작업 등록
+# 8. Add cron startup to Nginx entrypoint
 # ========================================
-RUN crontab -l | { cat; echo "0 5 * * 1 certbot renew --quiet --deploy-hook \"nginx -t && service nginx reload\" >> /log/nginx/crontab_$(date +\%Y\%m\%d).log 2>&1"; } | crontab -
-
-# ========================================
-# 11. Nginx 시작 스크립트에 Cron 추가
-# ========================================
-RUN sed -i'' -r -e "/set/i\cron" docker-entrypoint.sh
+RUN sed -i'' -r -e "/set/i\cron" /docker-entrypoint.sh
