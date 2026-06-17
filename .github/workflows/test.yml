@@ -1,0 +1,45 @@
+name: CI Tests
+
+# push 시 자동으로 테스트 파이프라인이 동작한다. (배포 단계 없음 — 테스트 전용)
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: 통합 테스트
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: 소스 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설정
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: 필수 도구 설치 (jq / curl / php-cli)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl php-cli
+
+      - name: CI 테스트 실행 (실패/성공 모두 Slack·Telegram 통보)
+        run: bash script/ci/run-ci.sh
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+
+      - name: 테스트 로그 아티팩트 업로드
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs
+          path: log/ci/
+          if-no-files-found: ignore
+          retention-days: 14
