@@ -31,4 +31,17 @@ RUN apt-get purge -y --auto-remove software-properties-common wget gnupg \
     && apt-get autoremove -y && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# ========================================
+# In-container log rotation (cron + logrotate)
+# - cron: 일일 트리거
+# - logrotate: /etc/logrotate.d/php-fpm 처리 (USR1 → PID 1 = php-fpm master)
+# ========================================
+RUN apt-get update && apt-get install -y --no-install-recommends cron logrotate \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint-with-cron.sh /usr/local/bin/entrypoint-with-cron
+RUN chmod +x /usr/local/bin/entrypoint-with-cron
+ENTRYPOINT ["/usr/local/bin/entrypoint-with-cron"]
+CMD ["php-fpm", "--nodaemonize"]
+
 RUN update-ca-certificates

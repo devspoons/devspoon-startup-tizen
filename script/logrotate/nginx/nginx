@@ -1,7 +1,7 @@
 # Nginx 로그 로테이션 설정
-# - Docker 컨테이너 환경에서 무중단 운영을 위해 copytruncate 방식 사용
-# - copytruncate: 로그 파일을 복사 후 원본을 비우는 방식 (서비스 재시작 불필요)
-# - 로테이션 순간 극소량의 로그가 누락될 수 있으나 서비스는 중단되지 않음
+# - 회전 방식: USR1 신호로 nginx master 가 로그 파일 재오픈 (postrotate)
+#              copytruncate 미사용 — nginx 가 신호 처리에 안전하므로 손실 0건
+# - 컨테이너 환경에서 무중단 reload (worker 재시작 없음)
 /log/nginx/*.log {
     daily
     size 100M
@@ -13,7 +13,7 @@
     create 0640 nginx nginx
     sharedscripts
     postrotate
-        # Nginx에 USR1 signal 전송
+        # Nginx 마스터 프로세스에 USR1 전송 — 로그 파일 재오픈
         if [ -f /var/run/nginx.pid ]; then
             kill -USR1 `cat /var/run/nginx.pid`
         fi

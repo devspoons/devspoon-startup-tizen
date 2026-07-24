@@ -1,71 +1,109 @@
-#!/bin/bash
+#!/usr/bin/env bash
+# =============================================================================
+# Generate per-domain HTTPS nginx conf from sample_nginx_https.conf
+# (gunicorn stack)
+#
+# Usage (interactive):
+#   ./nginx_https_conf.sh
+#
+# Usage (non-interactive):
+#   ./nginx_https_conf.sh --webroot foo --port 80 --domain example.com \
+#                         --appname gunicorn-app --serviceport 8000 \
+#                         --filename example.com
+#
+# Output: ./conf.d/<filename>_gunicorn_https_ng.conf
+# =============================================================================
+set -euo pipefail
 
-while :
-do 
-    echo "* if your webroot has sub-level, you should be insert as \\\/A\\\/B\\\/C"
-    echo "ex) shop\\\/django_sample"
-    echo -n "Enter the service web root without the path of '/www/' >"
-    read webroot
-    echo  "Entered service web root: $webroot"
-    if [[ "$webroot" != "" ]]; then
-        break
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SAMPLE="${SCRIPT_DIR}/sample_nginx_https.conf"
+OUT_DIR="${SCRIPT_DIR}/conf.d"
+SUFFIX="_gunicorn_https_ng"
+
+webroot=""
+portnumber=""
+domain=""
+appname=""
+serviceport=""
+filename=""
+force="0"
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --webroot)      webroot="$2"; shift 2;;
+        --port)         portnumber="$2"; shift 2;;
+        --domain)       domain="$2"; shift 2;;
+        --appname)      appname="$2"; shift 2;;
+        --serviceport)  serviceport="$2"; shift 2;;
+        --filename)     filename="$2"; shift 2;;
+        -f|--force)     force="1"; shift;;
+        -h|--help)
+            sed -n '2,16p' "$0"; exit 0;;
+        *) echo "Unknown arg: $1" >&2; exit 2;;
+    esac
+done
+
+prompt_required() {
+    local var_name="$1" label="$2" current="${!var_name}"
+    while [[ -z "$current" ]]; do
+        read -r -p "$label > " current
+    done
+    printf -v "$var_name" '%s' "$current"
+}
+
+prompt_optional() {
+    local var_name="$1" label="$2" current="${!var_name}"
+    if [[ -z "$current" ]]; then
+        read -r -p "$label (enter for none) > " current || true
     fi
-done 
+    printf -v "$var_name" '%s' "$current"
+}
 
-while :
-do 
-    echo -n "Enter the service portnumber >"
-    read portnumber
-    echo  "Entered service portnumber: $portnumber"
-    if [[ "$portnumber" != "" ]]; then
-        break
-    fi
-done 
+prompt_required webroot     "Service web root under /www/ (e.g. shop/myapp)"
+prompt_required portnumber  "HTTP listen port for redirect (e.g. 80)"
+prompt_required domain      "Domain (e.g. example.com)"
+prompt_required appname     "Upstream service name (e.g. gunicorn-app)"
+prompt_optional serviceport "Upstream port (e.g. 8000)"
+prompt_required filename    "Output filename base (e.g. example.com)"
 
-while :
-do 
-    echo -n "Enter the service domain >"
-    read domain
-    echo  "Entered service domain: $domain"
-    if [[ "$domain" != "" ]]; then
-        break
-    fi
-done 
+[[ -f "$SAMPLE" ]] || { echo "Sample not found: $SAMPLE" >&2; exit 1; }
+mkdir -p "$OUT_DIR"
 
-while :
-do 
-    echo -n "Enter the app name >"
-    read appname
-    echo  "Entered app name: $appname"
-    if [[ "$appname" != "" ]]; then
-        break
-    fi
-done 
-
-echo "Enter the serviceport"
-echo -n "if you push enter with none, there are no port number >"
-read serviceport
-echo  "Entered proxy port: $serviceport"
-
-while :
-do 
-    echo -n "Enter the file name >"
-    read filename
-    echo  "Entered file name: $filename"
-    if [[ "$filename" != "" ]]; then
-        break
-    fi
-done 
-
-sed 's/webroot/'$webroot'/g' sample_nginx_https.conf > $filename'1'.temp
-sed 's/portnumber/'$portnumber'/g' $filename'1'.temp > $filename'2'.temp
-sed 's/domain/'$domain'/g' $filename'2'.temp > $filename'3'.temp
-sed 's/appname/'$appname'/g' $filename'3'.temp > $filename'4'.temp
-if [[ "$serviceport" == "" ]]; then
-    sed 's/:serviceport/''/g' $filename'4'.temp > $filename'5'.temp
-else
-    sed 's/serviceport/'$serviceport'/g' $filename'4'.temp > $filename'5'.temp
+OUT_PATH="${OUT_DIR}/${filename}${SUFFIX}.conf"
+if [[ -e "$OUT_PATH" && "$force" != "1" ]]; then
+    echo "Output already exists: $OUT_PATH (use -f to overwrite)" >&2
+    exit 1
 fi
-sed 's/filename/'$filename'/g' $filename'5'.temp > ./conf.d/$filename'_gunicorn_https_ng'.conf 
 
-rm *.temp
+escape_sed() { printf '%s' "$1" | sed -e 's/[\/&|]/\\&/g'; }
+E_WEBROOT=$(escape_sed "$webroot")
+E_DOMAIN=$(escape_sed "$domain")
+E_APPNAME=$(escape_sed "$appname")
+E_FILENAME=$(escape_sed "$filename")
+E_PORT=$(escape_sed "$portnumber")
+
+TMP="$(mktemp)"
+trap 'rm -f "$TMP"' EXIT
+
+sed -e "s|webroot|${E_WEBROOT}|g" \
+    -e "s|appname|${E_APPNAME}|g" \
+    -e "s|filename|${E_FILENAME}|g" \
+    -e "s|portnumber|${E_PORT}|g" \
+    -e "s|www\\.domain|www.${E_DOMAIN}|g" \
+    -e "s|domain|${E_DOMAIN}|g" \
+    "$SAMPLE" > "$TMP"
+
+if [[ -z "$serviceport" ]]; then
+    sed -i 's|:serviceport||g' "$TMP"
+else
+    sed -i "s|serviceport|${serviceport}|g" "$TMP"
+fi
+
+mv "$TMP" "$OUT_PATH"
+trap - EXIT
+
+if command -v nginx >/dev/null 2>&1; then
+    nginx -t 2>&1 || echo "WARNING: nginx -t failed. Inspect $OUT_PATH"
+fi
+
+echo "Wrote: $OUT_PATH"

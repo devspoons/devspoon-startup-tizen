@@ -70,5 +70,17 @@ RUN pip3 install gunicorn uvicorn[standard]
 # pip3 package
 RUN pip3 install fastapi uv
 
+# ========================================
+# In-container log rotation (cron + logrotate)
+# - cron: 일일 트리거
+# - logrotate: /etc/logrotate.d/* 처리 (mounted: gunicorn / gunicorn-celery / gunicorn-celerybeat)
+# ========================================
+RUN apt-get update && apt-get install -y --no-install-recommends cron logrotate \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY entrypoint-with-cron.sh /usr/local/bin/entrypoint-with-cron
+RUN chmod +x /usr/local/bin/entrypoint-with-cron
+ENTRYPOINT ["/usr/local/bin/entrypoint-with-cron"]
+
 RUN apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 RUN update-ca-certificates

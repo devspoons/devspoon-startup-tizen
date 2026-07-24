@@ -1,0 +1,7 @@
+# 배포 대상은 Linux 컨테이너 — 텍스트 파일은 저장소·작업트리 모두 LF 로 정규화한다.
+# (Windows 체크아웃 시 CRLF 혼입으로 shell 스크립트가 깨지는 것을 방지)
+* text=auto eol=lf
+
+# 실행 스크립트/설정은 반드시 LF (명시)
+*.sh   text eol=lf
+*.conf text eol=lf

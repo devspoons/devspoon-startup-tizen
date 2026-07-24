@@ -1,17 +1,44 @@
-proxy_set_header Host $http_host;
-proxy_set_header X-Real-IP $remote_addr;
-proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-proxy_set_header X-Forwarded-Proto $scheme;
-proxy_set_header Upgrade $http_upgrade;
-proxy_set_header Connection "Upgrade";
-proxy_set_header Connection keep-alive;
+# =============================================================================
+# proxy_params (gunicorn / uwsgi / php 공통)
+# 사용법: proxy_pass 가 있는 location 블록 내부에서 명시적으로
+#         include /etc/nginx/proxy_params;  로 호출한다.
+# 주의:  WebSocket 의 Upgrade/Connection 헤더는 여기에 두지 않는다.
+#        WebSocket 이 필요한 location 에서만 별도로 설정한다.
+# =============================================================================
 
-proxy_cache_bypass $http_upgrade;
-proxy_buffering off;
+# HTTP/1.1 keep-alive 사용 (업스트림 측 효율 향상 + WebSocket 호환성 확보)
+proxy_http_version          1.1;
+
+# ----- 클라이언트 식별 헤더 ----------------------------------------------------
+proxy_set_header Host               $http_host;
+proxy_set_header X-Real-IP          $remote_addr;
+proxy_set_header X-Forwarded-For    $proxy_add_x_forwarded_for;
+proxy_set_header X-Forwarded-Proto  $scheme;
+proxy_set_header X-Forwarded-Host   $host;
+proxy_set_header X-Forwarded-Port   $server_port;
+
+# ----- 업스트림 keep-alive 정합 ------------------------------------------------
+# 클라이언트의 Connection 헤더를 그대로 백엔드에 전달하지 않는다.
+# 빈 문자열이면 nginx 가 keep-alive 를 자동 처리.
+proxy_set_header Connection         "";
+
+# ----- 리다이렉트 / 캐시 ------------------------------------------------------
 proxy_redirect          off;
-proxy_connect_timeout   90;
-proxy_send_timeout      90;
-proxy_read_timeout      90;
-proxy_buffers           32 4k;
-proxy_headers_hash_max_size 512;
-proxy_headers_hash_bucket_size  64;
+proxy_cache_bypass      $http_pragma;
+proxy_no_cache          $http_pragma;
+
+# ----- 타임아웃 (도메인별 location 에서 override 가능) -------------------------
+proxy_connect_timeout   60s;
+proxy_send_timeout      60s;
+proxy_read_timeout      60s;
+
+# ----- 응답 버퍼링 ------------------------------------------------------------
+proxy_buffering         on;
+proxy_buffer_size       4k;
+proxy_buffers           16 4k;
+proxy_busy_buffers_size 16k;
+proxy_max_temp_file_size 1024m;
+
+# ----- 프록시 헤더 해시 -------------------------------------------------------
+proxy_headers_hash_max_size     1024;
+proxy_headers_hash_bucket_size  128;
