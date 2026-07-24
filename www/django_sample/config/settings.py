@@ -117,7 +117,7 @@ TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
-USE_L10N = True
+# USE_L10N 은 Django 5.0 에서 제거됨(항상 True). Django 6.0 호환 위해 삭제.
 
 USE_TZ = True
 
