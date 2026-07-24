@@ -14,7 +14,7 @@ services:
       - ../../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
       - ../../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
-      - ./ssl/certs/:/etc/ssl/certs/
+      - ./ssl/dhparam/:/etc/nginx/dhparam-backup/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
       - ../../../log/:/log/
       - ../../../script/logrotate/nginx/nginx:/etc/logrotate.d/nginx
@@ -24,6 +24,9 @@ services:
     environment:
       TZ: "Asia/Seoul"
     restart: always
+    depends_on:
+      uvicorn-app:
+        condition: service_healthy
 
   uvicorn-app:
     build: ../../../docker/gunicorn/
@@ -39,11 +42,17 @@ services:
       - ../../../log:/log
       - ../../../config/app-server/uvicorn/:/uvicorn
       - ../../../script/logrotate/uvicorn/uvicorn:/etc/logrotate.d/uvicorn
-    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && exec gunicorn -c /uvicorn/gunicorn_uvicorn.conf.py"
+    command: bash -c "uv sync --inexact --extra uvicorn --extra celery && exec gunicorn -c /uvicorn/gunicorn_uvicorn.conf.py"
     # command: bash -c "uv pip install --system --no-cache . && exec gunicorn -c /uvicorn/gunicorn_uvicorn.conf.py"
     environment:
       TZ: "Asia/Seoul"
     restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8000' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
 
   celery:
     build: ../../../docker/gunicorn/
@@ -58,8 +67,7 @@ services:
       - ../../../www:/www
       - ../../../log:/log
       - ../../../script/logrotate/uvicorn/celery/uvicorn-celery:/etc/logrotate.d/uvicorn-celery
-    command: bash -c "poetry config virtualenvs.create false && \
-      poetry install --no-root && \
+    command: bash -c "uv sync --inexact --extra uvicorn --extra celery && \
       exec celery -A config worker \
       --loglevel=INFO \
       --logfile=/log/uvicorn/celery/worker-%n%I.log "
@@ -89,8 +97,7 @@ services:
       - ../../../www:/www
       - ../../../log:/log
       - ../../../script/logrotate/uvicorn/celerybeat/uvicorn-celerybeat:/etc/logrotate.d/uvicorn-celerybeat
-    command: bash -c "poetry config virtualenvs.create false && \
-      poetry install --no-root && \
+    command: bash -c "uv sync --inexact --extra uvicorn --extra celery && \
       exec celery -A config beat \
       --loglevel=INFO \
       --scheduler django_celery_beat.schedulers:DatabaseScheduler \

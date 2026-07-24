@@ -1,24 +1,26 @@
 #!/usr/bin/env bash
 # =============================================================================
-# devspoon-startup 계열 CI 테스트 오케스트레이터 (제네릭 / 저장소 구조 자동 탐지)
+# devspoon-web CI 테스트 오케스트레이터
 #
-# 대상: devspoon-startup-web / devspoon-startup-tizen / devspoon-startup-cloud-tizen
-#       (compose/web_service, docker/*, config/*, www/* 구조 공통)
+# 목적
+#   GitHub Actions(push) 에서 호출되어 아래를 순차 검증한다.
+#     1) preflight          — 선결 도구/파일/디자인 불변식 점검 (read-only)
+#     2) prereq + 로그 디렉토리 생성
+#     3) nginx conf 생성기   — 각 config 설정의 적용/반영
+#     4) docker-compose 검증 — 모든 스택 compose 문법 + 마운트
+#     5) docker 이미지 빌드  — 모든 Dockerfile
+#     6) 회귀(정적 불변식)
+#     7) healthcheck 동작    — 실제 스택 1종 기동 후 healthy 전환 관찰 (동작/반영)
+#     8) 샘플 프로젝트 동작  — django/flask/fastapi/php
+#     9) 스크립트 로그 생성 검증
 #
-# 검증 항목 (GitHub Actions push 시 자동 실행, 테스트 전용 — 배포 없음)
-#   1) 필수 도구 확인
-#   2) 런타임 로그 디렉토리 생성 + CI 용 .env 준비
-#   3) docker-compose 적용/반영 검증  — web_service / master_service 스택 config
-#   4) 셸 스크립트 문법 검증          — script/**, config/** 의 *.sh (대화형 안전)
-#   5) docker 이미지 빌드             — docker/** 의 모든 Dockerfile
-#   6) config 설정 반영 검증          — nginx/app 서버 설정 파일 존재 + 생성기 문법
-#   7) 스크립트 로그 생성 검증        — logrotate 정의 + 로그 디렉토리
-#   8) 샘플 프로젝트 동작             — django manage.py check / php -l
+#   - 단계 중 하나라도 실패하면 즉시 중단하고, "어떤 단계에서 / 무슨 에러로"
+#     실패했는지 상세 로그(마지막 N 줄)를 Slack + Telegram 으로 전송한다.
+#   - 전 단계 통과 시, 시작/종료 시각 + 소요시간과 함께 성공 알림을 전송한다.
 #
-#   - 임의 단계 실패 시 즉시 중단하고 "어떤 단계 / 무슨 에러"인지 상세 로그를
-#     Slack + Telegram 으로 통보. 전 단계 통과 시 시작/종료/소요시간과 함께 통보.
-#
-# 필요한 환경변수(Actions secrets): SLACK_WEBHOOK_URL / TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID
+# 필요한 환경변수(Actions secrets 로 주입; 없으면 해당 채널만 건너뜀)
+#   SLACK_WEBHOOK_URL, TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
+# GitHub Actions 가 자동 제공: GITHUB_REPOSITORY / GITHUB_REF_NAME / GITHUB_SHA ...
 # =============================================================================
 set -u
 export TZ=Asia/Seoul
@@ -26,10 +28,13 @@ export DEBIAN_FRONTEND=noninteractive
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cd "$ROOT" || { echo "ROOT 진입 실패"; exit 1; }
-REPO_LABEL="$(basename "${GITHUB_REPOSITORY:-$ROOT}")"
+REPO_LABEL="devspoon-startup-tizen"
 CILOG="$ROOT/log/ci"
 mkdir -p "$CILOG"
-CIENV="$CILOG/ci.env"
+
+# django_sample secrets.json 부트스트랩 (ensure_django_secrets)
+# shellcheck source=../lib/django_secrets.sh
+. "$ROOT/script/lib/django_secrets.sh"
 
 START_EPOCH=$(date +%s)
 START_HUMAN=$(date '+%Y-%m-%d %H:%M:%S %Z')
@@ -97,183 +102,71 @@ run_step() {
 # ----------------------------------------------------------------------------
 # 단계 정의
 # ----------------------------------------------------------------------------
-step_tools() {
+step_preflight()  { bash "$ROOT/script/test/preflight.sh"; }
+step_prereq()     { bash "$ROOT/script/test_run/s0_prereq.sh"; }
+step_conf_gen()   { bash "$ROOT/script/test_run/verify_conf_generators.sh"; }
+step_compose()    { bash "$ROOT/script/test_run/verify_compose_yml.sh"; }
+step_build()      { bash "$ROOT/script/test_run/s2_build.sh"; }
+step_regression() { bash "$ROOT/script/test_run/s6_regression.sh"; }
+step_healthcheck(){ RUNTIME=1 STACK=nginx_php bash "$ROOT/script/test_run/verify_healthcheck.sh"; }
+
+step_samples() {
     local rc=0
-    echo "docker:  $(docker --version 2>&1 || { echo 'MISSING'; rc=1; })"
-    echo "compose: $(docker compose version 2>&1 || { echo 'MISSING'; rc=1; })"
-    echo "jq:      $(jq --version 2>&1 || { echo 'MISSING'; rc=1; })"
-    echo "curl:    $(curl --version 2>&1 | head -1 || true)"
-    echo "python:  $(python3 --version 2>&1 || true)"
-    echo "php:     $(php --version 2>&1 | head -1 || echo '(php 미설치 — php 샘플은 WARN)')"
-    return $rc
-}
+    command -v uv >/dev/null 2>&1 || { echo "uv 미설치 — 설치 시도"; pip install -q uv || rc=1; }
 
-step_prepare() {
-    echo "### 런타임 로그 디렉토리 생성 ###"
-    for d in nginx gunicorn gunicorn/celery gunicorn/celerybeat \
-             uvicorn uvicorn/celery uvicorn/celerybeat \
-             uwsgi uwsgi/celery uwsgi/celerybeat \
-             daphne daphne/celery daphne/celerybeat php-fpm supervisor; do
-        mkdir -p "$ROOT/log/$d" && echo "  OK : log/$d"
-    done
+    echo "### [django_sample] secrets.json 준비(테스트 전용) ###"
+    # settings.py:26 이 secrets.json 을 강제로 읽는다. 50f7505 이후 추적 해제(.gitignore)
+    # 되어 CI 체크아웃에는 존재하지 않으므로 .example 로부터 생성한다.
+    # (verify_integration_gunicorn.sh Phase 3b 와 동일 정책 — 단일 출처 = .example)
+    ensure_django_secrets "$ROOT" || rc=1
 
-    echo "### CI 용 .env 생성 (compose 변수 치환용 안전 기본값) ###"
-    cat > "$CIENV" <<'EOF'
-LOG_DRIVER=json-file
-LOG_OPT_MAXF=5
-LOG_OPT_MAXS=100m
-PROJECT_DIR=django_sample
-PROJECT_NAME=django_sample
-WORKERS=4
-GUNICORN_PORT=8000
-GUNICORN_OPITON=--reload
-REQUIREMENTS=./requirements.txt
-CELERY_BROKER_URL=redis://redis:6379/3
-REDIS_PASSWORD=ci-test-redis-pw
-FLOWER_ID=admin
-FLOWER_PWD=admin
-PASSENGER_START_TIMEOUT=3000
-TZ=Asia/Seoul
-EOF
-    # 저장소에 실제 master .env 가 있으면 그 값으로 덮어쓴다(우선).
-    if [ -f "$ROOT/compose/master_service/.env" ]; then
-        echo "  master_service/.env 병합"
-        cat "$ROOT/compose/master_service/.env" >> "$CIENV"
+    echo "### [django_sample] manage.py check ###"
+    ( cd "$ROOT/www/django_sample" \
+        && pip install -q -r requirements.txt \
+        && python manage.py check ) || { echo "django_sample 실패"; rc=1; }
+
+    # (startup-web 은 flask_sample / fastapi_sample 이 없다 — django_sample + php_sample 만 검증)
+
+    echo "### [php_sample] php -l ###"
+    if command -v php >/dev/null 2>&1; then
+        php -l "$ROOT/www/php_sample/index.php" || { echo "php_sample lint 실패"; rc=1; }
+    else
+        echo "php 미설치 — php_sample lint 건너뜀(WARN)"
     fi
-    echo "  → $CIENV"
-    return 0
-}
-
-step_compose() {
-    local rc=0 found=0
-    echo "### web_service / master_service 스택 docker-compose config 검증 ###"
-    while IFS= read -r f; do
-        [ -z "$f" ] && continue
-        found=1
-        local dir; dir=$(dirname "$f")
-        # 스택 디렉토리에 .env 가 없으면 CI 기본 .env 를 임시 배치
-        local placed=0
-        if [ ! -f "$dir/.env" ]; then cp "$CIENV" "$dir/.env"; placed=1; fi
-        echo "--- config: $f ---"
-        if docker compose --env-file "$CIENV" -f "$f" config -q; then
-            echo "  PASS : $f"
-        else
-            echo "  FAIL : $f"; rc=1
-        fi
-        [ "$placed" -eq 1 ] && rm -f "$dir/.env"
-    done < <(find "$ROOT/compose/web_service" "$ROOT/compose/master_service" \
-                -maxdepth 2 -name 'docker-compose*.yml' 2>/dev/null | sort)
-    [ "$found" -eq 1 ] || { echo "  검증할 compose 파일 없음"; rc=1; }
-    return $rc
-}
-
-step_shell_syntax() {
-    local rc=0 n=0
-    echo "### 셸 스크립트 문법(bash -n) 검증 — 대화형 스크립트도 안전 ###"
-    while IFS= read -r s; do
-        n=$((n+1))
-        if bash -n "$s"; then
-            echo "  OK : ${s#$ROOT/}"
-        else
-            echo "  FAIL : ${s#$ROOT/}"; rc=1
-        fi
-    done < <(find "$ROOT/script" "$ROOT/config" "$ROOT/docker" -name '*.sh' 2>/dev/null | sort)
-    echo "  검사 스크립트 수: $n"
-    return $rc
-}
-
-step_build() {
-    local rc=0 found=0
-    echo "### docker/** 의 모든 Dockerfile 빌드 ###"
-    : > "$CILOG/build_summary.txt"
-    while IFS= read -r df; do
-        [ -z "$df" ] && continue
-        found=1
-        local dir; dir=$(dirname "$df")
-        local rel="${dir#$ROOT/docker/}"
-        local tag; tag="ci-test/$(printf '%s' "$rel" | tr '/' '-' | tr '[:upper:]' '[:lower:]')"
-        local bf; bf="$(basename "$df")"
-        local start end el ec
-        echo "--- BUILD: $tag  (-f $df) ---"
-        start=$(date +%s)
-        docker build -f "$df" -t "$tag" "$dir" > "$CILOG/build_$(basename "$dir")_${bf}.log" 2>&1
-        ec=$?
-        end=$(date +%s); el=$((end-start))
-        if [ $ec -eq 0 ]; then
-            echo "  PASS ($el s)"
-        else
-            echo "  FAIL exit=$ec ($el s) — 마지막 40줄:"
-            tail -40 "$CILOG/build_$(basename "$dir")_${bf}.log"
-            rc=1
-        fi
-        echo "$tag $ec ${el}s" >> "$CILOG/build_summary.txt"
-    done < <(find "$ROOT/docker" -name 'Dockerfile*' 2>/dev/null | sort)
-    echo "### build summary ###"; cat "$CILOG/build_summary.txt"
-    [ "$found" -eq 1 ] || { echo "  Dockerfile 없음"; rc=1; }
-    return $rc
-}
-
-step_config() {
-    local rc=0
-    echo "### config 설정 파일 반영 검증 ###"
-    # nginx 메인 conf 존재
-    while IFS= read -r d; do
-        if [ -f "$d/nginx_conf/nginx.conf" ]; then
-            echo "  OK : ${d#$ROOT/}/nginx_conf/nginx.conf"
-        fi
-    done < <(find "$ROOT/config/web-server/nginx" -maxdepth 1 -mindepth 1 -type d 2>/dev/null)
-    # app-server 설정(샘플) 존재 확인 — 최소 1개 이상
-    local cfgcount; cfgcount=$(find "$ROOT/config/app-server" -type f \( -name '*.conf' -o -name '*.ini' -o -name '*.py' \) 2>/dev/null | wc -l)
-    echo "  app-server 설정 파일 수: $cfgcount"
-    [ "$cfgcount" -ge 1 ] || { echo "  FAIL : app-server 설정 없음"; rc=1; }
-    # 생성기 스크립트 실행권한/문법(이미 step_shell_syntax 에서 문법검증; 여기선 존재 확인)
-    local gen; gen=$(find "$ROOT/config/web-server/nginx" -name 'nginx_*conf*.sh' 2>/dev/null | wc -l)
-    echo "  nginx conf 생성기 수: $gen"
     return $rc
 }
 
 step_logcheck() {
     local rc=0
-    echo "### logrotate 정의 + 로그 디렉토리 생성 검증 ###"
-    local lr; lr=$(find "$ROOT/script/logrotate" -type f 2>/dev/null | wc -l)
-    echo "  logrotate 정의 파일 수: $lr"
-    [ "$lr" -ge 1 ] || { echo "  FAIL : logrotate 정의 없음"; rc=1; }
-    for d in nginx gunicorn uwsgi php-fpm; do
-        if [ -d "$ROOT/log/$d" ]; then echo "  OK : log/$d"; else echo "  MISS : log/$d"; rc=1; fi
+    echo "### 스크립트가 생성한 로그 산출물 확인 ###"
+    # s2_build / s0 등이 log/test_run 아래 산출물을 남겼는지 검증
+    if [ -d "$ROOT/log/test_run" ] && [ -n "$(ls -A "$ROOT/log/test_run" 2>/dev/null)" ]; then
+        echo "  OK : log/test_run 산출물"
+        ls -la "$ROOT/log/test_run"
+    else
+        echo "  FAIL : log/test_run 산출물 없음"; rc=1
+    fi
+    # 표준 런타임 로그 디렉토리 구조 검증
+    local miss=0
+    for d in nginx gunicorn uvicorn uwsgi php-fpm supervisor; do
+        if [ -d "$ROOT/log/$d" ]; then echo "  OK : log/$d"; else echo "  MISS : log/$d"; miss=$((miss+1)); fi
     done
-    return $rc
-}
-
-step_samples() {
-    local rc=0
-    if [ -d "$ROOT/www/django_sample" ]; then
-        echo "### [django_sample] manage.py check ###"
-        ( cd "$ROOT/www/django_sample" \
-            && pip install -q -r requirements.txt \
-            && python manage.py check ) || { echo "django_sample 실패"; rc=1; }
-    fi
-    if [ -f "$ROOT/www/php_sample/index.php" ]; then
-        echo "### [php_sample] php -l ###"
-        if command -v php >/dev/null 2>&1; then
-            php -l "$ROOT/www/php_sample/index.php" || { echo "php_sample lint 실패"; rc=1; }
-        else
-            echo "php 미설치 — php_sample lint 건너뜀(WARN)"
-        fi
-    fi
+    [ "$miss" -eq 0 ] || rc=1
     return $rc
 }
 
 # ----------------------------------------------------------------------------
 # 실행 순서
 # ----------------------------------------------------------------------------
-run_step "필수 도구 확인"            step_tools
-run_step "로그디렉토리+CI .env 준비" step_prepare
-run_step "docker-compose 적용검증"   step_compose
-run_step "셸 스크립트 문법검증"      step_shell_syntax
+run_step "preflight 선결점검"        step_preflight
+run_step "prereq+로그디렉토리"       step_prereq
+run_step "nginx conf 생성기 반영"    step_conf_gen
+run_step "docker-compose 검증"       step_compose
 run_step "docker 이미지 빌드"        step_build
-run_step "config 설정 반영검증"      step_config
-run_step "스크립트 로그 생성검증"    step_logcheck
+run_step "정적 회귀 불변식"          step_regression
+run_step "healthcheck 동작검증"      step_healthcheck
 run_step "샘플 프로젝트 동작"        step_samples
+run_step "스크립트 로그 생성검증"    step_logcheck
 
 # ----------------------------------------------------------------------------
 # 결과 집계 + 알림

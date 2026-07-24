@@ -1,40 +1,29 @@
-# =============================================================================
-# fastcgi_params (PHP-FPM 용)
-# 사용법: PHP location ( ~ \.php(/|$) ) 내부에서 명시적으로
-#         include /etc/nginx/fastcgi_params;  로 호출한다.
-# =============================================================================
 
-fastcgi_param   QUERY_STRING        $query_string;
-fastcgi_param   REQUEST_METHOD      $request_method;
-fastcgi_param   CONTENT_TYPE        $content_type;
-fastcgi_param   CONTENT_LENGTH      $content_length;
+fastcgi_param  QUERY_STRING       $query_string;
+fastcgi_param  REQUEST_METHOD     $request_method;
+fastcgi_param  CONTENT_TYPE       $content_type;
+fastcgi_param  CONTENT_LENGTH     $content_length;
 
-fastcgi_param   SCRIPT_NAME         $fastcgi_script_name;
-fastcgi_param   SCRIPT_FILENAME     $document_root$fastcgi_script_name;
-fastcgi_param   PATH_INFO           $fastcgi_path_info;
-#fastcgi_param  PATH_TRANSLATED     $document_root$fastcgi_path_info;
+fastcgi_param  SCRIPT_NAME        $fastcgi_script_name;
+fastcgi_param  REQUEST_URI        $request_uri;
+fastcgi_param  DOCUMENT_URI       $document_uri;
+fastcgi_param  DOCUMENT_ROOT      $document_root;
+fastcgi_param  SERVER_PROTOCOL    $server_protocol;
+fastcgi_param  REQUEST_SCHEME     $scheme;
+fastcgi_param  HTTPS              $https if_not_empty;
 
-fastcgi_param   REQUEST_URI         $request_uri;
-fastcgi_param   DOCUMENT_URI        $document_uri;
-fastcgi_param   DOCUMENT_ROOT       $document_root;
-fastcgi_param   SERVER_PROTOCOL     $server_protocol;
-fastcgi_param   REQUEST_SCHEME      $scheme;
-fastcgi_param   HTTPS               $https if_not_empty;
+fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
+fastcgi_param  SERVER_SOFTWARE    nginx/$nginx_version;
 
-fastcgi_param   GATEWAY_INTERFACE   CGI/1.1;
-fastcgi_param   SERVER_SOFTWARE     nginx/$nginx_version;
+fastcgi_param  REMOTE_ADDR        $remote_addr;
+fastcgi_param  REMOTE_PORT        $remote_port;
+fastcgi_param  SERVER_ADDR        $server_addr;
+fastcgi_param  SERVER_PORT        $server_port;
+fastcgi_param  SERVER_NAME        $server_name;
 
-fastcgi_param   REMOTE_ADDR         $remote_addr;
-fastcgi_param   REMOTE_PORT         $remote_port;
-fastcgi_param   REMOTE_USER         $remote_user;
-fastcgi_param   SERVER_ADDR         $server_addr;
-fastcgi_param   SERVER_PORT         $server_port;
-fastcgi_param   SERVER_NAME         $server_name;
+# PHP only, required if PHP was built with --enable-force-cgi-redirect
+fastcgi_param  REDIRECT_STATUS    200;
 
-# PHP only — --enable-force-cgi-redirect 빌드 옵션 사용 시 필요
-fastcgi_param   REDIRECT_STATUS     200;
-
-# ----- httpoxy 취약점(CVE-2016-5385) 완화 -------------------------------------
-# 클라이언트가 보낸 Proxy 헤더가 백엔드의 HTTP_PROXY 환경변수로 전달되어
-# 외부로 나가는 HTTP 요청을 가로채는 공격을 차단한다.
-fastcgi_param   HTTP_PROXY          "";
+fastcgi_param  SCRIPT_FILENAME    $document_root$fastcgi_script_name;
+#fastcgi_param  PATH_TRANSLATED    $document_root$fastcgi_path_info;
+fastcgi_param  PATH_INFO          $fastcgi_path_info;

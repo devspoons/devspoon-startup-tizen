@@ -1,15 +1,40 @@
-[tool.poetry]
+[project]
 name = "django-sample"
 version = "0.1.0"
-description = ""
-authors = ["bluebamus <bluebamus@naver.com>"]
-readme = "README.md"
+description = "Django sample project for devspoon-startup-web (uv-managed)"
+requires-python = ">=3.14"
+dependencies = [
+    # Django 6.0 — Python 3.12/3.13/3.14 지원. asgiref>=3.9.1 / sqlparse>=0.5.0 이 필수.
+    "asgiref>=3.9.1",
+    "django>=6.0,<6.1",
+    "pytz==2021.1",
+    "sqlparse>=0.5.0",
+    # legacy-cgi: Django 6.0 은 stdlib 'cgi' 미의존 → 필수 아님(무해하여 유지).
+    "legacy-cgi>=2.6",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12.4"
-django = "^6.0"
+# ============================================================================
+# Optional dependencies — compose `uv sync --extra <X>` 가 참조한다.
+#   gunicorn / uvicorn / daphne / uwsgi 4개 WSGI/ASGI 런타임을 스택별 compose
+#   command 의 `--extra` 토큰 (e.g. nginx_gunicorn → --extra gunicorn) 와 1:1 매칭.
+#   celery 는 모든 Python 스택의 worker / beat 서비스가 공통으로 요청한다.
+# 이 섹션이 없으면 `uv sync --extra gunicorn` 단계에서
+#   "Extra `gunicorn` is not defined in the project's `optional-dependencies` table"
+# 로 실패하여 컨테이너가 즉시 종료된다 (gunicorn-app/celery 모두 영향).
+# ============================================================================
+[project.optional-dependencies]
+gunicorn = ["gunicorn>=21,<24"]
+uvicorn = ["uvicorn[standard]>=0.25,<1.0"]
+# Django 6.0 + asgiref>=3.9.1 이므로 daphne 4.x / channels 4.x 사용 가능
+# (channels 4.x 는 django>=4.2 요구 → dj6 충족).
+daphne = ["daphne>=4", "channels>=4"]
+uwsgi = ["uwsgi>=2.0,<3"]
+celery = [
+    "celery[redis]>=5.3,<6",
+    # django_celery_beat v2.9.0 부터 Django 6.0 지원(Django<6.1).
+    "django-celery-beat>=2.9",
+]
 
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv]
+# 단일 애플리케이션 — 패키지로 빌드하지 않는다 (build-system 불필요)
+package = false
