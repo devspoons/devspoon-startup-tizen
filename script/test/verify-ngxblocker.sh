@@ -27,7 +27,7 @@ printf 'DJANGO_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENVF"
 printf 'IMAGE_NAMESPACE=devspoon-it\n' >> "$ENVF"   # 운영 공유 태그(devspoon-*) 대신 테스트 전용 이미지명으로 빌드
 dc() { (cd "$STACK_DIR" && docker compose -p "$PROJ" --env-file "$ENVF" "$@"); }
 trap 'dc down -v --remove-orphans >/dev/null 2>&1; rm -f "$ENVF"' EXIT
-dc up -d webserver redis 2>&1 | tail -3
+dc up -d --build webserver redis 2>&1 | tail -3   # --build: 태그에 남은 옛 이미지가 아닌 현재 커밋 Dockerfile·conf 를 검증 (빌드 캐시로 비용 작음, TST-R16-01)
 sleep 5
 docker ps --filter "name=$CONT" --format '{{.Names}} {{.Status}}'
 docker exec $CONT nginx -t 2>&1 | tail -2
