@@ -12,10 +12,11 @@ if grep -rn 'poetry' "$ROOT/compose/master_service" --include='*.yml'; then fail
 if grep -nE 'chown[^"]*/www/' "$ROOT"/compose/master_service/*.yml; then fail "/www chown 잔재"; else echo "  [PASS] /www chown 없음"; fi
 if grep -nF '${PROJECT_DIR}' "$ROOT"/compose/master_service/*.yml; then fail "가드 없는 PROJECT_DIR"; else echo "  [PASS] PROJECT_DIR 가드"; fi
 
-echo "### 형제 런타임 데이터 폴더는 무시하고 자리표시자 LICENSE 만 추적 (SRV1-SEC-01) ###"
+echo "### 형제 런타임 데이터 폴더는 내용물 무시, 빈 자리표시자 .gitkeep 하나만 추적 (SRV1-SEC-01, D-PH) ###"
 for d in compose/master_service/jenkins_home compose/master_service/pgdata compose/master_service/static compose/master_service/storage compose/project_mng_service/nginx_jenkins/jenkins_home compose/project_mng_service/nginx_openproject/pgdata compose/project_mng_service/nginx_openproject/static compose/project_mng_service/gitolite/storage; do
-    if git -C "$ROOT" check-ignore -q --no-index "$d/master.key" && ! git -C "$ROOT" check-ignore -q --no-index "$d/LICENSE"; then
-        echo "  [PASS] $d"; else fail "$d — 내용물 미무시 또는 자리표시자 무시"; fi
+    if git -C "$ROOT" check-ignore -q --no-index "$d/master.key" && ! git -C "$ROOT" check-ignore -q --no-index "$d/.gitkeep" \
+        && [ "$(git -C "$ROOT" ls-files -- "$d")" = "$d/.gitkeep" ] && [ -f "$ROOT/$d/.gitkeep" ] && [ ! -s "$ROOT/$d/.gitkeep" ]; then
+        echo "  [PASS] $d"; else fail "$d — 내용물 미무시·.gitkeep 무시·미추적·비어있지 않음 또는 다른 추적 파일"; fi
 done
 
 echo "### 공개 예시 비밀값 금지 — OPENPROJECT_SECRET_KEY_BASE 는 빈 값 (SRV1-SEC-02) ###"

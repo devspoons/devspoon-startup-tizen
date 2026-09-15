@@ -57,23 +57,23 @@ docker/gitolite/system/*.pub
 # docs/YYYY-MM-DD/ — 날짜별 로컬 작업 문서(학습·설계·작업계획·체크리스트·리포트). git 추적 제외.
 docs/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 
-# 형제 전용 런타임 데이터(Jenkins home·OpenProject pgdata/assets·gitolite storage) — 내용물 무시, 자리표시자 LICENSE 만 추적 (SRV1-SEC-01)
+# 형제 전용 런타임 데이터(Jenkins home·OpenProject pgdata/assets·gitolite storage) — 내용물 무시, 빈 자리표시자 .gitkeep 만 추적 (SRV1-SEC-01, D-PH)
 compose/master_service/jenkins_home/*
-!compose/master_service/jenkins_home/LICENSE
+!compose/master_service/jenkins_home/.gitkeep
 compose/master_service/pgdata/*
-!compose/master_service/pgdata/LICENSE
+!compose/master_service/pgdata/.gitkeep
 compose/master_service/static/*
-!compose/master_service/static/LICENSE
+!compose/master_service/static/.gitkeep
 compose/master_service/storage/*
-!compose/master_service/storage/LICENSE
+!compose/master_service/storage/.gitkeep
 compose/project_mng_service/nginx_jenkins/jenkins_home/*
-!compose/project_mng_service/nginx_jenkins/jenkins_home/LICENSE
+!compose/project_mng_service/nginx_jenkins/jenkins_home/.gitkeep
 compose/project_mng_service/nginx_openproject/pgdata/*
-!compose/project_mng_service/nginx_openproject/pgdata/LICENSE
+!compose/project_mng_service/nginx_openproject/pgdata/.gitkeep
 compose/project_mng_service/nginx_openproject/static/*
-!compose/project_mng_service/nginx_openproject/static/LICENSE
+!compose/project_mng_service/nginx_openproject/static/.gitkeep
 compose/project_mng_service/gitolite/storage/*
-!compose/project_mng_service/gitolite/storage/LICENSE
+!compose/project_mng_service/gitolite/storage/.gitkeep
 # ensure_env_secrets 원자 교체 임시 파일(mktemp .env.XXXXXX) — 강제 종료로 남아도 추적 안 함 (.env.example 은 7자라 비매칭)
 # 주의: 6글자 확장자 .env.* 를 추적해야 하면(예: .env.sample) 아래에 `!` 예외를 추가
 **/.env.??????
