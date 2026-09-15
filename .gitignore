@@ -56,3 +56,21 @@ docker/gitolite/system/*.pub
 
 # docs/YYYY-MM-DD/ — 날짜별 로컬 작업 문서(학습·설계·작업계획·체크리스트·리포트). git 추적 제외.
 docs/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+
+# 형제 전용 런타임 데이터(Jenkins home·OpenProject pgdata/assets·gitolite storage) — 내용물 무시, 자리표시자 LICENSE 만 추적 (SRV1-SEC-01)
+compose/master_service/jenkins_home/*
+!compose/master_service/jenkins_home/LICENSE
+compose/master_service/pgdata/*
+!compose/master_service/pgdata/LICENSE
+compose/master_service/static/*
+!compose/master_service/static/LICENSE
+compose/master_service/storage/*
+!compose/master_service/storage/LICENSE
+compose/project_mng_service/nginx_jenkins/jenkins_home/*
+!compose/project_mng_service/nginx_jenkins/jenkins_home/LICENSE
+compose/project_mng_service/nginx_openproject/pgdata/*
+!compose/project_mng_service/nginx_openproject/pgdata/LICENSE
+compose/project_mng_service/nginx_openproject/static/*
+!compose/project_mng_service/nginx_openproject/static/LICENSE
+compose/project_mng_service/gitolite/storage/*
+!compose/project_mng_service/gitolite/storage/LICENSE
