@@ -99,7 +99,8 @@ echo "### master_service / project_mng_service compose config (운영 .env 미�
 n=0
 for f in "$ROOT"/compose/master_service/docker-compose-*.yml "$ROOT"/compose/project_mng_service/{nginx_jenkins,nginx_openproject,gitolite}/docker-compose.yml; do
     d=$(dirname "$f"); n=$((n+1)); envf="$TMPD/$n.env"
-    sed -E '/^(DJANGO_SECRET_KEY|OPENPROJECT_SECRET_KEY_BASE|REDIS_PASSWORD|FLOWER_PWD)=/d' "$d/.env-example" > "$envf"
+    sed -E '/^(DJANGO_SECRET_KEY|OPENPROJECT_SECRET_KEY_BASE|REDIS_PASSWORD|FLOWER_PWD)=/d' "$d/.env-example" > "$envf" \
+        || { fail "$f — $d/.env-example 로 임시 env-file 생성 실패(위 sed 오류)"; continue; }
     printf 'DJANGO_SECRET_KEY=%s\nOPENPROJECT_SECRET_KEY_BASE=%s\nREDIS_PASSWORD=%s\nFLOWER_PWD=%s\n' \
         "$(openssl rand -hex 32)" "$(openssl rand -hex 64)" "$(openssl rand -hex 16)" "$(openssl rand -hex 16)" >> "$envf"
     docker compose --env-file "$envf" -f "$f" --profile celery --profile redis config -q \
