@@ -171,6 +171,18 @@ services:
     privileged: true
     volumes:
       - ../../log/tizen/:/log/tizen/
+      - type: bind
+        source: ${TIZEN_SSH_KEY:?TIZEN_SSH_KEY must be set in .env (review.tizen.org private key path)}
+        target: /root/.ssh/id_rsa
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${TIZEN_AUTHORIZED_KEYS:?TIZEN_AUTHORIZED_KEYS must be set in .env (authorized_keys path)}
+        target: /root/.ssh/authorized_keys
+        read_only: true
+        bind:
+          create_host_path: false
     ports:
       - "${TIZEN_SSH_BIND:-127.0.0.1}:2221:22"
     environment:

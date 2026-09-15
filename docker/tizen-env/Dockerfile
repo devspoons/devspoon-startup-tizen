@@ -72,9 +72,9 @@ RUN git config --global color.ui true
 RUN mkdir ~/bin/
 RUN echo 'PATH=~/bin:$PATH' >> ~/.bashrc
 
-COPY .ssh /root/.ssh
-
-RUN chmod 700 /root/.ssh/ && chmod 644 /root/.ssh/* && chmod 600 /root/.ssh/id_rsa
+RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh
+COPY .ssh/config .ssh/known_hosts /root/.ssh/
+RUN chmod 644 /root/.ssh/config /root/.ssh/known_hosts
 
 ADD repo-script/ /root/repo-script/
 
