@@ -205,13 +205,27 @@ assert_zero "6.18 verify_healthcheck 순간 running 0 판정" "$(grep -c '"runni
 assert_eq   "6.18 verify_healthcheck 런타임 teardown trap (RV1-S-06)" "$(grep -cE "^trap 'dc .*down -v" script/test_run/verify_healthcheck.sh)" 1
 echo
 
-echo "===== 6.19 앱 이미지 사전설치 버전 = django_sample uv.lock (기동마다 uv sync 재설치 방지) ====="
+echo "===== 6.19 앱 이미지 사전설치 = django_sample uv.lock 해석 결과 (기동마다 uv sync 재설치 방지, CL-WP2-09-R4) ====="
 lockv() { awk -v n="$1" '$0 == "name = \"" n "\"" { getline; gsub(/"/, "", $3); print $3; exit }' "${2:-www/django_sample/uv.lock}"; }
-for spec in "docker/gunicorn/Dockerfile gunicorn" "docker/gunicorn/Dockerfile uvicorn" "docker/uwsgi/Dockerfile gunicorn" "docker/uwsgi/Dockerfile uvicorn" "docker/uwsgi/Dockerfile uwsgi" "docker/uwsgi/Dockerfile django"; do
-    df=${spec% *}; pkg=${spec#* }
-    want=$(lockv "$pkg"); got=$(grep -oE "(^|[[:space:]\"])$pkg(\[standard\])?==[0-9][0-9.]*" "$df" | head -1 | sed 's/.*==//')
-    if [ -n "$want" ] && [ "$want" = "$got" ]; then echo "  PASS 6.19 $df $pkg==$got"; else echo "  FAIL 6.19 $df $pkg image=[$got] lock=[$want]"; FAILS=$((FAILS+1)); fi
+for df in docker/gunicorn/Dockerfile docker/uwsgi/Dockerfile; do
+    assert_eq   "6.19 lock 입력 COPY --from=lock ($df)" "$(grep -cx 'COPY --from=lock pyproject.toml uv.lock /tmp/lock/' "$df")" 1
+    # 잔여 위험 2: lock 컨텍스트 누락 시 이미지 pull 오류(lock:latest) 대신 '/pyproject.toml: not found' — 빈 기본 스테이지, --build-context 가 덮어씀
+    assert_eq   "6.19 lock 빈 기본 스테이지 FROM scratch AS lock ($df)" "$(grep -cx 'FROM scratch AS lock' "$df")" 1
+    assert_eq   "6.19 uv export --frozen ($df)" "$(grep -c 'uv export --frozen' "$df")" 1
+    assert_eq   "6.19 pip install -r lock 해석 ($df)" "$(grep -c 'pip install --no-cache-dir -r /tmp/lock/requirements.txt' "$df")" 1
+    assert_eq   "6.19 그 밖의 사전설치는 -c lock 제약 ($df)" "$(grep -c 'pip install --no-cache-dir -c /tmp/lock/requirements.txt' "$df")" 1
+    assert_zero "6.19 lock 과 이중 관리되는 == 고정 ($df)" "$(grep -cE '(gunicorn|uvicorn|uwsgi|django)(\[standard\])?==' "$df")"
 done
+for s in gunicorn uvicorn uwsgi daphne; do
+    f=compose/web_service/nginx_$s/docker-compose.yml
+    df=$(grep -m1 -oE 'docker/(gunicorn|uwsgi)/' "$f")Dockerfile
+    assert_eq "6.19 compose additional_contexts lock=django_sample ($s)" "$(grep -c 'lock: \.\./\.\./\.\./www/django_sample$' "$f")" 1
+    for x in $(grep -m1 -oE 'uv sync --inexact( --extra [a-z]+)+' "$f" | grep -oE -- '--extra [a-z]+' | awk '{print $2}'); do
+        assert_eq "6.19 $df export --extra $x (nginx_$s app)" "$(grep -A2 'uv export --frozen' "$df" | grep -cE -- "--extra $x( |$)")" 1
+    done
+done
+assert_eq "6.19 s2_build --build-context lock" "$(grep -c -- '--build-context lock=' script/test_run/s2_build.sh)" 1
+assert_eq "6.19 s2_build 빌드 이미지에서 uv sync --dry-run 대조" "$(grep -c 'sync --frozen --inexact --dry-run' script/test_run/s2_build.sh)" 1
 assert_zero "6.19 django_sample 미사용 pytz" "$(grep -c 'pytz' www/django_sample/pyproject.toml)"
 echo
 
@@ -239,12 +253,17 @@ for f in script/test_run/verify_integration_*.sh script/test_run/verify_healthch
 done
 echo
 
-echo "===== 6.22 Django migrate 는 app 서비스에서만 기동 전 1회, celery·beat 는 app healthy 뒤 기동 (CL-WP1-08-R2b) ====="
+echo "===== 6.17c (형제) pipefail 검증기에서 exec 출력을 grep -q 로 직접 파이프하지 않음 — SIGPIPE 로 exec 255 거짓 FAIL (CL-WP5-05-R3) ====="
+assert_zero "6.17c exec … | grep -q (verify_integration_*)" "$(grep -hE 'exec[^|]*\|[[:space:]]*grep -q' script/test_run/verify_integration_*.sh | grep -vc '^[[:space:]]*#')"
+echo
+
+echo "===== 6.22 DB 초기화(Django migrate·비Django prestart.sh)는 app 서비스에서만 기동 전 1회, celery·beat 는 app healthy 뒤 기동 (CL-WP1-08-R2b, CL-WP1-08-R4) ====="
 for s in gunicorn uvicorn uwsgi daphne; do
     f=compose/web_service/nginx_$s/docker-compose.yml
     assert_eq "6.22 migrate 1회(app 만) ($s)" "$(grep -c 'manage.py migrate --noinput' "$f")" 1
-    assert_eq "6.22 uv sync → migrate → /data chown → 서버 순서 ($s)" "$(grep -cF '{ [ ! -f manage.py ] || python manage.py migrate --noinput; } && chown -R www-data:www-data /data && ' "$f")" 1
+    assert_eq "6.22 uv sync → migrate → prestart.sh → /data chown → 서버 순서 ($s)" "$(grep -cF '{ [ ! -f manage.py ] || python manage.py migrate --noinput; } && { [ ! -f prestart.sh ] || bash prestart.sh; } && chown -R www-data:www-data /data && ' "$f")" 1
     assert_eq "6.22 ${s}-app service_healthy 의존 3곳(webserver·celery·beat) ($s)" "$(grep -A1 -E "^      ${s}-app:\$" "$f" | grep -c 'condition: service_healthy')" 3
+    assert_zero "6.22 옛 주석 '앱이 create_all' — 실제는 prestart.sh 1회 (RV7-02, $s)" "$(grep -c '앱이 create_all' "$f")"
 done
 echo
 
@@ -252,6 +271,9 @@ echo "===== 6.23 s5_https 는 출고 http 샘플과 겹치지 않는 도메인 +
 assert_zero "6.23 s5 -d localhost (출고 http 샘플 server_name 충돌)" "$(grep -c -- '-d localhost' script/test_run/s5_https.sh)"
 n=$(grep -c 'S5_WAIT' script/test_run/s5_https.sh)
 if [ "$n" -ge 2 ]; then echo "  PASS 6.23 s5 준비 대기 ($n)"; else echo "  FAIL 6.23 s5 준비 대기 없음"; FAILS=$((FAILS+1)); fi
+# CL-WP4-08-R4: 5.1 은 OpenSSL 1.1·3 공통 -brief 출력(Protocol version·Ciphersuite)으로 판정 — OpenSSL 3 TLS1.3 은 `Protocol  :` 줄 없음
+assert_zero "6.23 s5 5.1 OpenSSL 3 미출력 'Protocol *:' 요구" "$(grep -c 'Protocol \*:' script/test_run/s5_https.sh)"
+assert_eq   "6.23 s5 5.1 s_client -brief 협상 프로토콜 판정" "$(grep -c "Protocol version: \*TLSv1" script/test_run/s5_https.sh)" 1
 echo
 
 echo "===== 6.24 .env 비밀값 한 줄 생성 헬퍼 — 빈 값·CHANGE_ME 는 채우고 기존 값·비밀 아닌 키는 불변 (RV2-S-01, 3회차 13) ====="
@@ -320,6 +342,20 @@ if grep -q 'ensure_env_secrets()' script/lib/django_secrets.sh; then
     assert_eq "6.24 비밀 아닌 필수 키 빈 값 불변 (FLOWER_ID·OPENPROJECT_HOST__NAME)" "$(grep -cE '^(FLOWER_ID|OPENPROJECT_HOST__NAME)=$' "$tmp/multi/.env")" 2
     assert_zero "6.24 비밀 아닌·주석·compose 미요구 키 추가 없음" "$(grep -cE '^(PROJECT_DIR|DJANGO_ALLOWED_HOSTS|COMMENTED_PASSWORD|DJANGO_SECRET_KEY|FLOWER_PWD)=' "$tmp/multi/.env")"
     assert_eq "6.24 compose 여러 개 — 총 줄 수 (3 기존 + 2 추가)" "$(wc -l < "$tmp/multi/.env")" 5
+    # RV7-01 원본 644 여도 비밀이 담긴 임시 파일은 어느 chmod 직후에도 group/other 비트 0 — chmod 래퍼가 매 호출 뒤 임시 파일 권한 기록
+    # 잔여 위험 6 인터럽트(TERM) 시 임시 파일(비밀 포함) 정리·원본 불변 — mv 래퍼가 자기 자신에게 TERM
+    mkdir -p "$tmp/perm" "$tmp/intr"
+    printf 'DJANGO_SECRET_KEY=\n' > "$tmp/perm/.env"; chmod 644 "$tmp/perm/.env"
+    printf 'DJANGO_SECRET_KEY=\n' > "$tmp/intr/.env"; is=$(sha256sum < "$tmp/intr/.env")
+    ( . script/lib/django_secrets.sh; s6_pdir="$tmp/perm" s6_plog="$tmp/perm.log"   # 헬퍼 local tmp 와 겹치지 않는 이름(동적 스코프)
+      chmod() { command chmod "$@"; local r=$?; stat -c %a "$s6_pdir"/.env.?????? >> "$s6_plog" 2>/dev/null; return $r; }
+      ensure_env_secrets "$tmp/perm/.env" >/dev/null 2>&1 )
+    bash -c '. script/lib/django_secrets.sh; mv() { kill -TERM $$; }; ensure_env_secrets "$1"' _ "$tmp/intr/.env" >/dev/null 2>&1
+    assert_eq   "6.24 임시 파일 권한 관측됨 (RV7-01)" "$( [ -s "$tmp/perm.log" ] && echo 1 || echo 0)" 1
+    assert_zero "6.24 임시 파일 중간 권한 go 비트 ≠0 (RV7-01)" "$(grep -cvE '^[0-7]00$' "$tmp/perm.log" 2>/dev/null)"
+    assert_eq   "6.24 원본 644 → 생성 후 600 (RV7-01)" "$(stat -c %a "$tmp/perm/.env")" 600
+    assert_zero "6.24 인터럽트 시 임시 파일 잔존 (잔여 위험 6)" "$(find "$tmp/intr" -name '.env.*' | wc -l)"
+    if [ "$(sha256sum < "$tmp/intr/.env")" = "$is" ]; then echo "  PASS 6.24 인터럽트 시 원본 sha 불변"; else echo "  FAIL 6.24 인터럽트 시 원본 변경됨"; FAILS=$((FAILS+1)); fi
     rm -rf "$tmp"
 else
     echo "  FAIL 6.24 ensure_env_secrets 없음"; FAILS=$((FAILS+1))
@@ -327,6 +363,10 @@ fi
 for s in gunicorn uvicorn uwsgi daphne php; do
     assert_eq "6.24 .env-example 한 줄 생성 안내 ($s)" "$(grep -c "ensure_env_secrets compose/web_service/nginx_$s/.env" compose/web_service/nginx_$s/.env-example)" 1
 done
+# 잔여 위험 6: 강제 종료(KILL)로 남은 헬퍼 임시 파일 .env.XXXXXX 는 무시, .env-example·.env.example 은 추적 유지
+d=compose/web_service/nginx_gunicorn
+assert_eq "6.24 .gitignore .env.XXXXXX 무시·.env-example/.env.example 비무시" "$(git check-ignore --no-index "$d/.env.Ab12Cd" "$d/.env-example" "$d/.env.example" 2>/dev/null | grep -cxF "$d/.env.Ab12Cd")" 1
+assert_zero "6.24 .gitignore .env-example/.env.example 무시됨" "$(git check-ignore --no-index "$d/.env-example" "$d/.env.example" 2>/dev/null | wc -l)"
 echo
 
 echo "===== 6.29 compose 가 :? 로 요구하는 비밀 키는 .env-example 에서 빈 값 — 공개 예시 자격증명 금지 (3회차 13) ====="
@@ -367,6 +407,11 @@ assert_zero "6.28 생성기의 compose/web-service·web_service 고정 경로" "
 for s in gunicorn uvicorn uwsgi daphne; do
     assert_zero "6.28 flower '외부에 노출' 문구 ($s)" "$(grep -c '외부에 노출' compose/web_service/nginx_$s/.env-example)"
 done
+echo
+
+echo "===== 6.31 run-ci 스택 뒤 호스트 소스 트리 소유권 런타임 단언, compose :? 필수 키 개별 빈 값 거부 (P6, P2) ====="
+assert_eq "6.31 run-ci find www ! -user" "$(grep -cF 'find "$ROOT/www" ! -user "$(id -u)"' script/ci/run-ci.sh)" 1
+assert_eq "6.31 verify_compose_yml :? 필수 키 개별 빈 값 거부" "$(grep -c '\[PASS\] :? 필수 키 개별 빈 값 거부' script/test_run/verify_compose_yml.sh)" 1
 echo
 
 echo "===== 6 FAILS=$FAILS ====="

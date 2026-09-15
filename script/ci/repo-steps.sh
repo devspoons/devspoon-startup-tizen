@@ -32,9 +32,10 @@ echo "### master_service python 4조합 — migrate 는 app 서비스만 기동 
 for s in daphne gunicorn uvicorn uwsgi; do
     f="$ROOT/compose/master_service/docker-compose-$s.yml"
     if [ "$(grep -c 'manage.py migrate --noinput' "$f")" = 1 ] \
-        && [ "$(grep -cF '{ [ ! -f manage.py ] || python manage.py migrate --noinput; } && chown -R www-data:www-data /data && ' "$f")" = 1 ] \
+        && [ "$(grep -cF '{ [ ! -f manage.py ] || python manage.py migrate --noinput; } && { [ ! -f prestart.sh ] || bash prestart.sh; } && chown -R www-data:www-data /data && ' "$f")" = 1 ] \
+        && [ "$(grep -cx '        lock: ../../www/django_sample' "$f")" = 1 ] \
         && [ "$(grep -A1 -E "^      ${s}-app:\$" "$f" | grep -c 'condition: service_healthy')" = 3 ]; then
-        echo "  [PASS] $s migrate·service_healthy 3곳"; else fail "$s migrate 위치·celery/beat app healthy 의존"; fi
+        echo "  [PASS] $s migrate→prestart 순서·service_healthy 3곳·lock 빌드 컨텍스트"; else fail "$s migrate 위치·celery/beat app healthy 의존"; fi
 done
 
 echo "### master_service 비밀 키 빈 값·한 줄 생성 안내, 운영 이미지명 격리 IMAGE_NAMESPACE (RV2-S-01, RV2-SEC-03) ###"
