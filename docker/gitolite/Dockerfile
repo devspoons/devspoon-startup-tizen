@@ -2,7 +2,7 @@ FROM ubuntu:24.04
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
-RUN DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends apt-utils vim wget openssh-server git locales
+RUN DEBIAN_FRONTEND=noninteractive apt install -y --no-install-recommends apt-utils vim wget openssh-server git ca-certificates locales
 
 # Set the locale
 ENV OS_LOCALE_COUNTRY="en_US"
