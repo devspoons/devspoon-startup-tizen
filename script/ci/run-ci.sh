@@ -191,7 +191,7 @@ RUN_URL="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-}/actions
 PASSED_JOINED=$(IFS=', '; echo "${PASSED_STEPS[*]:-없음}")
 
 # 업로드 아티팩트(log/ci, log/test_run)에도 비밀값 원문이 남지 않도록 로그 파일을 제자리 마스킹
-mask_secrets_files "$CILOG" "$ROOT/log/test_run" || true
+mask_secrets_files "$CILOG" "$ROOT/log/test_run" || echo "WARN: 로그 파일 마스킹 실패 — test.yml 업로드 직전 단계가 재시도한다"
 
 if [ -n "$FAILED_STEP" ]; then
     LOG_TAIL=""
