@@ -136,23 +136,6 @@ services:
       TZ: "Asia/Seoul"
     restart: always
 
-  gitolite:
-    build: ../../docker/gitolite
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
-    working_dir: /application
-    container_name: gitolite
-    volumes:
-      - ./storage:/home/gitolite-creator/repositories
-    ports:
-      - 2222:22
-    environment:
-      TZ: "Asia/Seoul"
-    restart: always
-
   tizenenv:
     build: ../../docker/tizen-env/
     logging:
@@ -167,6 +150,23 @@ services:
       - ../../log/tizen/:/log/tizen/
     ports:
       - 2221:22
+    environment:
+      TZ: "Asia/Seoul"
+    restart: always
+
+  gitolite:
+    build: ../../docker/gitolite
+    logging:
+      driver: "${LOG_DRIVER}"
+      options:
+        max-file: "${LOG_OPT_MAXF}"
+        max-size: "${LOG_OPT_MAXS}"
+    working_dir: /application
+    container_name: gitolite
+    volumes:
+      - ./storage:/home/gitolite-creator/repositories
+    ports:
+      - 2222:22
     environment:
       TZ: "Asia/Seoul"
     restart: always
