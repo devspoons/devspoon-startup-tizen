@@ -115,8 +115,13 @@ step_build()      { bash "$ROOT/script/test_run/s2_build.sh"; }
 step_regression() { bash "$ROOT/script/test_run/s6_regression.sh"; }
 step_healthcheck(){ RUNTIME=0 bash "$ROOT/script/test_run/verify_healthcheck.sh"; }   # 정적 불변식만 — 런타임은 step_stacks
 # 스택 5종 직렬(80/443 공유). 하나가 실패해도 나머지를 끝까지 돌려 실패 목록을 남긴다.
-step_stacks() { local rc=0 s; for s in gunicorn uvicorn uwsgi daphne php; do
-    echo "### stack: $s ###"; bash "$ROOT/script/test_run/verify_integration_${s}.sh" || { echo "stack FAIL: $s"; rc=1; }; done; return $rc; }
+step_stacks() { local rc=0 s own; for s in gunicorn uvicorn uwsgi daphne php; do
+    echo "### stack: $s ###"; bash "$ROOT/script/test_run/verify_integration_${s}.sh" || { echo "stack FAIL: $s"; rc=1; }; done
+    # 컨테이너가 bind mount 된 호스트 소스 트리 소유권을 바꾸지 않아야 한다 (TC-R2-OWN, CL-WP1-08-R2) — 샘플 단계 전에 판정
+    own=$(find "$ROOT/www" ! -user "$(id -u)")
+    if [ -z "$own" ]; then echo "[PASS] 호스트 소스 트리(www) 소유권 불변"
+    else echo "[FAIL] 호스트 소스 트리(www) 비소유 파일 $(grep -c . <<<"$own")"; head -5 <<<"$own"; rc=1; fi
+    return $rc; }
 
 step_samples() {
     local rc=0

@@ -30,6 +30,24 @@ for stack_dir in "$DEVSPOON"/compose/web_service/*/; do
     echo "  [PASS] compose YAML valid"
   fi
 
+  # compose 가 :? 로 요구하는 키는 하나만 비어도 거부돼야 한다 — 다른 키가 먼저 거부해 가려지는 회귀 방지
+  req=$(grep -hvE '^[[:space:]]*#' docker-compose*.yml | grep -oE '\$\{[A-Z0-9_]+:\?' | sed 's/^\${//; s/:?$//' | sort -u)
+  bad=""
+  # .env-example 에서 빈 값인 키(비밀, s6 6.29)는 모두 :? 이어야 한다 — compose 에서 :? 가 빠진 회귀는 위 수집에서 사라지므로 따로 대조
+  for k in $(grep -oE '^[A-Z0-9_]+=$' .env-example | tr -d =); do
+    grep -qx "$k" <<<"$req" || bad="$bad $k(:? 없음)"
+  done
+  for k in $req; do
+    { grep -v "^$k=" "$ENVF"; echo "$k="; } > "$TMPD/$stack.one.env"
+    if out=$(docker compose --env-file "$TMPD/$stack.one.env" --profile celery --profile redis config -q 2>&1); then bad="$bad $k(rc0)"
+    elif [[ "$out" != *"$k"* ]]; then bad="$bad $k(메시지)"; fi
+  done
+  if [ -n "$req" ] && [ -z "$bad" ]; then
+    echo "  [PASS] :? 필수 키 개별 빈 값 거부 ($(wc -w <<<"$req")개)"
+  else
+    echo "  [FAIL] :? 필수 키 개별 빈 값 거부 —${bad:- :? 키 없음}"; FAIL=$((FAIL+1)); continue
+  fi
+
   # Verify the dhparam backup mount is present (long-form: source + target on separate lines)
   RESOLVED=$(docker compose --env-file "$ENVF" config 2>/dev/null)
   if echo "$RESOLVED" | grep -qE "ssl/dhparam$" && echo "$RESOLVED" | grep -qE "/etc/nginx/dhparam-backup"; then
