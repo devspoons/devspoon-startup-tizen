@@ -42,7 +42,7 @@ RUN ( crontab -l 2>/dev/null; \
 # ============================================================================
 # 3. nginx-ultimate-bad-bot-blocker 설치 (build 시점에 초기 데이터 bake-in)
 #    - 다운로드: install-ngxblocker / setup-ngxblocker / update-ngxblocker 스크립트
-#    - install-ngxblocker -x: /etc/nginx/conf.d/globalblacklist.conf 와 /etc/nginx/bots.d/* 생성
+#    - install-ngxblocker -x -c /etc/nginx: /etc/nginx/globalblacklist.conf 와 /etc/nginx/bots.d/* 생성
 #      → 기존 정적 bad_bot.conf 를 globalblacklist.conf 가 대체 ($bad_bot 변수 동일)
 #    - setup-ngxblocker 는 의도적으로 실행하지 않음 — server 블록 자동 수정은 sample_nginx*.conf
 #      의 명시적 include 로 운영자가 제어
@@ -72,19 +72,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends curl && \
     /usr/local/sbin/install-ngxblocker -x -c /etc/nginx && \
     # install-ngxblocker 가 만들지 않는 사용자 커스텀 파일은 빈 파일로 생성 (sample_nginx*.conf include 깨짐 방지)
     touch /etc/nginx/bots.d/blacklist-domains.conf && \
-    # botblocker-nginx-settings.conf 는 nginx.conf 의 http{} 가 명시적으로 include 한다.
-    # (본 파일은 자체 limit_req_zone / limit_conn_zone 를 정의하나, 우리 nginx.conf 의
-    #  limit_*_zone 지시어는 기본 주석 처리 상태라 충돌하지 않는다. 운영자가 nginx.conf
-    #  의 limit_zone 주석을 해제하려면 zone 이름이 겹치지 않도록 확인 필요.)
+    # botblocker-nginx-settings.conf 는 설치되지만 nginx.conf 가 include 하지 않는다 (D-1 B).
+    # (이 파일의 addr/flood zone 키가 $binary_remote_addr 라 정상 사용자까지 제한하므로, nginx.conf 가
+    #  같은 이름의 zone 을 $bot_iplimit 키로 정의하고 해시 크기 지시어만 옮겨 두었다.)
     apt-get autoremove -y && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 # ============================================================================
 # 4. ngxblocker 자동 갱신 Cron 등록 (6시간 간격)
-#    - update-ngxblocker 가 /etc/nginx/conf.d/globalblacklist.conf 를 최신화
+#    - update-ngxblocker 가 /etc/nginx/globalblacklist.conf 를 최신화
 #    - 다운로드 성공 시에만 nginx -t && nginx -s reload (잘못된 conf 가 prod 즉시 반영 차단)
 # ============================================================================
-RUN crontab -l 2>/dev/null | { cat; echo "0 */6 * * * /usr/local/sbin/update-ngxblocker -c /etc/nginx >> /log/nginx/ngxblocker_$(date +\%Y\%m).log 2>&1 && nginx -t && nginx -s reload"; } | crontab -
+RUN crontab -l 2>/dev/null | { cat; echo "0 */6 * * * /usr/local/sbin/update-ngxblocker -c /etc/nginx >> /log/nginx/ngxblocker_\$(date +\%Y\%m).log 2>&1 && nginx -t && nginx -s reload"; } | crontab -
 
 # ============================================================================
 # 5. 컨테이너 시작 시 cron 데몬 기동 + logrotate dropin sanitize
@@ -109,8 +108,8 @@ RUN printf '#!/bin/sh\nset -e\n# (1) logrotate dropin 권한 정리: bind mount 
 #    - openssl 은 nginx:1.27-bookworm 이미지에 기본 포함되어 있음.
 #    - 자동 갱신 불필요 (10년 유효, 응답에 안 나가므로 만료/체인 검증 무관).
 #    - 저장 경로: /etc/nginx/ssl/default/
-#        · /etc/ssl/certs/ 는 compose 가 ssl/certs 를 통째로 bind-mount 하므로
-#          빌드 시 생성한 파일이 가려진다. /etc/nginx/ 는 mount 대상이 아니므로 안전.
+#        · 과거 compose 가 ssl/certs 를 /etc/ssl/certs 에 bind-mount 해 빌드 산출물을 가렸던 이력이 있어
+#          (현재 해당 마운트는 제거됨) mount 대상이 아닌 /etc/nginx/ 아래에 둔다.
 #          (globalblacklist.conf 가 /etc/nginx/ 에 위치한 것과 같은 이유)
 # ============================================================================
 RUN mkdir -p /etc/nginx/ssl/default && \
