@@ -22,5 +22,5 @@ compose/web_service/nginx_php/redis/
 compose/web_service/nginx_uwsgi/ssl/
 compose/web_service/nginx_uwsgi/redis/
 
-# docs/2026-09-14/ — 로컬 작업 문서(학습·기획·설계·개발/테스트/검수 계획). git 추적 제외.
-docs/2026-09-14/
+# docs/YYYY-MM-DD/ — 날짜별 로컬 작업 문서(학습·설계·작업계획·체크리스트·리포트). git 추적 제외.
+docs/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
