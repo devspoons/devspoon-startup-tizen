@@ -314,16 +314,16 @@ docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소
 - System integration between jenkins, gitolite, tizen-env.
 - Development tizen image management solution.
   - The tizen image management solution UI sample design
-    ![Tizen image mng server]
+    Tizen image mng server
 
 ## Community
 
-- **Personal Website** : Owner's personal website is [devspoon.com](devspoon.com)
+- **Personal Website** : Owner's personal website is devspoon.com
 
 ## Partners and Users
 
 - Lim Do-Hyun Owner Developer/project Manager, bluebamus@gmail.com
-  Personal site : [devspoon.com](devspoon.com)
+  Personal site : devspoon.com
 
 - Lim Tae-youn Member, Tizen Designer
 - Kang Dong-hoon Member, Tizen Developer
@@ -337,33 +337,12 @@ docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소
 
 <!-- Markdown link & img dfn's -->
 
-[Tizen ssh key 등록 저장소]: https://review.tizen.org/gerrit
-[ssh-config]: https://github.com/ainpeople/ainpeople_doc/raw/master/ainci-tizen/images/ssh_config.png
-[tizen-register-site]: https://github.com/ainpeople/ainpeople_doc/blob/master/devspoon-startup-tizen/images/tizen_ssh_register.png
-[ssh-config]: https://github.com/ainpeople/ainpeople_doc/blob/master/devspoon-startup-tizen/images/ssh_config.png
-[ssh-success-msg]: https://github.com/ainpeople/ainpeople_doc/raw/master/ainci-tizen/images/ssh_result.png
-[Tizen 수동 환경 설치 & 추가 정보 제공]: https://github.com/ainpeople/ainpeople_doc
-[Tizen 수동 환경 설치]: https://source.tizen.org/ko/documentation/developer-guide/getting-started-guide
-[Tizen image mng server]: https://github.com/ainpeople/ainpeople_doc/raw/master/ainci-tizen/images/sample_tizen.PNG
-[devspoon-startup-tizen Build]: https://github.com/ainpeople/ainpeople_doc/raw/master/ainci-tizen/images/AinCI-Tizen_build.jpg
-[Tizen jenkins 기반 설치 공식 메뉴얼]: https://source.tizen.org/ko/documentation/developer-guide/all-one-instructions/one-click-solution-tizen-image-creation-based-on-jenkins-framework
-[Tizen documentation]: https://source.tizen.org/documentation
-[Tizen 공식 사이트]: https://www.tizen.org/ko?langswitch=ko
-[docker-install]: https://hcnam.tistory.com/25
 [devspoon-web]: https://github.com/devspoons/devspoon-web
 [devspoon-startup-web]: https://github.com/devspoons/devspoon-startup-web
-[OpenProject(KR)]: http://wiki.webnori.com/display/pms/Open+Project+7
-[Jenkins(KR)]: https://jjeongil.tistory.com/810
-[Harbor(KR)]: https://engineering.linecorp.com/ko/blog/harbor-for-private-docker-registry/
-[mailgun]: https://www.mailgun.com/
-[sendgrid]: https://sendgrid.com/
 [OpenProject]: https://www.openproject.org/docs/user-guide/wiki/
 [OpenProject docs]: https://www.openproject.org/docs/installation-and-operations/operation/upgrading/#compose-based-installation
 [OpenProject backup]: https://www.openproject.org/docs/installation-and-operations/operation/backing-up/#docker-based-installation
 [Jenkins]: https://en.wikipedia.org/wiki/Jenkins_(software)
 [Gitolite]: https://wiki.archlinux.org/index.php/Gitolite
 [Harbor]: https://en.wikipedia.org/wiki/Harbor
-[Tizen-Builder-Env]: https://source.tizen.org/
 [tizen web-site]: https://www.tizen.org/user/register
-[bluebamus.github.io]: bluebamus.github.io
-[devspoons.github.io]: devspoons.github.io
