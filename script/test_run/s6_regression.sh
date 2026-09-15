@@ -469,6 +469,9 @@ f=script/test_run/s3_stack_smoke.sh
 assert_zero "6.34 s3 봇 UA 코드 000 허용 판정 (3B.8·3B.8a)" "$(grep -cE '= "000" \] (&& pass "3B\.8|\|\| all_blocked)' "$f")"
 assert_eq   "6.34 s3 stability.sh source" "$(grep -cxF '. "$ROOT/script/lib/stability.sh"' "$f")" 1
 assert_eq   "6.34 s3 http_blocked 봇 단언 (3B.8·3B.8a)" "$(grep -cE '^[[:space:]]*http_blocked -A "(MJ12bot|\$ua)"' "$f")" 2
+# TST-R12-01: 3B.6 Host 조작도 default_server `return 444` 차단 — 000 을 PASS 로 인정하는 판정 전면 금지
+assert_zero "6.34 s3 코드 000 을 PASS 로 인정하는 판정 (3B.6 포함)" "$(grep -cE '"000" \] && pass' "$f")"
+assert_eq   "6.34 s3 http_blocked Host 조작 단언 (3B.6)" "$(grep -cE '^http_blocked -H "Host: evil\.com" .*&& pass "3B\.6"' "$f")" 1
 echo
 
 echo "===== 6 FAILS=$FAILS ====="

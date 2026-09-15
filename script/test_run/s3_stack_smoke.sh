@@ -58,9 +58,8 @@ echo "code=$code"
 [ "$code" = "200" ] && pass "3B.5" || fail "3B.5" "code=$code"
 
 echo "===== 3B.6 host injection (Host: evil.com) =====" | tee -a "$SUMMARY"
-code=$(curl -sS -o /dev/null -w "%{http_code}" -H "Host: evil.com" http://127.0.0.1/ 2>&1)
-echo "code=$code"
-[ "$code" = "000" ] && pass "3B.6" || fail "3B.6" "code=$code"
+# 차단 = default.conf default_server `return 444`(응답 없이 닫힘, curl exit 52). 연결 거부(exit 7)·타임아웃은 FAIL (TST-R12-01)
+http_blocked -H "Host: evil.com" http://127.0.0.1/ && pass "3B.6" || fail "3B.6" "Host: evil.com not blocked"
 
 echo "===== 3B.8 bad-bot MJ12bot =====" | tee -a "$SUMMARY"
 # 차단 = curl exit 52(nginx return 444, 응답 없이 닫힘) 또는 444 만. 연결 거부(exit 7)·타임아웃은 FAIL (TST-R11-01)
