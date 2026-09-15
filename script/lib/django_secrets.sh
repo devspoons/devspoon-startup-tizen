@@ -35,7 +35,7 @@ ensure_django_secrets() {
 #   - 키 줄이 아예 없으면 compose 가 ${KEY:?} 로 요구하는 비밀 키만 끝에 추가 (이전 .env 업그레이드, php 스택은 REDIS_PASSWORD 만)
 #   - 값을 모두 만든 뒤 한 번에 쓴다: openssl 실패 시 FAIL·rc 1·파일 무변경. 생성이 있으면 group/other 권한 제거(600, 더 엄격하면 유지)
 # compose 는 이 값들을 :? 필수로 검사한다 — 운영자 최초 설정 한 줄(저장소 루트):
-#   bash -c '. script/lib/django_secrets.sh && ensure_env_secrets compose/web-service/nginx_gunicorn/.env'
+#   bash -c '. script/lib/django_secrets.sh && ensure_env_secrets <compose 스택 폴더>/.env'
 ensure_env_secrets() {
     local envf="${1:?사용: ensure_env_secrets <.env 경로>}" req k len val tmp traps rc set="" app="" names="" n=0
     [ -f "$envf" ] || { echo "  FAIL : $envf 없음 — 먼저 .env-example 을 .env 로 복사"; return 1; }
@@ -52,7 +52,7 @@ ensure_env_secrets() {
         set="$set $k=$val"; names="$names $k"; n=$((n+1))
     done
     if [ "$n" -gt 0 ]; then
-        # 원자적 교체: 같은 폴더 임시 파일에 쓰고 권한(600, 더 엄격하면 유지)·소유자를 맞춘 뒤 mv. 실패 시 원본 불변.
+        # 원자적 교체: 같은 폴더 임시 파일에 쓰고 권한(600, 더 엄격하면 유지)·소유자를 맞춘 뒤 mv. 실패 시 원본 내용 불변(권한은 좁아질 수 있음).
         # 심볼릭 링크 .env 는 링크를 보존하고 대상 파일을 교체한다 (compose 요구 키 조회는 위에서 링크 경로 기준으로 끝남)
         [ -L "$envf" ] && { envf=$(readlink -f "$envf") || { echo "  FAIL : $1 링크 대상 확인 실패"; return 1; }; }
         tmp=$(mktemp "$envf.XXXXXX" 2>/dev/null) || { echo "  FAIL : 임시 파일 생성 실패(폴더 쓰기 불가?) — $envf 변경 안 함"; return 1; }

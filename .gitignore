@@ -75,4 +75,5 @@ compose/project_mng_service/nginx_openproject/static/*
 compose/project_mng_service/gitolite/storage/*
 !compose/project_mng_service/gitolite/storage/LICENSE
 # ensure_env_secrets 원자 교체 임시 파일(mktemp .env.XXXXXX) — 강제 종료로 남아도 추적 안 함 (.env.example 은 7자라 비매칭)
+# 주의: 6글자 확장자 .env.* 를 추적해야 하면(예: .env.sample) 아래에 `!` 예외를 추가
 **/.env.??????

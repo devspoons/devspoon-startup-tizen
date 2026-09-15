@@ -367,6 +367,8 @@ done
 d=compose/web_service/nginx_gunicorn
 assert_eq "6.24 .gitignore .env.XXXXXX 무시·.env-example/.env.example 비무시" "$(git check-ignore --no-index "$d/.env.Ab12Cd" "$d/.env-example" "$d/.env.example" 2>/dev/null | grep -cxF "$d/.env.Ab12Cd")" 1
 assert_zero "6.24 .gitignore .env-example/.env.example 무시됨" "$(git check-ignore --no-index "$d/.env-example" "$d/.env.example" 2>/dev/null | wc -l)"
+assert_eq "6.24 .gitignore 예외 규칙 표기가 추적 파일명 .env-example 과 일치 (CL-WP5-04)" "$(grep -cxF '!**/.env-example' .gitignore)" 1
+assert_zero "6.24 git check-ignore 로 무시되는 추적 .env-example (CL-WP5-04)" "$(git ls-files -z '*.env-example' | git check-ignore --no-index -z --stdin | tr -cd '\0' | wc -c)"
 echo
 
 echo "===== 6.29 compose 가 :? 로 요구하는 비밀 키는 .env-example 에서 빈 값 — 공개 예시 자격증명 금지 (3회차 13) ====="
