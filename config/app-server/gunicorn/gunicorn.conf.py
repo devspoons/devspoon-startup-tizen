@@ -8,6 +8,8 @@ Gunicorn Configuration
 =====================================================
 """
 
+import os
+
 # ============================================================================
 # 네트워크 바인딩 설정
 # ============================================================================
@@ -54,7 +56,8 @@ daemon = False  # 데몬 모드 설정 (True일 경우 백그라운드 실행)
 # pidfile = '/tmp/gunicorn.pid'
 
 # ASGI, WSGI 애플리케이션 경로 설정
-wsgi_app = "config.wsgi:application"
+# 환경변수 WSGI_APP 로 오버라이드 — 미설정 시 Django 기본값. 예) flask_sample: WSGI_APP=app.main:app
+wsgi_app = os.environ.get("WSGI_APP", "config.wsgi:application")
 
 # ============================================================================
 # 타임아웃 설정
@@ -194,6 +197,17 @@ backlog = 2048
 
 # worker_tmp_dir = "/dev/shm"  # RAM 기반 tmpfs 사용으로 I/O 성능 향상
 worker_tmp_dir = None
+
+
+# ==========================================
+# 권한 강하 (privilege drop) — uwsgi/php-fpm 와 동일하게 워커를 www-data 로 실행 (최소권한).
+# 컨테이너는 root 로 기동(uv sync 등)되고, gunicorn arbiter(master)는 root 를 유지하되
+# 워커를 fork 하며 www-data(uid 33) 로 setuid 한다. (root 워커 회피)
+# 전제: /www 앱 소스는 www-data 가 읽기 가능해야 하고(배포 시 644/755), compose command 의
+#       `chown -R www-data:www-data /www/${PROJECT_DIR}` 가 SQLite db 쓰기 권한을 맞춘다.
+# ==========================================
+user = "www-data"
+group = "www-data"
 
 
 """

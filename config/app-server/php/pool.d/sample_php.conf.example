@@ -1,7 +1,13 @@
-[sample]
+[domain]
 
 ; ==========================================
 ; PHP-FPM 풀 설정 (프로덕션 서비스용 샘플)
+;
+; 본 파일은 php_conf.sh 가 placeholder(domain / portnumber)를 치환하여
+; ./pool.d/<DOMAIN>_php.conf 로 생성한다.
+;   - domain     : 풀 식별자 ([domain] 섹션 헤더)
+;   - portnumber : TCP listen 포트 (php-fpm 기본 9000)
+; placeholder 문자열은 본 sample 외 위치에 등장하면 안 됨 (의도치 않은 치환 방지).
 ; ==========================================
 
 ; -------------------------------------------------
@@ -14,7 +20,7 @@ group = www-data
 ; 리스닝 소켓 또는 포트 설정
 ; TCP 포트(9000) 혹은 유닉스 소켓을 선택 가능
 ; 유닉스 소켓이 더 빠르며, 단일 서버 내부 통신에 권장
-listen = [::]:9000
+listen = [::]:portnumber
 ; listen = /run/php/php-fpm.sock
 
 ; -------------------------------------------------

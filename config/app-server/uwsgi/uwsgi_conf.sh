@@ -1,7 +1,7 @@
 #!/bin/bash
 
 while :
-do 
+do
     echo "* if your project path has sub-level, you should be insert as \\\/A\\\/B\\\/C"
     echo -n "Enter the project path >"
     read project_path
@@ -9,17 +9,17 @@ do
     if [[ "$project_path" != "" ]]; then
         break
     fi
-done 
+done
 
 while :
-do 
+do
     echo -n "Enter the project name >"
     read project_name
     echo  "Entered the project name: $project_name"
     if [[ "$project_name" != "" ]]; then
         break
     fi
-done 
+done
 
 let p_num=$(grep -c processor /proc/cpuinfo)*2
 
@@ -33,14 +33,14 @@ th_num=$p_num
 echo "process number is $p_num and thread number is $th_num "
 
 while :
-do 
+do
     echo -n "Enter the service port number >"
     read port_num
     echo  "Entered the service port number: $port_num"
     if [[ "$port_num" != "" ]]; then
         break
     fi
-done 
+done
 
 sed 's/project_path/'$project_path'/g' sample_uwsgi.ini > $project_name'1'.temp
 sed 's/project_name/'$project_name'/g' $project_name'1'.temp > $project_name'2'.temp
