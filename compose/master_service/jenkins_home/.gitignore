@@ -1,0 +1,4 @@
+# Jenkins 런타임 데이터(비밀 포함)는 추적하지 않는다 — SEC-01 재발 방지
+*
+!.gitignore
+!.gitkeep
