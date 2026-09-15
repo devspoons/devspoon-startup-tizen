@@ -41,6 +41,9 @@ check "$APP·webserver 안정 (${STABLE_WINDOW:-15}s 창: running·RestartCount 
 # celery·beat — 워커는 www-data 강하, beat 는 app 이 migrate 한 /data SQLite 의 DatabaseScheduler 사용 (CI 경로 대표 1스택)
 check "celery·celery-beat 기동 (--profile celery)" 'dc --profile celery up -d --wait --wait-timeout 240 celery celery-beat'
 check "celery·celery-beat 안정 (${STABLE_WINDOW:-15}s 창: 재시작 루프 없음)" 'containers_stable "$(dc --profile celery ps -q celery)" "$(dc --profile celery ps -q celery-beat)"'
+# 죽지 않는 오류(브로커 인증 실패 등)는 재시작 판정으로 못 잡는다 — 워커가 브로커 경유로 실제 응답하는지 확인 (uv sync 후 기동 대기, 최대 약 2분)
+celery_ping() { local i; for i in $(seq 12); do dc --profile celery exec -T celery celery -A config inspect ping --timeout 5 >/dev/null 2>&1 && return 0; sleep 5; done; return 1; }
+check "celery 워커 브로커 응답 (inspect ping)" 'celery_ping'
 check "DEBUG off (404 에 URLconf 없음)" '[[ "$(curl -s --max-time 10 -H "Host: localhost" http://127.0.0.1/__debug_probe__/)" != *URLconf* ]]'
 
 echo "FAILS=$FAILS"
