@@ -84,9 +84,9 @@ ChallengeResponseAuthentication no
 UsePAM yes
 
 #AllowAgentForwarding yes
-#AllowTcpForwarding yes
+AllowTcpForwarding no
 #GatewayPorts no
-X11Forwarding yes
+X11Forwarding no
 #X11DisplayOffset 10
 #X11UseLocalhost yes
 #PermitTTY yes
