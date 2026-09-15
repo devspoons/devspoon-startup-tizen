@@ -8,14 +8,11 @@ services:
         max-size: "${LOG_OPT_MAXS}"
     container_name: nginx-proxy-jenkins
     volumes:
+      # conf.d = 서비스 전용 proxy 폴더(:ro) + catch-all default.conf(폴더 안 추적 자리표시자 위에 파일 마운트).
+      # 도메인 연결: proxy/jenkins/ 에서 cp jenkins_proxy.conf.example jenkins_proxy.conf 후 server_name 수정.
+      # 복사본이 없으면 모든 Host 444 로 정상 기동.
+      - ../../../config/web-server/nginx/php/proxy/jenkins/:/etc/nginx/conf.d/:ro
       - ../../../config/web-server/nginx/php/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
-      # 사용자 복사본: config/web-server/nginx/php/proxy/jenkins_proxy.conf.example → jenkins_proxy.conf
-      - type: bind
-        source: ../../../config/web-server/nginx/php/proxy/jenkins_proxy.conf
-        target: /etc/nginx/conf.d/jenkins_proxy.conf
-        read_only: true
-        bind:
-          create_host_path: false
       - ../../../config/web-server/nginx/php/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../../config/web-server/nginx/php/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ../../../log/:/log/

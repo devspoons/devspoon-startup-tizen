@@ -49,8 +49,9 @@ www/*/db.sqlite3
 www/*/secrets.json
 *.sqlite3
 
-# 사용자별 proxy conf 복사본(.example 만 추적)·gitolite 관리자 공개키(빌드 전 사용자가 생성)
-config/web-server/nginx/php/proxy/*.conf
+# 사용자별 proxy conf 복사본(.example·마운트 자리표시자 default.conf 만 추적)·gitolite 관리자 공개키(빌드 전 사용자가 생성)
+config/web-server/nginx/php/proxy/*/*.conf
+!config/web-server/nginx/php/proxy/*/default.conf
 docker/gitolite/system/*.pub
 
 # docs/YYYY-MM-DD/ — 날짜별 로컬 작업 문서(학습·설계·작업계획·체크리스트·리포트). git 추적 제외.
