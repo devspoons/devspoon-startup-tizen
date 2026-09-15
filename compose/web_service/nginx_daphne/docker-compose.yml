@@ -55,7 +55,10 @@ services:
     #     hard: ${ULIMIT_NOFILE_HARD:-65535}
 
   daphne-app:
-    build: ../../../docker/gunicorn/
+    build:
+      context: ../../../docker/gunicorn/
+      additional_contexts:
+        lock: ../../../www/django_sample
     image: ${IMAGE_NAMESPACE:-devspoon}-py-app:latest
     logging: *log_opts
     working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
@@ -69,8 +72,8 @@ services:
     # YAML `|` (literal block) + bash heredoc 안에서 `\` 줄바꿈이 깨질 수 있어
     # 본 command 는 단일 라인으로 유지한다.
     # Django 는 기동 전 migrate 1회(이 app 서비스만 — celery·beat 는 app healthy 뒤 기동해 동시 migrate 경쟁 없음).
-    #   root 로 /data SQLite 를 만든 뒤 www-data 소유로 맞춘다. flask/fastapi 는 manage.py 가 없어 건너뛰고 앱이 create_all.
-    command: bash -c "uv sync --inexact --extra daphne --extra celery && { [ ! -f manage.py ] || python manage.py migrate --noinput; } && chown -R www-data:www-data /data && export PYTHONUNBUFFERED=1 && exec daphne -p 8000 -b 0.0.0.0 --websocket_timeout 60 --websocket_connect_timeout 20 -v 2 -t 120 --access-log /log/daphne/access.log --ping-interval 20 --ping-timeout 30 --application-close-timeout 30 config.asgi:application >>/log/daphne/stdout.log 2>>/log/daphne/error.log"
+    #   root 로 /data SQLite 를 만든 뒤 www-data 소유로 맞춘다. flask/fastapi 는 manage.py 가 없어 건너뛰고 서버 기동 전 `prestart.sh` 1회로 초기화(DD-19).
+    command: bash -c "uv sync --inexact --extra daphne --extra celery && { [ ! -f manage.py ] || python manage.py migrate --noinput; } && { [ ! -f prestart.sh ] || bash prestart.sh; } && chown -R www-data:www-data /data && export PYTHONUNBUFFERED=1 && exec daphne -p 8000 -b 0.0.0.0 --websocket_timeout 60 --websocket_connect_timeout 20 -v 2 -t 120 --access-log /log/daphne/access.log --ping-interval 20 --ping-timeout 30 --application-close-timeout 30 config.asgi:application >>/log/daphne/stdout.log 2>>/log/daphne/error.log"
     environment:
       TZ: "Asia/Seoul"
       DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"

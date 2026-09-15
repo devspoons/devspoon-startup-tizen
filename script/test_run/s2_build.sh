@@ -11,7 +11,8 @@ build_one() {
     local start end elapsed
     echo "===== BUILD: devspoon-test/$name ====="
     start=$(date +%s)
-    docker build -f "$ROOT/docker/$dir/$dockerfile" -t "devspoon-test/$name" "$ROOT/docker/$dir/" > "$LOG/build_${name}.log" 2>&1
+    # lock: 앱 이미지(gunicorn·uwsgi)가 사전설치를 도출하는 www/django_sample uv.lock (다른 이미지는 참조 안 함)
+    docker build --build-context lock="$ROOT/www/django_sample" -f "$ROOT/docker/$dir/$dockerfile" -t "devspoon-test/$name" "$ROOT/docker/$dir/" > "$LOG/build_${name}.log" 2>&1
     local ec=$?
     end=$(date +%s)
     elapsed=$((end - start))
@@ -38,6 +39,21 @@ echo "===== build summary ====="
 cat "$LOG/build_summary.txt"
 echo ""
 docker images | grep -E "devspoon-test/" || echo "no devspoon-test images"
+
+# 이미지 사전설치 = django_sample uv.lock 해석 결과 — 기동 시 uv sync 가 설치·제거할 패키지 0 (CL-WP2-09-R4)
+echo ""
+echo "===== image preinstall = www/django_sample/uv.lock ====="
+for spec in "gunicorn gunicorn" "gunicorn uvicorn" "gunicorn daphne" "uwsgi uwsgi"; do
+    read -r img x <<<"$spec"
+    out=$(docker run --rm --entrypoint uv -v "$ROOT/www/django_sample:/lock:ro" -w /lock "devspoon-test/$img" \
+        sync --frozen --inexact --dry-run --extra "$x" --extra celery 2>&1); ec=$?
+    if [ $ec -eq 0 ] && ! printf '%s\n' "$out" | grep -qE '^ [-+~] '; then
+        echo "  PASS  devspoon-test/$img --extra $x --extra celery: $(printf '%s\n' "$out" | tail -1)"
+    else
+        echo "  FAIL  devspoon-test/$img --extra $x --extra celery (rc=$ec)"; printf '%s\n' "$out" | tail -20
+        echo "lock-$img-$x 1 0" >> "$LOG/build_summary.txt"
+    fi
+done
 
 # build_summary.txt 의 각 행은 "<name> <exit_code> <elapsed>". exit_code 가 0 이 아닌 빌드 수를 센다.
 fails=$(awk '$2!=0{c++} END{print c+0}' "$LOG/build_summary.txt")

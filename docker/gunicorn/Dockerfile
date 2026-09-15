@@ -15,6 +15,13 @@
 
 
 # -----------------------------------------------------------------------------
+# Stage 0: lock — 빈 기본값. 추가 빌드 컨텍스트 `lock`(compose additional_contexts,
+#   `docker build --build-context lock=www/django_sample`) 이 이 스테이지를 덮어쓴다.
+#   컨텍스트 누락 시 1.3 COPY 가 `"/pyproject.toml": not found` 로 실패한다(없으면 lock 이미지 pull 오류).
+# -----------------------------------------------------------------------------
+FROM scratch AS lock
+
+# -----------------------------------------------------------------------------
 # Stage 1: builder
 # -----------------------------------------------------------------------------
 FROM ubuntu:24.04 AS builder
@@ -70,14 +77,22 @@ RUN set -eux; \
 # 1.3. Python 패키지 사전 설치 (native build 필요 항목 포함)
 #      runtime 의 `uv sync --inexact` 가 본 site-packages 를 보존한다.
 # ============================================================================
-# 앱 서버·Django 는 www/django_sample/uv.lock 과 같은 버전으로 고정한다 — 다르면 기동마다 `uv sync` 가
-# 이미지 버전을 lock 버전으로 재설치(다운그레이드)한다. lock 갱신 시 함께 올릴 것 (s6 6.19 가 일치 단언).
-RUN pip install --no-cache-dir \
+# 사전설치 = www/django_sample/uv.lock 해석 결과(전이 의존성 포함) — 버전을 Dockerfile 에 따로 적지 않는다.
+# 다르면 기동마다 `uv sync` 가 설치·다운그레이드한다. lock 은 추가 빌드 컨텍스트 `lock`
+# (compose additional_contexts / `docker build --build-context lock=www/django_sample`) 으로 받는다.
+# extras = 이 이미지를 쓰는 스택(gunicorn·uvicorn·daphne) compose `uv sync --extra` 합집합 (s6 6.19).
+# 그 밖의 편의 패키지는 lock 제약(-c)으로 공유 의존성을 lock 버전에 묶는다.
+COPY --from=lock pyproject.toml uv.lock /tmp/lock/
+RUN pip install --no-cache-dir uv && \
+    cd /tmp/lock && uv export --frozen --no-hashes --no-header --no-annotate -o requirements.txt \
+        --extra gunicorn --extra uvicorn --extra daphne --extra celery && \
+    pip install --no-cache-dir -r /tmp/lock/requirements.txt && \
+    pip install --no-cache-dir -c /tmp/lock/requirements.txt \
         sqlalchemy alembic pydantic \
         psycopg2-binary asyncpg \
         mysqlclient asyncmy \
-        gunicorn==23.0.0 "uvicorn[standard]==0.48.0" \
-        fastapi uv poetry
+        fastapi poetry && \
+    rm -rf /tmp/lock
 
 
 # -----------------------------------------------------------------------------

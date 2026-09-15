@@ -63,7 +63,10 @@ services:
     #     hard: ${ULIMIT_NOFILE_HARD:-65535}
 
   uwsgi-app:
-    build: ../../docker/uwsgi/
+    build:
+      context: ../../docker/uwsgi/
+      additional_contexts:
+        lock: ../../www/django_sample
     image: ${IMAGE_NAMESPACE:-devspoon}-uwsgi-app:latest
     logging: *log_opts
     # working_dir 을 프로젝트 루트로 통일 — uv 가 pyproject.toml 을 자동 인식하게 함.
@@ -83,7 +86,7 @@ services:
     #          bind mount 된 호스트 소스 트리(/www)의 소유권은 바꾸지 않는다 (호스트 사용자 편집·CI 후속 단계·침해 시 소스 변조 방지).
     # Django 는 기동 전 migrate 1회(이 app 서비스만 — celery·beat 는 app healthy 뒤 기동해 동시 migrate 경쟁 없음).
     #   root 로 /data SQLite 를 만든 뒤 www-data 소유로 맞춘다.
-    command: bash -c "uv sync --inexact --extra uwsgi --extra celery && { [ ! -f manage.py ] || python manage.py migrate --noinput; } && chown -R www-data:www-data /data && exec uwsgi --ini /application/uwsgi.ini"
+    command: bash -c "uv sync --inexact --extra uwsgi --extra celery && { [ ! -f manage.py ] || python manage.py migrate --noinput; } && { [ ! -f prestart.sh ] || bash prestart.sh; } && chown -R www-data:www-data /data && exec uwsgi --ini /application/uwsgi.ini"
     environment:
       TZ: "Asia/Seoul"
       DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"

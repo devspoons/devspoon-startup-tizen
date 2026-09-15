@@ -12,6 +12,11 @@
 
 
 # -----------------------------------------------------------------------------
+# Stage 0: lock — 빈 기본값, 추가 빌드 컨텍스트 `lock` 이 덮어씀 (docker/gunicorn/Dockerfile 과 동일)
+# -----------------------------------------------------------------------------
+FROM scratch AS lock
+
+# -----------------------------------------------------------------------------
 # Stage 1: builder
 # -----------------------------------------------------------------------------
 FROM ubuntu:24.04 AS builder
@@ -59,15 +64,19 @@ RUN set -eux; \
 # ============================================================================
 # 1.3. Python 패키지 사전 설치 (uwsgi 포함 — native build 필요)
 # ============================================================================
-# 앱 서버·Django 는 www/django_sample/uv.lock 과 같은 버전으로 고정한다 — 다르면 기동마다 `uv sync` 가
-# 이미지 버전을 lock 버전으로 재설치(다운그레이드)한다. lock 갱신 시 함께 올릴 것 (s6 6.19 가 일치 단언).
-RUN pip install --no-cache-dir \
+# 사전설치 = www/django_sample/uv.lock 해석 결과 (정책은 docker/gunicorn/Dockerfile 1.3 과 동일, s6 6.19).
+# extras = uwsgi 스택 compose `uv sync --extra` + 기존 사전설치(gunicorn·uvicorn) 유지.
+COPY --from=lock pyproject.toml uv.lock /tmp/lock/
+RUN pip install --no-cache-dir uv && \
+    cd /tmp/lock && uv export --frozen --no-hashes --no-header --no-annotate -o requirements.txt \
+        --extra gunicorn --extra uvicorn --extra uwsgi --extra celery && \
+    pip install --no-cache-dir -r /tmp/lock/requirements.txt && \
+    pip install --no-cache-dir -c /tmp/lock/requirements.txt \
         sqlalchemy alembic pydantic \
         psycopg2-binary asyncpg \
         mysqlclient asyncmy \
-        gunicorn==23.0.0 "uvicorn[standard]==0.48.0" \
-        uwsgi==2.0.31 \
-        django==6.0.7 uv poetry
+        poetry && \
+    rm -rf /tmp/lock
 
 
 # -----------------------------------------------------------------------------
