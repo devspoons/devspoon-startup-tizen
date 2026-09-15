@@ -73,6 +73,10 @@ compose/project_mng_service/nginx_openproject/static/*
 !compose/project_mng_service/nginx_openproject/static/.gitkeep
 compose/project_mng_service/gitolite/storage/*
 !compose/project_mng_service/gitolite/storage/.gitkeep
+# Harbor ssl — autoinstall.sh 가 폴더째 cp 하므로 폴더는 유지, 인증서 내용물은 무시·빈 .gitkeep 만 추적 (D-PH)
+!compose/project_mng_service/harbor-v2.0.0/ssl/
+compose/project_mng_service/harbor-v2.0.0/ssl/*
+!compose/project_mng_service/harbor-v2.0.0/ssl/.gitkeep
 # ensure_env_secrets 원자 교체 임시 파일(mktemp .env.XXXXXX) — 강제 종료로 남아도 추적 안 함 (.env.example 은 7자라 비매칭)
 # 주의: 6글자 확장자 .env.* 를 추적해야 하면(예: .env.sample) 아래에 `!` 예외를 추가
 **/.env.??????
