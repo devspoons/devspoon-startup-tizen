@@ -4,6 +4,8 @@
 
 set -uo pipefail
 cd "$(dirname "$0")/../.."
+# shellcheck source=../lib/stability.sh
+. script/lib/stability.sh
 
 CONT=nginx-gunicorn-webserver
 STACK_DIR=compose/web_service/nginx_gunicorn
@@ -178,7 +180,8 @@ else
     echo "  --- nginx -t output ---"
     echo "$e2_out" | sed 's/^/    /'
 fi
-sleep 1
+# reload 직후 연결 거부 경쟁 — 단언 전에 기대 응답까지 폴링 (CL-WP4-R9-FLAKY)
+wait_http 200 -H "Host: blocker.test" http://localhost/ || fail "blocker.test 준비 대기 상한 초과"
 
 # E-3. 정상 브라우저 UA — 200 응답 기대
 echo "  -- 정상 UA (Mozilla) --"
@@ -190,8 +193,8 @@ echo "  HTTP code: $code, body: $body"
 
 # E-3b. 정상 UA 고속 300회(병렬 50) — ddos.conf(addr/flood) 가 정상 트래픽을 제한하지 않아야 한다 (C1)
 bad=$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w '%{http_code}\n' --max-time 5 \
-      -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: blocker.test" http://localhost/ | grep -cv '^200$')
-[ "$bad" = 0 ] && pass "정상 UA 300회(병렬 50) 전부 200" || fail "정상 UA 300회 중 200 아닌 응답 $bad 건"
+      -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: blocker.test" http://localhost/ | grep -v '^200$' | sort | uniq -c | tr -s ' \n' ' ')
+[ -z "$bad" ] && pass "정상 UA 300회(병렬 50) 전부 200" || fail "정상 UA 300회 중 200 아닌 응답 (건수 코드):$bad"
 
 # E-4. 알려진 봇 UA — 444 (차단) 기대
 for bot in "MJ12bot" "AhrefsBot/7.0" "SemrushBot/7.0" "BLEXBot"; do

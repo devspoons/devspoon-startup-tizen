@@ -29,3 +29,21 @@ containers_stable() {
         stable_judge "${before[i]}" "$after" || { echo "    unstable ${ids[i]:-<없음>}: [${before[i]}] → [$after]"; return 1; }
     done
 }
+
+# HTTP 단언·준비 대기 — compose --wait·healthy 직후에도 nginx/앱이 잠시 연결을 거부할 수 있다 (CL-WP4-R9-FLAKY)
+#   http_is <기대코드 정규식> <curl 인자...>   # 불일치 시 실제 받은 코드를 출력하고 1
+#   wait_http <기대코드 정규식> <curl 인자...> # WAIT_HTTP_INTERVAL 초(기본 1) 간격 WAIT_HTTP_TRIES 회(기본 30) 폴링, 상한 초과 시 마지막 코드 출력·1
+http_is() {
+    local want="$1" got; shift
+    got=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$@")
+    [[ "$got" =~ ^($want)$ ]] || { echo "    HTTP $got (기대 $want): ${*: -1}"; return 1; }
+}
+wait_http() {
+    local i
+    for i in $(seq "${WAIT_HTTP_TRIES:-30}"); do
+        http_is "$@" >/dev/null && return 0
+        sleep "${WAIT_HTTP_INTERVAL:-1}"
+    done
+    echo "    준비 대기 상한 초과 (${WAIT_HTTP_TRIES:-30}회 × ${WAIT_HTTP_INTERVAL:-1}s)"
+    http_is "$@"
+}

@@ -414,6 +414,22 @@ assert_eq "6.31 run-ci find www ! -user" "$(grep -cF 'find "$ROOT/www" ! -user "
 assert_eq "6.31 verify_compose_yml :? 필수 키 개별 빈 값 거부" "$(grep -c '\[PASS\] :? 필수 키 개별 빈 값 거부' script/test_run/verify_compose_yml.sh)" 1
 echo
 
+echo "===== 6.32 검증기 HTTP 단언 전 준비 대기(wait_http)·실패 시 실제 코드 출력(http_is) (CL-WP4-R9-FLAKY) ====="
+for f in script/test_run/verify_integration_*.sh script/test/verify-ngxblocker.sh; do
+    w=$(grep -n 'wait_http ' "$f" | head -1 | cut -d: -f1); h=$(grep -nE 'http_is |정상 UA → 200' "$f" | grep -v wait_http | head -1 | cut -d: -f1)
+    if [ -n "$w" ] && [ -n "$h" ] && [ "$w" -lt "$h" ]; then echo "  PASS 6.32 준비 대기가 첫 HTTP 단언보다 앞 ($f)"; else echo "  FAIL 6.32 준비 대기 없음·순서 ($f) wait_http=$w 첫단언=$h"; FAILS=$((FAILS+1)); fi
+done
+for f in script/test_run/verify_integration_*.sh; do
+    assert_zero "6.32 코드 미출력 단언 \"\$(code ...)\" = N ($f)" "$(grep -c '"$(code ' "$f")"
+done
+if [ -f script/lib/stability.sh ] && . script/lib/stability.sh && declare -F wait_http >/dev/null; then
+    out=$(WAIT_HTTP_TRIES=2 WAIT_HTTP_INTERVAL=0 wait_http 200 --max-time 1 http://127.0.0.1:9/); rc=$?
+    if [ "$rc" != 0 ] && [[ "$out" == *"HTTP 000"* ]]; then echo "  PASS 6.32 영구 거부 → 상한 후 FAIL·마지막 코드 출력"; else echo "  FAIL 6.32 영구 거부 rc=$rc out=[$out]"; FAILS=$((FAILS+1)); fi
+else
+    echo "  FAIL 6.32 stability.sh 에 wait_http 없음"; FAILS=$((FAILS+1))
+fi
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]

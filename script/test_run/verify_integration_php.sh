@@ -10,7 +10,6 @@ APP=php-app
 
 FAILS=0
 check() { if eval "$2"; then echo "[PASS] $1"; else echo "[FAIL] $1"; FAILS=$((FAILS+1)); fi; }
-code()  { curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: localhost' "$@"; }
 cid()   { dc ps -q "$1"; }
 UP="$DEVSPOON/www/php_sample/uploads"
 
@@ -35,17 +34,18 @@ cd "$STACK_DIR" || exit 1
 mkdir -p "$UP"; printf '<?php echo "EXECUTED";' > "$UP/x.php"; cp "$UP/x.php" "$UP/x.phtml"
 
 check "compose up --wait"          'dc up -d --build --wait --wait-timeout 240'
-check "HTTP 200 (Host: localhost)" '[ "$(code http://127.0.0.1/)" = 200 ]'
-check "/.hidden/x.js 403 (dotfile 차단 우선)"      '[ "$(code http://127.0.0.1/.hidden/x.js)" = 403 ]'
-check "/uploads/x.php/y.png 403 (업로드 차단 우선)" '[ "$(code http://127.0.0.1/uploads/x.php/y.png)" = 403 ]'
-check "봇 UA 차단 000|444"          '[[ "$(code -A MJ12bot http://127.0.0.1/)" =~ ^(000|444)$ ]]'
-check "정상 UA 300회 고속(병렬 50) 503/429/444 없음" '[ "$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: localhost" http://127.0.0.1/robots.txt | grep -cE "^(503|429|000)$")" = 0 ]'
+check "HTTP 준비 대기 (200, 1s 간격 최대 30회)" 'wait_http 200 -H "Host: localhost" http://127.0.0.1/'
+check "HTTP 200 (Host: localhost)" 'http_is 200 -H "Host: localhost" http://127.0.0.1/'
+check "/.hidden/x.js 403 (dotfile 차단 우선)"      'http_is 403 -H "Host: localhost" http://127.0.0.1/.hidden/x.js'
+check "/uploads/x.php/y.png 403 (업로드 차단 우선)" 'http_is 403 -H "Host: localhost" http://127.0.0.1/uploads/x.php/y.png'
+check "봇 UA 차단 000|444"          'http_is "000|444" -A MJ12bot -H "Host: localhost" http://127.0.0.1/'
+check "정상 UA 300회 고속(병렬 50) 503/429/444 없음" 'bad=$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: localhost" http://127.0.0.1/robots.txt | grep -E "^(503|429|000)$" | sort | uniq -c | xargs); [ -z "$bad" ] || echo "    비정상 응답 (건수 코드):$bad"; [ -z "$bad" ]'
 check "$APP health=healthy"        '[ "$(docker inspect -f "{{.State.Health.Status}}" "$(cid $APP)")" = healthy ]'
 check "$APP·webserver 안정 (${STABLE_WINDOW:-15}s 창: running·RestartCount 0 불변·unhealthy 아님)" 'containers_stable "$(cid $APP)" "$(cid webserver)"'
-check "/index.php 200"          '[ "$(code http://127.0.0.1/index.php)" = 200 ]'
-check "/uploads/x.php 403"      '[ "$(code http://127.0.0.1/uploads/x.php)" = 403 ]'
-check "/uploads/x.php/foo 403"  '[ "$(code http://127.0.0.1/uploads/x.php/foo)" = 403 ]'
-check "/uploads/x.phtml 403"    '[ "$(code http://127.0.0.1/uploads/x.phtml)" = 403 ]'
+check "/index.php 200"          'http_is 200 -H "Host: localhost" http://127.0.0.1/index.php'
+check "/uploads/x.php 403"      'http_is 403 -H "Host: localhost" http://127.0.0.1/uploads/x.php'
+check "/uploads/x.php/foo 403"  'http_is 403 -H "Host: localhost" http://127.0.0.1/uploads/x.php/foo'
+check "/uploads/x.phtml 403"    'http_is 403 -H "Host: localhost" http://127.0.0.1/uploads/x.phtml'
 
 # php 설정 실로드 — www.conf·php.ini 단일 파일 마운트(D-PHP)가 공식 이미지 경로에서 읽히는지 (SW-06)
 check "php-fpm pool [www] 로드"    'out=$(dc exec -T $APP php-fpm -tt 2>&1) && grep -q "\[www\]" <<<"$out"'

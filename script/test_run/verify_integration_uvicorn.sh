@@ -10,7 +10,6 @@ APP=uvicorn-app
 
 FAILS=0
 check() { if eval "$2"; then echo "[PASS] $1"; else echo "[FAIL] $1"; FAILS=$((FAILS+1)); fi; }
-code()  { curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: localhost' "$@"; }
 cid()   { dc ps -q "$1"; }
 
 # 운영 보호: 기존 .env 는 읽지도 고치지도 않는다. .env-example 로 만든 임시 env-file 과 전용 compose 프로젝트명으로 격리한다.
@@ -32,10 +31,11 @@ trap cleanup EXIT
 cd "$STACK_DIR" || exit 1
 
 check "compose up --wait"          'dc up -d --build --wait --wait-timeout 240'
-check "HTTP 200 (Host: localhost)" '[ "$(code http://127.0.0.1/)" = 200 ]'
-check "/static/.hidden/x.css 403 (중첩 regex 보다 dotfile 차단 우선)" '[ "$(code http://127.0.0.1/static/.hidden/x.css)" = 403 ]'
-check "봇 UA 차단 000|444"          '[[ "$(code -A MJ12bot http://127.0.0.1/)" =~ ^(000|444)$ ]]'
-check "정상 UA 300회 고속(병렬 50) 503/429/444 없음" '[ "$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: localhost" http://127.0.0.1/robots.txt | grep -cE "^(503|429|000)$")" = 0 ]'
+check "HTTP 준비 대기 (200, 1s 간격 최대 30회)" 'wait_http 200 -H "Host: localhost" http://127.0.0.1/'
+check "HTTP 200 (Host: localhost)" 'http_is 200 -H "Host: localhost" http://127.0.0.1/'
+check "/static/.hidden/x.css 403 (중첩 regex 보다 dotfile 차단 우선)" 'http_is 403 -H "Host: localhost" http://127.0.0.1/static/.hidden/x.css'
+check "봇 UA 차단 000|444"          'http_is "000|444" -A MJ12bot -H "Host: localhost" http://127.0.0.1/'
+check "정상 UA 300회 고속(병렬 50) 503/429/444 없음" 'bad=$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: localhost" http://127.0.0.1/robots.txt | grep -E "^(503|429|000)$" | sort | uniq -c | xargs); [ -z "$bad" ] || echo "    비정상 응답 (건수 코드):$bad"; [ -z "$bad" ]'
 check "$APP health=healthy"        '[ "$(docker inspect -f "{{.State.Health.Status}}" "$(cid $APP)")" = healthy ]'
 check "$APP·webserver 안정 (${STABLE_WINDOW:-15}s 창: running·RestartCount 0 불변·unhealthy 아님)" 'containers_stable "$(cid $APP)" "$(cid webserver)"'
 check "DEBUG off (404 에 URLconf 없음)" '[[ "$(curl -s --max-time 10 -H "Host: localhost" http://127.0.0.1/__debug_probe__/)" != *URLconf* ]]'
