@@ -307,6 +307,19 @@ if grep -q 'ensure_env_secrets()' script/lib/django_secrets.sh; then
     chmod 755 "$tmp/ro"
     assert_eq "6.24 심볼릭 링크 .env 링크 유지·대상 파일 생성 (R4-01)" "$( { [ -L "$tmp/ln/.env" ] && grep -cE '^DJANGO_SECRET_KEY=[0-9a-f]{100}$' "$tmp/real/env"; } || echo 0)" 1
     assert_eq "6.24 원자 교체 후 폴더 임시 파일 잔존 없음" "$(find "$tmp/dj" "$tmp/real" -name '*.env.*' -o -name 'env.*' | wc -l)" 0
+    # R2S-02 docker-compose*.yml 전부의 :? 필수 키 합집합 중 비밀 이름(SECRET·PASSWORD·PWD 포함, _KEY_BASE 끝)만 채움/추가
+    #        비밀 아닌 필수 키·주석 줄 키는 손대지 않음, _KEY_BASE 는 128 hex
+    mkdir -p "$tmp/multi"
+    printf 'services:\n  op:\n    environment:\n      - SECRET_KEY_BASE=${OPENPROJECT_SECRET_KEY_BASE:?set}\n      - HOST=${OPENPROJECT_HOST__NAME:?set}\n      - R=${REDIS_PASSWORD:?}\n      - D=${PROJECT_DIR:?} F=${FLOWER_ID:?}\n      # - C=${COMMENTED_PASSWORD:?}\n' > "$tmp/multi/docker-compose-foo.yml"
+    printf 'services:\n  db:\n    environment:\n      - P=${BAR_DB_PASSWORD:?}\n      - A=${DJANGO_ALLOWED_HOSTS:?}\n' > "$tmp/multi/docker-compose-bar.yml"
+    printf 'FLOWER_ID=\nOPENPROJECT_HOST__NAME=\nBAR_DB_PASSWORD=CHANGE_ME_X\n' > "$tmp/multi/.env"
+    ( . script/lib/django_secrets.sh; ensure_env_secrets "$tmp/multi/.env" >/dev/null 2>&1 )
+    assert_eq "6.24 docker-compose-foo.yml _KEY_BASE 부재 → 128 hex 추가 (R2S-02)" "$(grep -cE '^OPENPROJECT_SECRET_KEY_BASE=[0-9a-f]{128}$' "$tmp/multi/.env")" 1
+    assert_eq "6.24 docker-compose-foo.yml REDIS_PASSWORD 부재 → 64 hex 추가 (R2S-02)" "$(grep -cE '^REDIS_PASSWORD=[0-9a-f]{64}$' "$tmp/multi/.env")" 1
+    assert_eq "6.24 여러 compose 합집합 — bar 의 CHANGE_ME 비밀 채움 (R2S-02)" "$(grep -cE '^BAR_DB_PASSWORD=[0-9a-f]{64}$' "$tmp/multi/.env")" 1
+    assert_eq "6.24 비밀 아닌 필수 키 빈 값 불변 (FLOWER_ID·OPENPROJECT_HOST__NAME)" "$(grep -cE '^(FLOWER_ID|OPENPROJECT_HOST__NAME)=$' "$tmp/multi/.env")" 2
+    assert_zero "6.24 비밀 아닌·주석·compose 미요구 키 추가 없음" "$(grep -cE '^(PROJECT_DIR|DJANGO_ALLOWED_HOSTS|COMMENTED_PASSWORD|DJANGO_SECRET_KEY|FLOWER_PWD)=' "$tmp/multi/.env")"
+    assert_eq "6.24 compose 여러 개 — 총 줄 수 (3 기존 + 2 추가)" "$(wc -l < "$tmp/multi/.env")" 5
     rm -rf "$tmp"
 else
     echo "  FAIL 6.24 ensure_env_secrets 없음"; FAILS=$((FAILS+1))

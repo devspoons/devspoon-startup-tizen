@@ -60,6 +60,17 @@ for svc in jenkins openproject; do
         echo "  [PASS] $svc 복사본 무시·자리표시자 추적"; else fail "$svc proxy 복사본 ignore 규칙"; fi
 done
 
+echo "### ensure_env_secrets — master·단독 openproject 에서 OPENPROJECT_SECRET_KEY_BASE 128 hex, 비밀 아닌 키 불변, 한 줄 안내 (R2S-02) ###"
+for d in compose/master_service compose/project_mng_service/nginx_openproject; do
+    w="$TMPD/sec-${d##*/}"; mkdir -p "$w"; cp "$ROOT/$d"/docker-compose*.yml "$w/"; cp "$ROOT/$d/.env-example" "$w/.env"
+    nonsec() { grep -vE '^[A-Z0-9_]*(SECRET|PASSWORD|PWD)[A-Z0-9_]*=|^[A-Z0-9_]*_KEY_BASE=' "$1" | sha256sum; }
+    b=$(nonsec "$w/.env"); ( . "$ROOT/script/lib/django_secrets.sh"; ensure_env_secrets "$w/.env" ) >/dev/null 2>&1
+    if grep -qE '^OPENPROJECT_SECRET_KEY_BASE=[0-9a-f]{128}$' "$w/.env" && [ "$(nonsec "$w/.env")" = "$b" ]; then
+        echo "  [PASS] $d 헬퍼 실행 → KEY_BASE 128 hex·비밀 아닌 키 불변"; else fail "$d 헬퍼가 OPENPROJECT_SECRET_KEY_BASE 미생성 또는 비밀 아닌 키 변경"; fi
+    if grep -q "ensure_env_secrets $d/.env" "$ROOT/$d/.env-example" && ! grep -q 'openssl rand' "$ROOT/$d/.env-example"; then
+        echo "  [PASS] $d .env-example 한 줄 안내"; else fail "$d .env-example 직접 생성(openssl) 안내 잔존 또는 헬퍼 안내 없음"; fi
+done
+
 echo "### master_service / project_mng_service compose config (운영 .env 미사용 — .env-example 로 만든 임시 env-file) ###"
 n=0
 for f in "$ROOT"/compose/master_service/docker-compose-*.yml "$ROOT"/compose/project_mng_service/{nginx_jenkins,nginx_openproject,gitolite}/docker-compose.yml; do
