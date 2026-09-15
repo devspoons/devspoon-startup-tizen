@@ -109,12 +109,8 @@ echo "$out"
 echo "$out" | grep -qE "update-ngxblocker" && pass "3B.8d" || fail "3B.8d" "no cron line"
 
 echo "===== 3B.8f normal UA (Mozilla) =====" | tee -a "$SUMMARY"
-code=$(curl -sS -A "Mozilla/5.0" -o /dev/null -w "%{http_code}" -H "Host: localhost" http://127.0.0.1/ 2>&1)
-echo "code=$code"
-case "$code" in
-    000|444) fail "3B.8f" "Mozilla blocked (code=$code)";;
-    *) pass "3B.8f";;
-esac
+# TST-R16-02: 2>&1 캡처·"000|444 아니면 PASS" 는 webserver 정지(curl exit 7)도 통과 — 실제 200 만 PASS, 실패 사유 = 헬퍼 출력(실제 코드)
+out=$(http_is 200 -A "Mozilla/5.0" -H "Host: localhost" http://127.0.0.1/) && pass "3B.8f" || fail "3B.8f" "Mozilla not served:$out"
 
 if [ "$STACK" != "php" ]; then
     echo "===== 3B.9 static (django) =====" | tee -a "$SUMMARY"
@@ -150,9 +146,9 @@ echo "  access_http count=$n, error_http count=$m"
 [ "$n" -ge 1 ] && [ "$m" -ge 1 ] && pass "3B.12" || fail "3B.12" "access=$n error=$m"
 
 echo "===== 3B.13 cron in webserver =====" | tee -a "$SUMMARY"
-out=$(docker compose exec -T webserver pgrep -a cron 2>&1)
+out=$(docker compose exec -T webserver pgrep -a cron 2>&1); rc=$?   # TST-R16-02: 출력만 있으면 PASS 이던 판정은 exec 오류 문구도 통과
 echo "$out"
-[ -n "$out" ] && pass "3B.13" || fail "3B.13" "no cron"
+[ "$rc" = 0 ] && grep -q cron <<<"$out" && pass "3B.13" || fail "3B.13" "exec rc $rc: $out"
 
 echo "===== 3B.14 logrotate dropin mode =====" | tee -a "$SUMMARY"
 out=$(docker compose exec -T webserver ls -l /run/logrotate.d/nginx 2>&1)

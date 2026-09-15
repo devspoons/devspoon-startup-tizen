@@ -549,6 +549,21 @@ assert_zero "6.36 --build 없는 compose up ($f)" "$(grep -E '^[[:space:]]*(dc|d
 assert_eq   "6.36 dc up -d --build webserver redis ($f)" "$(grep -cE '^[[:space:]]*dc up -d --build webserver redis( |$)' "$f")" 1
 echo
 
+echo "===== 6.37 s3 정상 UA(3B.8f)·cron(3B.13) 판정은 연결 실패·exec 오류를 PASS 로 보지 않음 (TST-R16-02) ====="
+f=script/test_run/s3_stack_smoke.sh
+assert_eq   "6.37 s3 3B.8f 정상 UA = http_is 200·실패 사유 헬퍼 출력" "$(grep -cE '^out=\$\(http_is 200 -A "Mozilla/5\.0" .*\) && pass "3B\.8f" \|\| fail "3B\.8f" ".*\$out"$' "$f")" 1
+assert_eq   "6.37 s3 3B.13 cron = exec rc 0 + cron 출력" "$(grep -cF '[ "$rc" = 0 ] && grep -q cron <<<"$out" && pass "3B.13"' "$f")" 1
+# s3 실제 절(echo 머리 ~ 빈 줄)을 curl·docker 스텁 함수로 실행 — webserver 정지(curl stderr + 000·exit 7 / exec 오류 문구)는 FAIL 이어야 한다
+s37() { ( SUMMARY=/dev/null; pass() { echo PASS; }; fail() { echo FAIL; }; eval "$2"; eval "$(sed -n "/^echo \"===== $1 /,/^\$/p" "$f")" ) 2>/dev/null | tail -n1; }
+u37() { if [ "$2" = "$3" ]; then echo "  PASS 6.37 $1"; else echo "  FAIL 6.37 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
+u37 "3B.8f 200 → PASS" "$(s37 3B.8f 'curl() { printf 200; }')" PASS
+u37 "3B.8f 연결 거부(stderr + 000, exit 7) → FAIL" "$(s37 3B.8f 'curl() { echo "curl: (7) Failed to connect" >&2; printf 000; return 7; }')" FAIL
+u37 "3B.8f 444 → FAIL" "$(s37 3B.8f 'curl() { printf 444; }')" FAIL
+u37 "3B.13 cron 실행 중 → PASS" "$(s37 3B.13 'docker() { echo "62 cron"; }')" PASS
+u37 "3B.13 webserver 정지(exec 오류 문구, rc 1) → FAIL" "$(s37 3B.13 'docker() { echo "service \"webserver\" is not running" >&2; return 1; }')" FAIL
+u37 "3B.13 cron 없음(rc 1, 출력 없음) → FAIL" "$(s37 3B.13 'docker() { return 1; }')" FAIL
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]
