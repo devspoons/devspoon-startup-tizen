@@ -147,8 +147,10 @@ if [ -f script/lib/mask_secrets.sh ]; then
         'Authorization: Bearer dummysecret' "DJANGO_SECRET_KEY='dummy secret'" 'FLOWER_PWD="dummy secret"' \
         'redis-server --requirepass "dummy secret"' 'redis-cli --no-auth-warning -a dummysecret ping' 'requirepass dummysecret' \
         '"command": ["redis-server", "--requirepass", "dummysecret"]' 'REDIS_PASSWORD="dum\"my,secret"' '{"SECRET_KEY": "dummy,secret", "x": 1}' \
-        '"Authorization": "Bearer dummysecret"' "redis-server --requirepass 'dummy secret'" "redis-cli -a 'dummy secret' ping" | mask_secrets | grep -c dummy)
-    assert_zero "6.16 누락 형식 포함 마스킹 샘플 18종 누출 (작은따옴표 requirepass·redis-cli -a, RV3-S-02)" "$leak"
+        '"Authorization": "Bearer dummysecret"' "redis-server --requirepass 'dummy secret'" "redis-cli -a 'dummy secret' ping" \
+        "requirepass 'dummy dummytail" 'redis-server --requirepass "dummy dummytail' "redis-cli -a 'dummy dummytail" \
+        "DJANGO_SECRET_KEY='dummy dummytail" 'FLOWER_PWD="dummy dummytail' | mask_secrets | grep -c dummy)
+    assert_zero "6.16 누락 형식 포함 마스킹 샘플 23종 누출 (작은따옴표 RV3-S-02, 잘린 로그의 닫히지 않은 따옴표 R4-04)" "$leak"
     keep='RUNTIME_PASS=5
 ALL PASS: dhparam
 invalid token format
@@ -289,6 +291,22 @@ if grep -q 'ensure_env_secrets()' script/lib/django_secrets.sh; then
     assert_eq   "6.24 CRLF 빈 값·CHANGE_ME 생성·기존 값 보존·줄끝 보존" "$(grep -cE $'^(DJANGO_SECRET_KEY=[0-9a-f]{100}|REDIS_PASSWORD=[0-9a-f]{64}|FLOWER_PWD=keep)\r$' "$tmp/crlf/.env")" 3
     assert_eq   "6.24 openssl 실패 → rc 1 (RV3-SEC-02)" "$(grep -c '^rc_nossl=1$' "$tmp/rc2")" 1
     if [ "$(sha256sum < "$tmp/nossl/.env")" = "$ns" ]; then echo "  PASS 6.24 openssl 실패 시 파일 무변경"; else echo "  FAIL 6.24 openssl 실패 시 파일 변경됨"; FAILS=$((FAILS+1)); fi
+    # R4-01 쓰기 원자성 — 같은 폴더 임시 파일 + mv 교체: 쓰기 실패(읽기 전용 폴더) 시 rc 1·원본 불변·임시 파일 잔존 0
+    #        심볼릭 링크 .env — 링크는 유지하고 대상 파일을 갱신
+    mkdir -p "$tmp/ro" "$tmp/ln" "$tmp/real"
+    printf 'DJANGO_SECRET_KEY=\n' > "$tmp/ro/.env"; rs=$(sha256sum < "$tmp/ro/.env"); chmod 555 "$tmp/ro"
+    printf 'DJANGO_SECRET_KEY=\n' > "$tmp/real/env"; ln -s "$tmp/real/env" "$tmp/ln/.env"
+    ( . script/lib/django_secrets.sh
+      ensure_env_secrets "$tmp/ro/.env" >/dev/null 2>&1; echo "rc_ro=$?" > "$tmp/rc3"
+      ensure_env_secrets "$tmp/ln/.env" >/dev/null 2>&1 )
+    if [ "$(id -u)" -eq 0 ]; then echo "  SKIP 6.24 읽기 전용 폴더 쓰기 실패 (root 는 권한 무시)"; else
+        assert_eq "6.24 쓰기 실패 → rc 1 (R4-01)" "$(grep -c '^rc_ro=1$' "$tmp/rc3")" 1
+        if [ "$(sha256sum < "$tmp/ro/.env")" = "$rs" ]; then echo "  PASS 6.24 쓰기 실패 시 원본 sha 불변 (R4-01)"; else echo "  FAIL 6.24 쓰기 실패 시 원본 변경됨"; FAILS=$((FAILS+1)); fi
+        assert_eq "6.24 쓰기 실패 시 임시 파일 잔존 없음" "$(find "$tmp/ro" -mindepth 1 | wc -l)" 1
+    fi
+    chmod 755 "$tmp/ro"
+    assert_eq "6.24 심볼릭 링크 .env 링크 유지·대상 파일 생성 (R4-01)" "$( { [ -L "$tmp/ln/.env" ] && grep -cE '^DJANGO_SECRET_KEY=[0-9a-f]{100}$' "$tmp/real/env"; } || echo 0)" 1
+    assert_eq "6.24 원자 교체 후 폴더 임시 파일 잔존 없음" "$(find "$tmp/dj" "$tmp/real" -name '*.env.*' -o -name 'env.*' | wc -l)" 0
     rm -rf "$tmp"
 else
     echo "  FAIL 6.24 ensure_env_secrets 없음"; FAILS=$((FAILS+1))
