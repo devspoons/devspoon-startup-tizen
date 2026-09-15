@@ -1,11 +1,22 @@
+# =============================================================================
+# nginx_daphne 스택
+#
+# - 동일 Python 앱 이미지 (devspoon-py-app:latest) 를 nginx_gunicorn / nginx_uvicorn
+#   과 공유한다 (모두 docker/gunicorn/ build context). 본 스택에서는 daphne-app 만
+#   build 정의를 두고 celery / celery-beat 는 image 만 참조하여 재빌드를 피한다.
+# - 자격증명 fail-fast / redis healthcheck / 컨테이너명 기반 의존성 — nginx_gunicorn
+#   compose 와 동일 정책. 자세한 설명은 그 파일을 참조.
+# =============================================================================
+
 services:
   webserver:
     build: ../../../docker/nginx/
-    logging:
-      driver: "${LOG_DRIVER}"
+    image: devspoon-nginx:latest
+    logging: &log_opts
+      driver: "${LOG_DRIVER:-json-file}"
       options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+        max-file: "${LOG_OPT_MAXF:-5}"
+        max-size: "${LOG_OPT_MAXS:-100m}"
     working_dir: /application
     container_name: nginx-daphne-webserver
     volumes:
@@ -14,6 +25,9 @@ services:
       - ../../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
       - ../../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
+      # dhparam 백업/복원 — 이미지에 구운 /etc/nginx/dhparam.pem 을 여기에 백업/복원한다.
+      # docker compose down 후 up 시 백업본이 있으면 그대로 복원, 없으면(최초 기동) 이미지본을 백업.
+      # (과거의 ./ssl/certs:/etc/ssl/certs 는 시스템 CA 번들을 가려 certbot 을 깨뜨려 제거)
       - ./ssl/dhparam/:/etc/nginx/dhparam-backup/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
       - ../../../log/:/log/
@@ -24,148 +38,142 @@ services:
     environment:
       TZ: "Asia/Seoul"
     restart: always
+    # webserver 는 daphne-app(8000) + redis(6379) 가 healthy 가 되어야 의미가 있다.
+    # service_healthy 조건으로 race(daphne 가 bind 전 nginx 가 502 를 뱉는 구간) 을 차단.
     depends_on:
       daphne-app:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+    # ulimits — 의도적으로 비활성화 상태. 변수 정의는 .env 의
+    # ULIMIT_NOFILE_SOFT / ULIMIT_NOFILE_HARD 에 두어 운영자가 호스트별로 활성/비활성을
+    # 통일된 키로 제어할 수 있게 한다. 호스트 docker daemon 기본값(LimitNOFILE) 이
+    # 65535 미만으로 잘리는 환경에서만 아래 블록의 주석을 제거하여 명시 활성화.
+    # ulimits:
+    #   nofile:
+    #     soft: ${ULIMIT_NOFILE_SOFT:-65535}
+    #     hard: ${ULIMIT_NOFILE_HARD:-65535}
 
   daphne-app:
     build: ../../../docker/gunicorn/
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: devspoon-py-app:latest
+    logging: *log_opts
     working_dir: /www/${PROJECT_DIR}
     container_name: daphne-app
     volumes:
       - ../../../www:/www
       - ../../../log:/log
       - ../../../script/logrotate/daphne/daphne:/etc/logrotate.d/daphne
-    command: |
-      bash -c "
-        uv sync --inexact --extra daphne --extra celery &&
-        export PYTHONUNBUFFERED=1 &&
-        exec daphne -p 8000 -b 0.0.0.0 \
-          --websocket_timeout 60 \
-          --websocket_connect_timeout 20 \
-          -v 2 -t 120 \
-          --access-log /log/daphne/access.log \
-          --ping-interval 20 --ping-timeout 30 \
-          --application-close-timeout 30 \
-          config.asgi:application \
-          >>/log/daphne/stdout.log 2>>/log/daphne/error.log
-      "
-    # command: |
-    #   bash -c "
-    #     uv pip install --system --no-cache . &&
-    #     export PYTHONUNBUFFERED=1 &&
-    #     exec daphne -p 8000 -b 0.0.0.0 \
-    #       --websocket_timeout 60 \
-    #       --websocket_connect_timeout 20 \
-    #       -v 2 -t 120 \
-    #       --access-log /log/daphne/access.log \
-    #       --ping-interval 20 --ping-timeout 30 \
-    #       --application-close-timeout 30 \
-    #       config.asgi:application \
-    #       >>/log/daphne/stdout.log 2>>/log/daphne/error.log
-    #   "
+    # uv 네이티브 흐름 — gunicorn/uvicorn stack 과 동일.
+    # YAML `|` (literal block) + bash heredoc 안에서 `\` 줄바꿈이 깨질 수 있어
+    # 본 command 는 단일 라인으로 유지한다.
+    command: bash -c "uv sync --inexact --extra daphne --extra celery && export PYTHONUNBUFFERED=1 && exec daphne -p 8000 -b 0.0.0.0 --websocket_timeout 60 --websocket_connect_timeout 20 -v 2 -t 120 --access-log /log/daphne/access.log --ping-interval 20 --ping-timeout 30 --application-close-timeout 30 config.asgi:application >>/log/daphne/stdout.log 2>>/log/daphne/error.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
     restart: always
+    depends_on:
+      redis:
+        condition: service_healthy
+    # daphne 가 -p 8000 -b 0.0.0.0 으로 ASGI/WebSocket listen 한다.
+    # /dev/tcp 는 protocol 무관하게 TCP 연결만 확인 → daphne 가 accept 단계 진입했는지만 검증.
     healthcheck:
       test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8000' || exit 1"]
       interval: 10s
       timeout: 3s
       retries: 5
       start_period: 30s
+    # 본 스택은 gunicorn 의 nginx conf 를 공유 마운트한다(webserver volumes 참조).
+    # 그 conf 의 upstream 은 `gunicorn-app:8000` 으로 하드코딩되어 있으나, daphne 스택의
+    # app 서비스명은 `daphne-app` 이라 이름이 어긋나 nginx 가 [emerg] host not found in
+    # upstream "gunicorn-app" 으로 기동 실패한다. conf 중복 없이 공유 설계를 유지하기 위해
+    # daphne-app 에 `gunicorn-app` 네트워크 alias 를 부여하여 동일 upstream 이 resolve 되게 한다.
+    networks:
+      default:
+        aliases:
+          - gunicorn-app
 
+  # CELERY_BROKER_URL 은 REDIS_PASSWORD 로부터 합성 (SSOT) — drift 차단.
+  # 자세한 설명은 nginx_gunicorn/docker-compose.yml 참조.
   celery:
-    build: ../../../docker/gunicorn/
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: devspoon-py-app:latest
+    logging: *log_opts
     working_dir: /www/${PROJECT_DIR}
     container_name: celery-app
     volumes:
       - ../../../www:/www
       - ../../../log:/log
       - ../../../script/logrotate/daphne/celery/daphne-celery:/etc/logrotate.d/daphne-celery
-    command: bash -c "uv sync --inexact --extra daphne --extra celery && \
-      celery -A config worker \
+    command: bash -c "mkdir -p /log/daphne/celery && chown -R www-data:www-data /www/${PROJECT_DIR} /log/daphne/celery && \
+      uv sync --inexact --extra daphne --extra celery && \
+      exec celery -A config worker \
+      --uid www-data --gid www-data \
       --loglevel=INFO \
+      --concurrency=8 \
+      --max-tasks-per-child=2000 \
       --logfile=/log/daphne/celery/worker-%n%I.log"
-    # command: bash -c "uv pip install --system --no-cache . && \
-    #   exec celery -A config worker \
-    #   --loglevel=INFO \
-    #   --logfile=/log/daphne/celery/worker-%n%I.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
     restart: always
     depends_on:
-      - redis
-      - daphne-app
+      redis:
+        condition: service_healthy
+      daphne-app:
+        condition: service_started
     profiles:
       - celery
 
   celery-beat:
-    build: ../../../docker/gunicorn/
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: devspoon-py-app:latest
+    logging: *log_opts
     working_dir: /www/${PROJECT_DIR}
     container_name: celerybeat-app
     volumes:
       - ../../../www:/www
       - ../../../log:/log
       - ../../../script/logrotate/daphne/celerybeat/daphne-celerybeat:/etc/logrotate.d/daphne-celerybeat
-    command: bash -c "uv sync --inexact --extra daphne --extra celery && \
-      celery -A config beat \
+    command: bash -c "mkdir -p /log/daphne/celerybeat && chown -R www-data:www-data /www/${PROJECT_DIR} /log/daphne/celerybeat && \
+      uv sync --inexact --extra daphne --extra celery && \
+      exec celery -A config beat \
+      --uid www-data --gid www-data \
       --loglevel=INFO \
       --scheduler django_celery_beat.schedulers:DatabaseScheduler \
       --logfile=/log/daphne/celerybeat/celerybeat.log"
-    # command: bash -c "uv pip install --system --no-cache . && \
-    #   exec celery -A config beat \
-    #   --loglevel=INFO \
-    #   --scheduler django_celery_beat.schedulers:DatabaseScheduler \
-    #   --logfile=/log/daphne/celerybeat/celerybeat.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
     restart: always
     depends_on:
-      - celery
+      celery:
+        condition: service_started
     profiles:
       - celery
 
   flower:
-    image: mher/flower:master
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: mher/flower:2.0.1
+    logging: *log_opts
     container_name: flower
     ports:
-      - "5555:5555"
+      - "127.0.0.1:5555:5555"
     environment:
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - FLOWER_BASIC_AUTH=${FLOWER_ID}:${FLOWER_PWD}
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
+      - FLOWER_BASIC_AUTH=${FLOWER_ID:?FLOWER_ID must be set}:${FLOWER_PWD:?FLOWER_PWD must be set}
     restart: always
     depends_on:
-      - celery-beat
+      celery-beat:
+        condition: service_started
     profiles:
       - celery
 
   redis:
-    image: redis:latest
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: redis:7.4-alpine
+    logging: *log_opts
     container_name: redis_db
     # ports:
     #   - 6379:6379
@@ -177,24 +185,14 @@ services:
       - "mode=standalone"
     environment:
       TZ: "Asia/Seoul"
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     restart: always
-    command: redis-server /usr/local/etc/redis/redis.conf
-
-  redis-stats:
-    image: insready/redis-stat:latest
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
-    container_name: redis-stats
-    ports:
-      - 63790:63790
-    command: ["--verbose", "--server", "redis:6379"]
-    environment:
-      TZ: "Asia/Seoul"
-    depends_on:
-      - redis
-    restart: always
-    profiles:
-      - redis
+    command: >
+      redis-server /usr/local/etc/redis/redis.conf
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
