@@ -541,6 +541,12 @@ else
 fi
 echo
 
+echo "===== 6.36 verify-ngxblocker 스택 기동은 --build — 공유 태그에 남은 옛 이미지 검증 금지 (TST-R16-01) ====="
+f=script/test/verify-ngxblocker.sh
+assert_zero "6.36 --build 없는 compose up ($f)" "$(grep -E '^[[:space:]]*(dc|docker compose)( [^#]*)? up( |$)' "$f" | sed 's/[[:space:]]#.*//' | grep -cv -- '--build')"
+assert_eq   "6.36 dc up -d --build webserver redis ($f)" "$(grep -cE '^[[:space:]]*dc up -d --build webserver redis( |$)' "$f")" 1
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]
