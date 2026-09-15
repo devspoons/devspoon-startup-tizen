@@ -183,13 +183,14 @@ D=compose/project_mng_service/gitolite
 V=gitolite_gitolite-repos
 [ -f "$D/.env" ] || cp "$D/.env-example" "$D/.env"    # 단독 gitolite .env 는 로그 설정만(master 는 기존 .env)
 (cd "$D" && docker compose up -d --build && docker compose stop gitolite)   # 볼륨 생성 — 이미지의 gitolite-admin.git 이 채워짐
-docker run --rm --mount type=bind,src="$PWD/$D/storage",dst=/from,readonly -v "$V":/to alpine cp -an /from/. /to/
+docker run --rm --mount type=bind,src="$PWD/$D/storage",dst=/from,readonly -v "$V":/to alpine sh -c 'cp -an /from/* /to/'
 (cd "$D" && docker compose start gitolite)
 docker exec gitolite chown -R gitolite-creator:gitolite-creator /home/gitolite-creator/repositories
 docker exec -u gitolite-creator -w /home/gitolite-creator gitolite bin/gitolite setup   # 옮긴 저장소에 gitolite hook 설치
+docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소 이름이 보이는지 확인
 ```
 
-- `cp -n` 이라 볼륨에 이미 있는 같은 이름(`gitolite-admin.git` 등)은 덮어쓰지 않습니다. 옮긴 저장소는 gitolite-admin 의 `conf/gitolite.conf` 에 등록해야 사용자에게 권한이 생깁니다.
+- 복사는 `storage/` 최상위 항목(저장소 폴더 `*.git`) 단위입니다. 볼륨에 같은 이름(`gitolite-admin.git` 등)이 이미 있으면 그 저장소는 통째로 건너뛰고(안쪽 파일도 합치지 않음), 없는 이름만 복사합니다. 점으로 시작하는 항목(자리표시자 `.gitkeep`)은 복사하지 않습니다. `sh -c` 는 빼면 안 됩니다 — `/from/*` 는 컨테이너 안에서 펼쳐져야 합니다(alpine BusyBox `cp -an /from/. /to/` 는 대상이 있으면 아무것도 복사하지 않고 성공으로 끝납니다). 옮긴 저장소는 gitolite-admin 의 `conf/gitolite.conf` 에 등록해야 사용자에게 권한이 생깁니다.
 - 볼륨은 `docker compose down -v` 로 삭제되므로 옮긴 뒤 `storage/` 원본은 확인이 끝날 때까지 지우지 마세요.
 
 #### Harbor 공존
