@@ -78,7 +78,7 @@ usage() {
 전체 HTTPS 구축 흐름 (처음 1회):
   1) ./nginx_http_conf.sh -w <webroot> -p 80 -d <domain> -a <app> -s <svcport> -n <name>
      → HTTP conf 생성. ACME HTTP-01 challenge 가 동작하려면 nginx 가 :80 으로 떠 있어야 함.
-  2) cd ../../../../compose/web-service/nginx_${STACK} && docker compose up -d --build
+  2) 이 스택의 compose 폴더(저장소의 compose/*/nginx_${STACK}* 중 해당 폴더)에서 docker compose up -d --build
   3) docker compose exec webserver /script/letsencrypt.sh
      → 인증서 발급 + 갱신 cron 등록 (도메인당 1회). dhparam 은 이미지에 구워져 있어 별도 단계 없음.
   4) $(basename "$0") -w <webroot> -p 80 -d <domain> -a <app> -s <svcport> -n <name>

@@ -43,6 +43,7 @@ for k in $(grep -ohE '\$\{[A-Z_]*(PASSWORD|PWD|SECRET|TOKEN|_KEY)[A-Z_]*:\?' "$R
     if grep -qE "^$k=\$" "$e"; then echo "  [PASS] $k 빈 값"; else fail "master .env-example $k 예시값 존재"; fi
 done
 if grep -q 'ensure_env_secrets compose/master_service/.env' "$e"; then echo "  [PASS] ensure_env_secrets 안내"; else fail "master .env-example ensure_env_secrets 안내 없음"; fi
+if grep -n '외부에 노출' "$e"; then fail "master .env-example flower '외부에 노출' 문구(실제 127.0.0.1 바인드) (SRV1-SEC-05)"; else echo "  [PASS] flower 문구"; fi
 if grep -nE '^[[:space:]]+image: devspoon-' "$ROOT"/compose/master_service/*.yml; then fail "고정 devspoon 이미지명"; else echo "  [PASS] 이미지명 IMAGE_NAMESPACE"; fi
 
 echo "### master_service proxy 샘플 — webserver 가 php/proxy/<svc>/ 를 /etc/nginx/proxy.d/<svc>/:ro 로 마운트, 복사본 무시 (SRV1-S-02) ###"
