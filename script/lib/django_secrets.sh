@@ -27,9 +27,12 @@ ensure_django_secrets() {
     echo "  secrets.json 생성 (무작위 SECRET_KEY, 600)"
 }
 
-# .env 의 비밀값(DJANGO_SECRET_KEY·REDIS_PASSWORD·FLOWER_PWD)을 무작위 hex 로 채운다. 이미 값이 있는 줄은 절대 바꾸지 않는다.
+# .env 의 비밀값을 무작위 hex 로 채운다. 이미 값이 있는 줄은 절대 바꾸지 않는다.
+#   - 대상 키: DJANGO_SECRET_KEY·REDIS_PASSWORD·FLOWER_PWD + 같은 폴더 docker-compose*.yml 전부(주석 줄 제외)가 ${KEY:?} 로 요구하는 키 중
+#     이름이 비밀 규칙(SECRET·PASSWORD·PWD 포함 또는 _KEY_BASE 로 끝남)인 키. 비밀 아닌 필수 키(PROJECT_DIR·FLOWER_ID·*_HOST__NAME 등)는 채우지 않음
+#   - 길이: DJANGO_SECRET_KEY 50바이트(100 hex), *_KEY_BASE 64바이트(128 hex, Rails `rails secret` 관례), 그 외 32바이트(64 hex)
 #   - 비었거나 옛 CHANGE_ME_* 인 줄만 치환(같은 키가 중복돼도 그 줄만). CRLF .env 는 CR 을 무시해 매칭하고 줄끝을 보존
-#   - 키 줄이 아예 없으면 같은 폴더 docker-compose.yml 이 ${KEY:?} 로 요구하는 키만 끝에 추가 (이전 .env 업그레이드, php 스택은 REDIS_PASSWORD 만)
+#   - 키 줄이 아예 없으면 compose 가 ${KEY:?} 로 요구하는 비밀 키만 끝에 추가 (이전 .env 업그레이드, php 스택은 REDIS_PASSWORD 만)
 #   - 값을 모두 만든 뒤 한 번에 쓴다: openssl 실패 시 FAIL·rc 1·파일 무변경. 생성이 있으면 group/other 권한 제거(600, 더 엄격하면 유지)
 # compose 는 이 값들을 :? 필수로 검사한다 — 운영자 최초 설정 한 줄(저장소 루트):
 #   bash -c '. script/lib/django_secrets.sh && ensure_env_secrets compose/web-service/nginx_gunicorn/.env'
@@ -37,11 +40,12 @@ ensure_env_secrets() {
     local envf="${1:?사용: ensure_env_secrets <.env 경로>}" req k len val tmp set="" app="" names="" n=0
     [ -f "$envf" ] || { echo "  FAIL : $envf 없음 — 먼저 .env-example 을 .env 로 복사"; return 1; }
     command -v openssl >/dev/null 2>&1 || { echo "  FAIL : openssl 없음 — 비밀값 생성 불가"; return 1; }
-    req=$(grep -oE '\$\{(DJANGO_SECRET_KEY|REDIS_PASSWORD|FLOWER_PWD):\?' "$(dirname "$envf")/docker-compose.yml" 2>/dev/null)
-    for k in DJANGO_SECRET_KEY:50 REDIS_PASSWORD:32 FLOWER_PWD:32; do
-        len=${k#*:}; k=${k%%:*}
+    req=$(cat "$(dirname "$envf")"/docker-compose*.yml 2>/dev/null | grep -vE '^[[:space:]]*#' | grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*:\?' \
+        | sed -E 's/^\$\{(.*):\?$/\1/' | grep -E 'SECRET|PASSWORD|PWD|_KEY_BASE$' | sort -u) || :
+    for k in DJANGO_SECRET_KEY REDIS_PASSWORD FLOWER_PWD $(grep -vxE 'DJANGO_SECRET_KEY|REDIS_PASSWORD|FLOWER_PWD' <<< "$req"); do
+        case $k in DJANGO_SECRET_KEY) len=50 ;; *_KEY_BASE) len=64 ;; *) len=32 ;; esac
         if grep -qE "^${k}=(CHANGE_ME_[A-Za-z0-9_]*)?"$'\r?$' "$envf"; then :
-        elif ! grep -q "^${k}=" "$envf" && [[ $req == *"{$k:?"* ]]; then app="$app $k"
+        elif ! grep -q "^${k}=" "$envf" && grep -qx "$k" <<< "$req"; then app="$app $k"
         else continue; fi
         val=$(openssl rand -hex "$len" 2>/dev/null) && [ "${#val}" -eq $((len * 2)) ] \
             || { echo "  FAIL : openssl rand 실패 — $envf 변경 안 함"; return 1; }
