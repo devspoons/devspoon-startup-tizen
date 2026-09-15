@@ -47,6 +47,10 @@ pm.max_requests = 200        ; 워커당 최대 처리 요청 수 (메모리 누
 clear_env = no
 
 ; -------------------------------------------------
+; 심층 방어 — .php 외 확장자는 FPM 이 실행하지 않는다 (업로드된 .phtml/.jpg 등 실행 차단)
+security.limit_extensions = .php
+
+; -------------------------------------------------
 ; PHP 런타임 제어 (보안 및 성능 관련)
 php_admin_value[session.cookie_httponly] = 1    ; XSS 방지를 위한 세션 쿠키 보호
 catch_workers_output = yes                      ; PHP 에러를 워커 로그로 전달

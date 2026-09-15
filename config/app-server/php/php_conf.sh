@@ -7,6 +7,8 @@
 #   - domain 입력 → [domain] 섹션 헤더와 출력 파일명에 사용
 #   - portnumber 입력 → listen = [::]:<portnumber> (php-fpm 기본 9000)
 #   - 같은 이름의 파일이 있어도 항상 덮어쓴다 (백업 필요 시 호출 측 책임)
+#   - 출고 기본 pool 인 pool.d/www.conf 도 listen 9000 — 같은 포트면 php-fpm 이 기동하지 않으므로
+#     www.conf 를 대체(삭제·이름 변경)하거나, 다른 포트로 만들고 nginx fastcgi_pass 를 맞춘다
 #   - php-fpm reload 는 자동으로 하지 않음 — docker compose 컨테이너 restart 로 반영
 #
 # 1차 audit 이후 추가된 안전장치:
@@ -64,6 +66,8 @@ outfile="./pool.d/${domain}_php.conf"
 sed -e "s|domain|${domain}|g" -e "s|portnumber|${portnumber}|g" "$SAMPLE" > "$outfile"
 
 echo "생성 완료: $outfile"
+echo "주의: 기본 pool.d/www.conf 도 listen 9000 입니다. 같은 포트면 php-fpm 이 기동하지 않으므로"
+echo "      www.conf 를 삭제·대체하거나, 다른 포트로 생성하고 nginx 의 fastcgi_pass 를 그 포트로 맞추세요."
 echo
 echo "반영(수동):"
 echo "  docker compose restart php-app"
