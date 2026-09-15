@@ -1,4 +1,4 @@
-FROM ubuntu:latest
+FROM ubuntu:24.04
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends apt-utils
@@ -57,7 +57,7 @@ WORKDIR /home/gitolite-creator
 
 RUN su gitolite-creator -c "mkdir bin"
 
-RUN su gitolite-creator -c "git clone git://github.com/sitaramc/gitolite"
+RUN su gitolite-creator -c "git clone -b v3.6.15 https://github.com/sitaramc/gitolite"
 
 RUN su gitolite-creator -c "gitolite/install -to /home/gitolite-creator/bin"
 

@@ -3,7 +3,7 @@
 echo -n "Enter a host name (default : gitolite) >"
 read host_name
 echo  "Entered a host name: $host_name"
-if [[ "$host_name" != "" ]]; then
+if [[ "$host_name" == "" ]]; then
     host_name="gitolite"
 fi
 
@@ -11,7 +11,7 @@ fi
 echo -n "Enter a User name (default : gitolite-creator) >"
 read user_name
 echo  "Entered a User name: $user_name"
-if [[ "$user_name" != "" ]]; then
+if [[ "$user_name" == "" ]]; then
     user_name="gitolite-creator"
 fi
 

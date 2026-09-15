@@ -167,9 +167,12 @@ services:
     working_dir: /application
     container_name: gitolite
     volumes:
-      - ./storage:/home/gitolite-creator/repositories
+      - gitolite-repos:/home/gitolite-creator/repositories
     ports:
       - 2222:22
     environment:
       TZ: "Asia/Seoul"
     restart: always
+
+volumes:
+  gitolite-repos:
