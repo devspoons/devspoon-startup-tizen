@@ -212,6 +212,12 @@ for s in gunicorn uvicorn uwsgi daphne; do
 done
 echo
 
+echo "===== 6.17b (형제) 검증기는 격리 래퍼 dc() 밖에서 docker compose 를 직접 호출하지 않는다 (SRV1-S-01, RV1-SEC-02) ====="
+for f in script/test_run/verify_integration_*.sh script/test_run/verify_healthcheck.sh script/test/verify-ngxblocker.sh; do
+    assert_zero "6.17b 래퍼 밖 docker compose 직접 호출 ($f)" "$(grep -vE '^[[:space:]]*#|^[[:space:]]*dc\(\)' "$f" | grep -c 'docker compose')"
+done
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]
