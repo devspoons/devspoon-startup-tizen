@@ -59,8 +59,6 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 ### How to build project management solutions(openproject, jenkins, gitolite[private git server], harbor[private docker server])
 
 - Refer the guide : [devspoon-startup-web]
-- I have sample code on junkins_home. If you want the reset environment, delete all the contents.
-- Sample Jenkins account info **ID: admin PASSWORD: 1324**
 
 ### How to build Tizen development environment
 
@@ -73,9 +71,20 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
    - A user have to make ssh key to using ssh-keygen to register on tizen development official website for accessing tizen repository.
    - Log in to Tizen Gerrit(https://review.tizen.org/gerrit) and upload the key
      - In the Gerrit(https://review.tizen.org/gerrit) Web page, get login and go click settings and add your id_rsa.pub at the menu of "SSH Public Keys".
-   - A user have to copy made ssh keys to docker/tizen-env/.ssh.
-   - If A user want to access tizen container directly for development, can add new location of "volumes" in a docker-compose.yml.
-   - If A user want to access tizen container by ssh for development, make a new ssh key and add your pub key to an end of authorized_keys at docker/tizen-env/.ssh. if there are no authorized_keys, A user have to make this file.
+   - 키는 호스트에만 보관합니다 — 이미지에는 키가 들어가지 않습니다(`docker/tizen-env/.ssh` 에서는 `config` · `known_hosts` 만 복사하고, 그 폴더의 `id_rsa*` · `authorized_keys` 는 gitignore). compose 가 호스트 파일 두 개를 읽기 전용으로 bind 합니다:
+     - `TIZEN_SSH_KEY` → `/root/.ssh/id_rsa` : Tizen Gerrit 에 등록한 개인키
+     - `TIZEN_AUTHORIZED_KEYS` → `/root/.ssh/authorized_keys` : 컨테이너 root 로 SSH 접속을 허용할 공개키 목록(한 줄에 하나, 형식은 `docker/tizen-env/.ssh/authorized_keys.example`)
+
+   ```sh
+   # 저장소 루트에서 — 단독 tizen-env. master php 조합은 D=compose/master_service (4단계)
+   D=compose/dev_env_service/tizen-env
+   cp "$D/.env-example" "$D/.env"      # TIZEN_SSH_KEY · TIZEN_AUTHORIZED_KEYS 를 실제 호스트 경로로 수정
+   chmod 600 ~/.ssh/tizen_id_rsa ~/.ssh/tizen_authorized_keys
+   ```
+
+   - sshd `StrictModes` 가 authorized_keys 파일의 소유자·권한을 검사하므로 600 · root 소유를 권장합니다.
+   - 두 변수가 비어 있으면 compose 가 기동을 거부합니다. **경로가 틀리면** Docker 가 호스트에 root 소유 빈 디렉터리를 만들고 컨테이너는 그대로 기동되어 SSH 인증만 실패합니다 — 생긴 디렉터리를 지우고 `.env` 경로를 고친 뒤 다시 기동하세요.
+   - If a user wants to access the tizen container directly for development, add a new location to "volumes" in the docker-compose.yml.
 
 2. Update Tizen ssh config file
 
@@ -102,24 +111,49 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
    git config --global user.email "E-MAIL" #fill E-MAIL
    ```
 
-4. Run docker-compose.yml
+4. Run Docker Compose
 
-   - How to build only Tizen Environment
-
-   ```sh
-   $ cd compose/dev_env_service/tizen-env
-   $ docker-compose up -d
-   ```
-
-   - How to build full service (require setting [devspoon-web], [devspoon-startup-web])
+   - Requirements: Docker Engine with the Compose plugin (`docker compose`). Legacy `docker-compose` (v1) 명령은 쓰지 않습니다.
+   - How to build only Tizen Environment — 1단계의 `.env` 뒤, 저장소 루트에서 이동해 기동합니다(`--build` 는 업그레이드나 Dockerfile 변경 뒤 이미지를 다시 빌드합니다).
 
    ```sh
-   $ cd compose/master_service
-   $ docker-compose -f docker-compose-php.yml up -d # php service
-   $ docker-compose -f docker-compose-php.yml --profile celery up -d # with celery, celerybeat, flower
-   $ docker-compose -f docker-compose-php.yml --profile redis up -d # with redis, redis-stats
-   $ docker-compose -f docker-compose-php.yml --profile celery --profile redis up -d # all of service
+   cd compose/dev_env_service/tizen-env
+   docker compose up -d --build
+   ssh -p 2221 root@127.0.0.1    # SSH 는 기본 127.0.0.1:2221 에만 바인드 — 원격 허용은 .env 의 TIZEN_SSH_BIND=0.0.0.0
    ```
+
+   - How to build full service (require setting [devspoon-web], [devspoon-startup-web]) — tizenenv 는 `docker-compose-php.yml` 에만 있습니다. 단독 tizen-env 와 컨테이너 이름(`tizenenv`)·포트(2221)가 같으므로 둘 중 하나만 기동합니다. gitolite 관리자 공개키·openproject/jenkins proxy 샘플 복사는 [devspoon-startup-web] 가이드의 master_service 절을 먼저 따릅니다.
+
+   ```sh
+   # 저장소 루트에서
+   D=compose/master_service
+   cp "$D/.env-example" "$D/.env"    # TIZEN_* 경로, OPENPROJECT_HOST_NAME · SMTP_* 자리표시자는 직접 입력
+   bash -c ". script/lib/django_secrets.sh && ensure_env_secrets $D/.env"
+   cd "$D"
+   docker compose -f docker-compose-php.yml up -d --build                    # php + openproject · jenkins · gitolite · tizenenv
+   docker compose -f docker-compose-php.yml --profile redis up -d --build    # + redis
+   docker compose -f docker-compose-php.yml --profile redis stop             # 프로필 없는 stop 은 redis 컨테이너를 남깁니다
+   ```
+
+   php 조합의 프로필은 `redis` 뿐입니다(celery 없음).
+
+   > ⚠️ **pgdata 는 비워 두세요**: `compose/master_service/pgdata/` 는 저장소에 없고 첫 기동 시 Docker 가 만든 뒤 openproject 내장 PostgreSQL 이 초기화합니다. 폴더에 파일이 하나라도 있으면(`.gitkeep` 같은 점 파일 포함) `initdb` 가 `directory ... exists but is not empty` 로 실패해 컨테이너가 재시작을 반복합니다(nginx 502) — 파일을 넣지 마세요. 이미지가 `openproject/openproject:17`(내장 PostgreSQL 17)이라 이전 버전으로 만든 `pgdata/` 는 그대로 기동할 수 없습니다 — 먼저 백업하고 [OpenProject 공식 문서][OpenProject docs]의 업그레이드 절차를 따르세요.
+   > 생성된 데이터는 컨테이너 postgres 사용자 소유(권한 700)라 호스트 계정으로 읽기·삭제할 수 없습니다. 백업·삭제는 서비스를 멈춘 뒤 컨테이너로 합니다. 백업 예(저장소 루트에서, 결과는 저장소 밖 `$HOME` 에 본인 소유 600 으로 저장 — DB 에 비밀번호 해시가 들어 있음):
+   >
+   > ```bash
+   > D=compose/master_service
+   > (cd "$D" && docker compose -f docker-compose-php.yml stop openproject)
+   > if [ -d "$D/pgdata" ]; then
+   >   docker run --rm --mount type=bind,src="$PWD/$D/pgdata",dst=/d,readonly -v "$HOME":/b alpine \
+   >     sh -c "test -f /d/PG_VERSION || { echo 'PG_VERSION 없음 — 백업하지 않음' >&2; exit 1; }; test ! -f /d/postmaster.pid || { echo 'postmaster.pid 있음 — openproject 실행 중(또는 비정상 종료), 백업하지 않음' >&2; exit 1; }; umask 077; tar czf /b/openproject-pgdata.tgz.partial -C /d . && chown $(id -u):$(id -g) /b/openproject-pgdata.tgz.partial && chmod 600 /b/openproject-pgdata.tgz.partial && mv /b/openproject-pgdata.tgz.partial /b/openproject-pgdata.tgz || { rm -f /b/openproject-pgdata.tgz.partial; exit 1; }"
+   > elif [ -d "$D" ]; then
+   >   echo "$PWD/$D/pgdata 없음 — 첫 기동 전이면 백업할 데이터가 없습니다"
+   > else
+   >   echo "$PWD/$D 없음 — 저장소 루트에서 실행하세요"
+   > fi
+   > ```
+   >
+   > `stop` 줄이 오류 없이 끝났는지 먼저 확인하세요(`.env` 가 없거나 `-f` 를 빠뜨리면 실패합니다). 확인을 놓쳐도 컨테이너가 `postmaster.pid`(PostgreSQL 실행 중 표식, 정상 종료 시 삭제)가 남아 있으면 백업을 거부합니다. 없는 경로를 bind 하면 Docker Desktop 등 일부 엔진은 `--mount` 여도 빈 폴더를 만들고 빈 아카이브가 성공한 것처럼 보입니다. 그래서 호스트에서 `pgdata` 폴더를 먼저 확인하고, 컨테이너 안에서 `PG_VERSION`(PostgreSQL 클러스터 표식)이 있을 때만 아카이브를 만듭니다. 아카이브는 `.partial` 에 쓴 뒤 성공했을 때만 기존 백업과 교체합니다. 삭제는 `tar tzf ~/openproject-pgdata.tgz` 로 내용을 확인한 뒤에만 하세요. 백업만 할 때는 `(cd "$D" && docker compose -f docker-compose-php.yml start openproject)` 로 다시 기동합니다.
 
 5. A user selection
 
@@ -183,6 +217,7 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 [mailgun]: https://www.mailgun.com/
 [sendgrid]: https://sendgrid.com/
 [OpenProject]: https://docs.openproject.org/user-guide/wiki/
+[OpenProject docs]: https://docs.openproject.org/installation-and-operations/
 [Jenkins]: https://en.wikipedia.org/wiki/Jenkins_(software)
 [Gitolite]: https://wiki.archlinux.org/index.php/Gitolite
 [Harbor]: https://en.wikipedia.org/wiki/Harbor
