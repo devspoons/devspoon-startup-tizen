@@ -130,7 +130,7 @@ step_samples() {
     ( cd "$ROOT/www/django_sample" \
         && uv run --python 3.14 --frozen --extra celery python manage.py check ) || { echo "django_sample 실패"; rc=1; }
 
-    # (startup-web 은 flask_sample / fastapi_sample 이 없다 — django_sample + php_sample 만 검증)
+    # (flask_sample / fastapi_sample 샘플 없음 — django_sample + php_sample 만 검증)
 
     echo "### [php_sample] php -l ###"
     if command -v php >/dev/null 2>&1; then
