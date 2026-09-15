@@ -47,3 +47,11 @@ wait_http() {
     echo "    준비 대기 상한 초과 (${WAIT_HTTP_TRIES:-30}회 × ${WAIT_HTTP_INTERVAL:-1}s)"
     http_is "$@"
 }
+# 봇 차단 단언 — nginx `return 444` 는 응답 없이 연결을 닫아 curl 이 exit 52(Empty reply)·코드 000 을 낸다.
+#   연결 거부(exit 7)·타임아웃(28) 도 코드 000 이라 코드만 보면 webserver 다운을 차단으로 오판한다 (TST-R10-01)
+#   http_blocked <curl 인자...>   # curl exit 52 또는 코드 444 일 때만 0, 아니면 실제 exit·코드를 출력하고 1
+http_blocked() {
+    local got rc
+    got=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$@"); rc=$?
+    [ "$rc" = 52 ] || [ "$got" = 444 ] || { echo "    curl exit $rc HTTP $got (기대 exit 52 또는 444): ${*: -1}"; return 1; }
+}

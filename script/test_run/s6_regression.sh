@@ -432,6 +432,38 @@ else
 fi
 echo
 
+echo "===== 6.33 봇 UA 차단 단언은 curl exit 52(응답 없이 닫힘)·444 만 PASS — 연결 거부 등 코드 000 은 FAIL (TST-R10-01) ====="
+for f in script/test_run/verify_integration_*.sh; do
+    assert_zero "6.33 코드 000 허용 봇 단언 ($f)" "$(grep -c '"000|444"' "$f")"
+    assert_eq   "6.33 http_blocked 봇 단언 ($f)" "$(grep -c 'http_blocked -A MJ12bot' "$f")" 1
+done
+assert_zero "6.33 verify-ngxblocker 코드 000 허용" "$(grep -c '"000"' script/test/verify-ngxblocker.sh)"
+# 로컬 임시 서버: close = 요청 읽고 응답 없이 닫음(nginx return 444 모사), 200 = 정상 응답
+srv_py='import socket,sys
+s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1); s.bind(("127.0.0.1",0)); s.listen(8)
+print(s.getsockname()[1],flush=True)
+while True:
+    c,_=s.accept(); c.recv(65536)
+    if sys.argv[1]=="200": c.sendall(b"HTTP/1.0 200 OK\r\nContent-Length: 0\r\n\r\n")
+    c.close()'
+blk_case() {  # blk_case <라벨> <기대 rc 0|1> <출력 포함 문자열> <url>
+    local out rc; out=$(http_blocked -A MJ12bot --max-time 3 "$4"); rc=$?; [ "$rc" != 0 ] && rc=1
+    if [ "$rc" = "$2" ] && [[ "$out" == *"$3"* ]]; then echo "  PASS 6.33 $1"; else echo "  FAIL 6.33 $1 rc=$rc out=[$out]"; FAILS=$((FAILS+1)); fi
+}
+if . script/lib/stability.sh && declare -F http_blocked >/dev/null; then
+    t1=$(mktemp); t2=$(mktemp)
+    python3 -c "$srv_py" close >"$t1" & p1=$!
+    python3 -c "$srv_py" 200 >"$t2" & p2=$!
+    for _ in $(seq 50); do [ -s "$t1" ] && [ -s "$t2" ] && break; sleep 0.1; done
+    blk_case "연결 거부(exit 7) → FAIL·실제 exit 출력" 1 "exit 7" http://127.0.0.1:9/
+    blk_case "응답 없이 닫힘(exit 52) → PASS" 0 "" "http://127.0.0.1:$(cat "$t1")/"
+    blk_case "정상 200 → FAIL·실제 코드 출력" 1 "HTTP 200" "http://127.0.0.1:$(cat "$t2")/"
+    kill "$p1" "$p2" 2>/dev/null; wait "$p1" "$p2" 2>/dev/null; rm -f "$t1" "$t2"
+else
+    echo "  FAIL 6.33 stability.sh 에 http_blocked 없음"; FAILS=$((FAILS+1))
+fi
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]

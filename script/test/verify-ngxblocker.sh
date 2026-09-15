@@ -199,24 +199,20 @@ bad=$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w '%{http_code}\n' --max-
 # E-4. 알려진 봇 UA — 444 (차단) 기대
 for bot in "MJ12bot" "AhrefsBot/7.0" "SemrushBot/7.0" "BLEXBot"; do
     echo "  -- 봇 UA: $bot --"
-    code=$(curl -s -A "$bot" -H "Host: blocker.test" \
-           -o /dev/null -w '%{http_code}' --max-time 5 http://localhost/ 2>&1)
-    # 444 는 curl 이 0 으로 인식하기도 함 (connection closed before response)
-    if [ "$code" = "444" ] || [ "$code" = "000" ] || [ "$code" = "403" ]; then
-        pass "$bot 차단됨 (code=$code)"
+    # 444 는 응답 없이 끊겨 curl exit 52 — 연결 거부(exit 7) 는 차단이 아니다 (TST-R10-01)
+    if out=$(http_blocked -A "$bot" -H "Host: blocker.test" http://localhost/); then
+        pass "$bot 차단됨"
     else
-        fail "$bot 차단 실패 (code=$code)"
+        fail "$bot 차단 실패 $out"
     fi
 done
 
 # E-5. bad referer 차단 (referer 기반 차단도 작동하는지 spot-check)
 echo "  -- bad referer (semalt.com) --"
-code=$(curl -s -A "Mozilla/5.0" -e "http://www.semalt.com/spam" \
-       -H "Host: blocker.test" -o /dev/null -w '%{http_code}' --max-time 5 http://localhost/ 2>&1)
-if [ "$code" = "444" ] || [ "$code" = "000" ] || [ "$code" = "403" ]; then
-    pass "악성 referer 차단됨 (code=$code)"
+if out=$(http_blocked -A "Mozilla/5.0" -e "http://www.semalt.com/spam" -H "Host: blocker.test" http://localhost/); then
+    pass "악성 referer 차단됨"
 else
-    echo "  (semalt.com 차단 옵션은 globalblacklist.conf 의 \$bad_referer 정의에 의존 - code=$code)"
+    echo "  (semalt.com 차단 옵션은 globalblacklist.conf 의 \$bad_referer 정의에 의존 -$out)"
 fi
 
 # E-6. 액세스 로그에 봇 차단 기록 남는지
