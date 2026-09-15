@@ -48,9 +48,9 @@ check "/uploads/x.php/foo 403"  '[ "$(code http://127.0.0.1/uploads/x.php/foo)" 
 check "/uploads/x.phtml 403"    '[ "$(code http://127.0.0.1/uploads/x.phtml)" = 403 ]'
 
 # php 설정 실로드 — www.conf·php.ini 단일 파일 마운트(D-PHP)가 공식 이미지 경로에서 읽히는지 (SW-06)
-check "php-fpm pool [www] 로드"    'dc exec -T $APP php-fpm -tt 2>&1 | grep -q "\[www\]"'
-check "php.ini 로드 경로"          'dc exec -T $APP php --ini | grep -q "Loaded Configuration File:.*/usr/local/etc/php/php.ini"'
-check "expose_php Off"            'dc exec -T $APP php -i | grep -q "^expose_php => Off"'
+check "php-fpm pool [www] 로드"    'out=$(dc exec -T $APP php-fpm -tt 2>&1) && grep -q "\[www\]" <<<"$out"'
+check "php.ini 로드 경로"          'out=$(dc exec -T $APP php --ini) && grep -q "Loaded Configuration File:.*/usr/local/etc/php/php.ini" <<<"$out"'
+check "expose_php Off"            'out=$(dc exec -T $APP php -i) && grep -q "^expose_php => Off" <<<"$out"'
 
 echo "FAILS=$FAILS"
 [ "$FAILS" -eq 0 ] || exit 1
