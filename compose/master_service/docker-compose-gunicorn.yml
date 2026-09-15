@@ -1,11 +1,21 @@
+# =============================================================================
+# master_service — gunicorn 웹 스택 + openproject + jenkins + gitolite 조합
+# - 웹 스택 블록은 compose/web_service/nginx_gunicorn/docker-compose.yml 과 동일(상대경로만 ../../, webserver 이름 nginx-webserver).
+# - openproject·jenkins 는 webserver 가 마운트한 conf.d 에
+#   config/web-server/nginx/php/proxy/<svc>/<svc>_proxy.conf.example 을 복사(도메인 수정)해 연결한다.
+# - 필수 키는 .env-example 참조(REDIS_PASSWORD·FLOWER_*·OPENPROJECT_*).
+# =============================================================================
+
 services:
   webserver:
     build: ../../docker/nginx/
-    logging:
-      driver: "${LOG_DRIVER}"
+    image: devspoon-nginx:latest
+    logging: &log_opts
+      driver: "${LOG_DRIVER:-json-file}"
       options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+        max-file: "${LOG_OPT_MAXF:-5}"
+        max-size: "${LOG_OPT_MAXS:-100m}"
+    working_dir: /application
     container_name: nginx-webserver
     volumes:
       - ../../www:/www
@@ -13,6 +23,9 @@ services:
       - ../../config/web-server/nginx/gunicorn/conf.d/:/etc/nginx/conf.d/
       - ../../config/web-server/nginx/gunicorn/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../config/web-server/nginx/gunicorn/proxy_params/proxy_params:/etc/nginx/proxy_params
+      # dhparam 백업/복원 — 이미지에 구운 /etc/nginx/dhparam.pem 을 여기에 백업/복원한다.
+      # docker compose down 후 up 시 백업본이 있으면 그대로 복원, 없으면(최초 기동) 이미지본을 백업.
+      # (과거의 ./ssl/certs:/etc/ssl/certs 는 시스템 CA 번들을 가려 certbot 을 깨뜨려 제거)
       - ./ssl/dhparam/:/etc/nginx/dhparam-backup/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
       - ../../log/:/log/
@@ -23,18 +36,41 @@ services:
     environment:
       TZ: "Asia/Seoul"
     restart: always
+    # webserver 는 app(8000) 과 redis(6379) 가 모두 healthy 가 되어야 의미가 있다.
+    # service_healthy 조건으로 race(앱 부팅 전에 nginx 가 502 를 뱉는 구간) 을 차단.
     depends_on:
-      - openproject
-      - jenkins
-      - gunicorn-app
+      openproject:
+        condition: service_started
+      jenkins:
+        condition: service_started
+      gunicorn-app:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    # ┌─────────────────────────────────────────────────────────────────────────
+    # │ ulimits — 의도적으로 비활성화 상태 (변수 정의만 .env 에 존재)
+    # │
+    # │ nginx.conf 의 `worker_rlimit_nofile 65535` 와 호환되도록 .env 의
+    # │ ULIMIT_NOFILE_SOFT / ULIMIT_NOFILE_HARD 변수를 정의해 두었으나,
+    # │ 본 compose 에서는 실제 적용을 하지 않는다 — 호스트 docker daemon 의 기본값
+    # │ (LimitNOFILE, 통상 1048576) 이 65535 를 충분히 수용하기 때문.
+    # │
+    # │ 호스트 OS 차이 (특히 RHEL / podman / 일부 K8s 노드) 로 nofile 한도가
+    # │ 65535 미만으로 잘리는 경우에 한해 아래 블록의 주석을 제거하여 명시 활성화.
+    # │
+    # │ ulimits:
+    # │   nofile:
+    # │     soft: ${ULIMIT_NOFILE_SOFT:-65535}
+    # │     hard: ${ULIMIT_NOFILE_HARD:-65535}
+    # └─────────────────────────────────────────────────────────────────────────
 
   gunicorn-app:
     build: ../../docker/gunicorn/
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    # 공용 Python 앱 이미지 — daphne / uvicorn / gunicorn 스택이 동일 image 태그 공유.
+    # build: 가 본 서비스에만 정의되어 있고 celery / celery-beat 는 image: 만 참조하므로
+    # 동일 build context 가 3회 재빌드되지 않는다 (1회 빌드 → 3 서비스 재사용).
+    image: devspoon-py-app:latest
+    logging: *log_opts
     working_dir: /www/${PROJECT_DIR}
     container_name: gunicorn-app
     volumes:
@@ -42,101 +78,129 @@ services:
       - ../../log:/log
       - ../../config/app-server/gunicorn/:/gunicorn
       - ../../script/logrotate/gunicorn/gunicorn:/etc/logrotate.d/gunicorn
+    # uv 네이티브 흐름 (no-venv / 시스템 Python 설치 모드):
+    #   - Dockerfile 의 UV_PROJECT_ENVIRONMENT=/usr/local 로 인해
+    #     uv sync 가 .venv 를 만들지 않고 /usr/local/lib/python3.14/site-packages 에 직접 설치
+    #   - --inexact: Dockerfile 이 사전 설치한 패키지(fastapi/sqlalchemy/wheel 등) 제거 방지
+    #   - exec 후 시스템 바이너리(gunicorn) 직접 실행 → uv run 불필요, 트러블슈팅 단순화
+    # chown: gunicorn 워커가 www-data 로 강하(gunicorn.conf.py 의 user/group)되므로,
+    #        앱이 쓰는 SQLite db / 미디어 / static 등 /www/${PROJECT_DIR} 를 www-data 소유로 맞춘다.
+    #        미설정 시 www-data 가 db 파일을 못 열어 'unable to open database file' 로 기동 실패.
+    command: bash -c "chown -R www-data:www-data /www/${PROJECT_DIR} && uv sync --inexact --extra gunicorn --extra celery && exec gunicorn -c /gunicorn/gunicorn.conf.py"
     environment:
       TZ: "Asia/Seoul"
-    command: bash -c "poetry config virtualenvs.create false && poetry install --no-root --without test && exec gunicorn -c /gunicorn/gunicorn.conf.py"
-    # command: bash -c "uv pip install --system --no-cache . && exec gunicorn -c /gunicorn/gunicorn.conf.py"
+      WSGI_APP: "${WSGI_APP:-config.wsgi:application}"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
     restart: always
+    depends_on:
+      redis:
+        # redis 가 healthcheck 를 통과한 뒤에만 gunicorn-app 기동.
+        # → Django 가 cache/broker 로 redis 를 사용하는 경로에서 race 차단.
+        condition: service_healthy
+    # TCP 8000 이 listen 상태인지 bash 내장 /dev/tcp 로 확인 (curl/netcat 추가 의존성 회피).
+    # gunicorn.conf.py 가 0.0.0.0:8000 으로 bind — README §1 워커 가이드 참조.
+    # start_period 30s: uv sync 가 처음에는 wheel 검증 + bytecode 컴파일로 다소 걸림.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8000' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
 
+  # ---------------------------------------------------------------------------
+  # CELERY_BROKER_URL — 단일 출처(SSOT) 정책
+  #
+  # broker URL 의 패스워드 부분이 REDIS_PASSWORD 와 어긋나면 celery worker 가 즉시
+  # 인증 실패로 죽는다. drift 를 원천 차단하기 위해 본 compose 는 broker URL 을
+  # .env 에 별도 변수로 두지 않고 redis://:${REDIS_PASSWORD}@redis:6379/3 형태로
+  # 매 서비스의 environment 에서 직접 합성한다.
+  # → 운영자는 REDIS_PASSWORD 한 값만 갱신하면 redis / celery / celery-beat /
+  #   flower 가 동시에 동기화된다.
+  # ---------------------------------------------------------------------------
   celery:
-    build: ../../docker/gunicorn/
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    # build: 미정의 — gunicorn-app 의 image 를 그대로 사용 (재빌드 방지)
+    image: devspoon-py-app:latest
+    logging: *log_opts
     working_dir: /www/${PROJECT_DIR}
     container_name: celery-app
     volumes:
       - ../../www:/www
       - ../../log:/log
       - ../../script/logrotate/gunicorn/celery/gunicorn-celery:/etc/logrotate.d/gunicorn-celery
-    command: bash -c "poetry config virtualenvs.create false && \
-      poetry install --no-root && \
+    command: bash -c "mkdir -p /log/gunicorn/celery && chown -R www-data:www-data /www/${PROJECT_DIR} /log/gunicorn/celery && \
+      uv sync --inexact --extra gunicorn --extra celery && \
       exec celery -A config worker \
+      --uid www-data --gid www-data \
       --loglevel=INFO \
+      --concurrency=8 \
+      --max-tasks-per-child=2000 \
       --logfile=/log/gunicorn/celery/worker-%n%I.log"
-    # command: bash -c "uv pip install --system --no-cache . && \
-    #   exec celery -A config worker \
-    #   --loglevel=INFO \
-    #   --logfile=/log/gunicorn/celery/worker-%n%I.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      # Django settings.py 가 os.environ['CELERY_BROKER_URL'] 로 읽도록 명시 주입.
+      # 미주입 시 celery 가 기본값 amqp://localhost 로 떨어지면서 broker 미접속 상태로 기동.
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
     restart: always
     depends_on:
-      - redis
-      - gunicorn-app
+      redis:
+        condition: service_healthy
+      gunicorn-app:
+        condition: service_started
     profiles:
       - celery
 
   celery-beat:
-    build: ../../docker/gunicorn/
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: devspoon-py-app:latest
+    logging: *log_opts
     working_dir: /www/${PROJECT_DIR}
     container_name: celerybeat-app
     volumes:
       - ../../www:/www
       - ../../log:/log
       - ../../script/logrotate/gunicorn/celerybeat/gunicorn-celerybeat:/etc/logrotate.d/gunicorn-celerybeat
-    command: bash -c "poetry config virtualenvs.create false && \
-      poetry install --no-root && \
+    command: bash -c "mkdir -p /log/gunicorn/celerybeat && chown -R www-data:www-data /www/${PROJECT_DIR} /log/gunicorn/celerybeat && \
+      uv sync --inexact --extra gunicorn --extra celery && \
       exec celery -A config beat \
+      --uid www-data --gid www-data \
       --loglevel=INFO \
       --scheduler django_celery_beat.schedulers:DatabaseScheduler \
-      --logfile=/log/gunicorn/celerybeat/celerybeat.log "
-    # command: bash -c "uv pip install --system --no-cache . && \
-    #   exec celery -A config beat \
-    #   --loglevel=INFO \
-    #   --scheduler django_celery_beat.schedulers:DatabaseScheduler \
-    #   --logfile=/log/gunicorn/celerybeat/celerybeat.log"
+      --logfile=/log/gunicorn/celerybeat/celerybeat.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
     restart: always
     depends_on:
-      - celery
+      celery:
+        condition: service_started
     profiles:
       - celery
 
   flower:
-    image: mher/flower:master
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: mher/flower:2.0.1
+    logging: *log_opts
     container_name: flower
     ports:
-      - "5555:5555"
+      - "127.0.0.1:5555:5555"
     environment:
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - FLOWER_BASIC_AUTH=${FLOWER_ID}:${FLOWER_PWD}
+      # broker URL 은 REDIS_PASSWORD 로부터 합성 — celery / celery-beat 와 동일 식.
+      - CELERY_BROKER_URL=redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
+      # FLOWER_BASIC_AUTH 미설정 시 5555 가 무인증으로 노출되므로 :? 로 fail-fast.
+      - FLOWER_BASIC_AUTH=${FLOWER_ID:?FLOWER_ID must be set}:${FLOWER_PWD:?FLOWER_PWD must be set}
     restart: always
     depends_on:
-      - celery-beat
+      celery-beat:
+        condition: service_started
     profiles:
       - celery
 
   redis:
-    image: redis:latest
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: redis:7.4-alpine
+    logging: *log_opts
     container_name: redis_db
     # ports:
     #   - 6379:6379
@@ -148,27 +212,21 @@ services:
       - "mode=standalone"
     environment:
       TZ: "Asia/Seoul"
+      # redis.conf 는 ${VAR} 보간을 지원하지 않으므로 requirepass 를 command 인자로 주입.
+      # 동일 패스워드를 컨테이너 환경변수로도 전달하여 healthcheck 의 redis-cli -a 가 사용.
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     restart: always
-    command: redis-server /usr/local/etc/redis/redis.conf
-
-  redis-stats:
-    image: insready/redis-stat:latest
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
-    container_name: redis-stats
-    ports:
-      - 63790:63790
-    command: ["--verbose", "--server", "redis:6379"]
-    environment:
-      TZ: "Asia/Seoul"
-    depends_on:
-      - redis
-    restart: always
-    profiles:
-      - redis
+    command: >
+      redis-server /usr/local/etc/redis/redis.conf
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    healthcheck:
+      # redis-cli 가 컨테이너 내부에서 실행되므로 host 인자 생략 (loopback).
+      # $$ 는 compose 의 $-escape: 컨테이너 셸이 자신의 $REDIS_PASSWORD 를 읽도록 함.
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
 
   openproject:
     image: openproject/openproject:17

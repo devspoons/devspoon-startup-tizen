@@ -1,19 +1,32 @@
+# =============================================================================
+# master_service — php 웹 스택 + openproject + jenkins + gitolite 조합
+# - 웹 스택 블록은 compose/web_service/nginx_php/docker-compose.yml 과 동일(상대경로만 ../../, webserver 이름 nginx-webserver).
+# - openproject·jenkins 는 webserver 가 마운트한 conf.d 에
+#   config/web-server/nginx/php/proxy/<svc>/<svc>_proxy.conf.example 을 복사(도메인 수정)해 연결한다.
+# - 필수 키는 .env-example 참조(REDIS_PASSWORD·FLOWER_*·OPENPROJECT_*).
+# =============================================================================
+
 services:
   webserver:
     build: ../../docker/nginx/
-    logging:
-      driver: "${LOG_DRIVER}"
+    image: devspoon-nginx:latest
+    logging: &log_opts
+      driver: "${LOG_DRIVER:-json-file}"
       options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+        max-file: "${LOG_OPT_MAXF:-5}"
+        max-size: "${LOG_OPT_MAXS:-100m}"
+    working_dir: /application
     container_name: nginx-webserver
     volumes:
       - ../../www:/www
       - ../../script/:/script/
       - ../../config/web-server/nginx/php/conf.d/:/etc/nginx/conf.d/
+      - ../../config/web-server/nginx/php/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ../../config/web-server/nginx/php/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
       - ../../config/web-server/nginx/php/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
-      - ../../config/web-server/nginx/php/proxy_params/proxy_params:/etc/nginx/proxy_params
+      # dhparam 백업/복원 — 이미지에 구운 /etc/nginx/dhparam.pem 을 여기에 백업/복원한다.
+      # docker compose down 후 up 시 백업본이 있으면 그대로 복원, 없으면(최초 기동) 이미지본을 백업.
+      # (과거의 ./ssl/certs:/etc/ssl/certs 는 시스템 CA 번들을 가려 certbot 을 깨뜨려 제거)
       - ./ssl/dhparam/:/etc/nginx/dhparam-backup/
       - ./ssl/letsencrypt/:/etc/letsencrypt/
       - ../../log/:/log/
@@ -24,37 +37,50 @@ services:
     environment:
       TZ: "Asia/Seoul"
     restart: always
+    # webserver 는 php-app(FastCGI 9000) 이 healthy 가 되어야 의미가 있다.
+    # redis 는 본 stack 에서 'redis' profile 로만 기동되므로 의존성에 포함하지 않는다.
     depends_on:
-      - php-app
-      - openproject
-      - jenkins
+      openproject:
+        condition: service_started
+      jenkins:
+        condition: service_started
+      php-app:
+        condition: service_healthy
+    # ulimits — 의도적으로 비활성화 상태. 활성화 절차는 .env 의
+    # ULIMIT_NOFILE_SOFT / ULIMIT_NOFILE_HARD 와 nginx_gunicorn compose 의 동일 블록 참조.
+    # ulimits:
+    #   nofile:
+    #     soft: ${ULIMIT_NOFILE_SOFT:-65535}
+    #     hard: ${ULIMIT_NOFILE_HARD:-65535}
 
   php-app:
     build: ../../docker/php-fpm/
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: devspoon-php-app:8.4
+    logging: *log_opts
     working_dir: /application
     container_name: php-app
     volumes:
-      - ../../www/:/www/
-      - ../../config/app-server/php/pool.d/:/etc/php/7.3/fpm/pool.d
-      - ../../config/app-server/php/php_ini/php.ini:/etc/php/7.3/fpm/php.ini
+      - ../../www:/www
+      - ../../config/app-server/php/pool.d/www.conf:/usr/local/etc/php-fpm.d/www.conf:ro
+      - ../../config/app-server/php/php_ini/php.ini:/usr/local/etc/php/php.ini:ro
       - ../../log:/log
       - ../../script/logrotate/php-fpm/php-fpm:/etc/logrotate.d/php-fpm
     environment:
       TZ: "Asia/Seoul"
     restart: always
+    # php-fpm 은 pool.d/www.conf 의 `listen = 9000` 에서 FastCGI 수신.
+    # bash 내장 /dev/tcp 로 socket bind 여부만 확인 — FastCGI 프로토콜 미말함.
+    # 공식 php:8.4-fpm-bookworm 베이스는 bash 기본 포함.
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/9000' || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
 
   redis:
-    image: redis:latest
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
+    image: redis:7.4-alpine
+    logging: *log_opts
     container_name: redis_db
     # ports:
     #   - 6379:6379
@@ -66,27 +92,19 @@ services:
       - "mode=standalone"
     environment:
       TZ: "Asia/Seoul"
+      # redis.conf 의 protected-mode yes 와 짝을 이루는 requirepass 패스워드.
+      # healthcheck 의 redis-cli -a 가 본 변수를 사용 + command 의 --requirepass 주입에 사용.
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
     restart: always
-    command: redis-server /usr/local/etc/redis/redis.conf
-    profiles:
-      - redis
-
-  redis-stats:
-    image: insready/redis-stat:latest
-    logging:
-      driver: "${LOG_DRIVER}"
-      options:
-        max-file: "${LOG_OPT_MAXF}"
-        max-size: "${LOG_OPT_MAXS}"
-    container_name: redis-stats
-    ports:
-      - 63790:63790
-    command: ["--verbose", "--server", "redis:6379"]
-    environment:
-      TZ: "Asia/Seoul"
-    depends_on:
-      - redis
-    restart: always
+    command: >
+      redis-server /usr/local/etc/redis/redis.conf
+      --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli --no-auth-warning -a \"$$REDIS_PASSWORD\" ping | grep -q PONG"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
     profiles:
       - redis
 
