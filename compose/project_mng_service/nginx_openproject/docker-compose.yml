@@ -6,12 +6,18 @@ services:
       options:
         max-file: "${LOG_OPT_MAXF}"
         max-size: "${LOG_OPT_MAXS}"
-    container_name: nginx-proxy
+    container_name: nginx-proxy-openproject
     volumes:
-      - ../../../config/web-server/nginx/php/conf.d/:/etc/nginx/conf.d/
+      - ../../../config/web-server/nginx/php/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
+      # 사용자 복사본: config/web-server/nginx/php/proxy/openproject_proxy.conf.example → openproject_proxy.conf
+      - type: bind
+        source: ../../../config/web-server/nginx/php/proxy/openproject_proxy.conf
+        target: /etc/nginx/conf.d/openproject_proxy.conf
+        read_only: true
+        bind:
+          create_host_path: false
       - ../../../config/web-server/nginx/php/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
-      - ../../../config/web-server/nginx/php/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
-      - ../../../ssl/:/ssl/
+      - ../../../config/web-server/nginx/php/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ../../../log/:/log/
       - ../../../script/logrotate/nginx/nginx:/etc/logrotate.d/nginx
     ports:
