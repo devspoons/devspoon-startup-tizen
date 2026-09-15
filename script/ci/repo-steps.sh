@@ -106,5 +106,21 @@ for f in "$ROOT"/compose/master_service/docker-compose-*.yml "$ROOT"/compose/pro
         && echo "  [PASS] $f" || fail "$f"
 done
 [ "$n" -eq 8 ] || fail "검사 파일 수 $n (기대 8)"
+echo "### tizen-env 연결 설정 — compose 렌더·정적만, 빌드·기동 없음 (TZ-04·05, D-7, D-T1, D-T9) ###"
+TZ="$ROOT/compose/dev_env_service/tizen-env"; GL="$ROOT/compose/project_mng_service/gitolite"
+ports() { docker compose --env-file "$1" -f "$2" config --format json | jq -r '.services[].ports[]? | "\(.host_ip // "0.0.0.0"):\(.published)"'; }
+if docker compose --env-file "$TZ/.env-example" -f "$TZ/docker-compose.yml" config -q; then echo "  [PASS] tizen-env config"; else fail "tizen-env config"; fi
+tz=$(ports "$TZ/.env-example" "$TZ/docker-compose.yml"); gl=$(ports "$GL/.env-example" "$GL/docker-compose.yml")
+[ "$tz" = "127.0.0.1:2221" ] && echo "  [PASS] tizen-env SSH $tz" || fail "tizen-env SSH publish=$tz (기대 127.0.0.1:2221)"
+dup=$(printf '%s\n%s\n' "$tz" "$gl" | sed 's/.*://' | sort | uniq -d)
+[ -z "$dup" ] && echo "  [PASS] 단독 tizen-env ∩ gitolite = ∅" || fail "단독 포트 중복: $dup"
+dup=$(ports "$TMPD/3.env" "$ROOT/compose/master_service/docker-compose-php.yml" | sed 's/.*://' | sort | uniq -d)  # 3.env = 위 config 루프의 php 임시 env-file
+[ -z "$dup" ] && echo "  [PASS] master php 포트 중복 없음" || fail "master php 포트 중복: $dup"
+if TIZEN_SSH_KEY= docker compose --env-file "$TZ/.env-example" -f "$TZ/docker-compose.yml" config -q 2>/dev/null; then
+    fail "TIZEN_SSH_KEY 빈 값인데 config 성공 (fail-fast 없음)"; else echo "  [PASS] TIZEN_SSH_KEY 필수"; fi
+for k in "PermitRootLogin prohibit-password" "X11Forwarding no" "AllowTcpForwarding no"; do
+    if grep -qx "$k" "$ROOT/docker/tizen-env/system/sshd_config"; then echo "  [PASS] tizen-env $k"; else fail "tizen-env sshd_config — $k 없음"; fi
+done
+if grep -q 'id_rsa' "$ROOT/docker/tizen-env/Dockerfile"; then fail "Dockerfile 이 id_rsa 를 이미지에 넣음"; else echo "  [PASS] Dockerfile id_rsa 없음"; fi
 echo "=== RESULT: FAILS=$FAILS ==="
 [ "$FAILS" -eq 0 ] || exit 1
