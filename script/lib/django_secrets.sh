@@ -48,15 +48,19 @@ ensure_env_secrets() {
         set="$set $k=$val"; names="$names $k"; n=$((n+1))
     done
     if [ "$n" -gt 0 ]; then
-        tmp=$(mktemp) || { echo "  FAIL : 임시 파일 생성 실패 — $envf 변경 안 함"; return 1; }
+        # 원자적 교체: 같은 폴더 임시 파일에 쓰고 권한(600, 더 엄격하면 유지)·소유자를 맞춘 뒤 mv. 실패 시 원본 불변.
+        # 심볼릭 링크 .env 는 링크를 보존하고 대상 파일을 교체한다 (compose 요구 키 조회는 위에서 링크 경로 기준으로 끝남)
+        [ -L "$envf" ] && { envf=$(readlink -f "$envf") || { echo "  FAIL : $1 링크 대상 확인 실패"; return 1; }; }
+        tmp=$(mktemp "$envf.XXXXXX" 2>/dev/null) || { echo "  FAIL : 임시 파일 생성 실패(폴더 쓰기 불가?) — $envf 변경 안 함"; return 1; }
         if awk -v set="$set" -v app="$app" '
             BEGIN { split(set, a, " "); for (i in a) { p = index(a[i], "="); v[substr(a[i], 1, p - 1)] = substr(a[i], p + 1) } }
             { eol = sub(/\r$/, "") ? "\r" : ""; p = index($0, "="); k = substr($0, 1, p - 1)
               if (p > 1 && (k in v) && substr($0, p + 1) ~ /^(CHANGE_ME_[A-Za-z0-9_]*)?$/) $0 = k "=" v[k]
               printf "%s%s\n", $0, eol }
             END { split(app, b, " "); for (i = 1; i in b; i++) printf "%s=%s%s\n", b[i], v[b[i]], eol }' "$envf" > "$tmp" \
-            && chmod go= "$envf" && cat "$tmp" > "$envf"; then rm -f "$tmp"
-        else rm -f "$tmp"; echo "  FAIL : $envf 쓰기 실패"; return 1; fi
+            && chmod --reference="$envf" "$tmp" && chmod go= "$tmp" \
+            && { chown --reference="$envf" "$tmp" 2>/dev/null || :; } && mv -f "$tmp" "$envf"; then :
+        else rm -f "$tmp"; echo "  FAIL : $envf 쓰기 실패 — 원본 변경 안 함"; return 1; fi
         for k in $names; do echo "  $k 생성"; done
     fi
     echo "  비밀값 $n 개 생성 — 기존 값은 그대로 ($envf)"
