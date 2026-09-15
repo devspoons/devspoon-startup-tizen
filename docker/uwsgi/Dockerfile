@@ -59,13 +59,15 @@ RUN set -eux; \
 # ============================================================================
 # 1.3. Python 패키지 사전 설치 (uwsgi 포함 — native build 필요)
 # ============================================================================
+# 앱 서버·Django 는 www/django_sample/uv.lock 과 같은 버전으로 고정한다 — 다르면 기동마다 `uv sync` 가
+# 이미지 버전을 lock 버전으로 재설치(다운그레이드)한다. lock 갱신 시 함께 올릴 것 (s6 6.19 가 일치 단언).
 RUN pip install --no-cache-dir \
         sqlalchemy alembic pydantic \
         psycopg2-binary asyncpg \
         mysqlclient asyncmy \
-        gunicorn "uvicorn[standard]" \
-        uwsgi \
-        django uv poetry
+        gunicorn==23.0.0 "uvicorn[standard]==0.48.0" \
+        uwsgi==2.0.31 \
+        django==6.0.7 uv poetry
 
 
 # -----------------------------------------------------------------------------
