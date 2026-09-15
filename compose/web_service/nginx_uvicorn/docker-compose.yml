@@ -68,7 +68,9 @@ services:
     # uv 네이티브 흐름 — uvicorn extra 가 gunicorn 도 포함 (gunicorn + UvicornWorker).
     # 쓰기 경로: 워커가 www-data 로 강하되므로 SQLite 는 named volume /data(SQLITE_PATH)에 두고 그 볼륨만 www-data 소유로 맞춘다.
     #          bind mount 된 호스트 소스 트리(/www)의 소유권은 바꾸지 않는다 (호스트 사용자 편집·CI 후속 단계·침해 시 소스 변조 방지).
-    command: bash -c "chown -R www-data:www-data /data && uv sync --inexact --extra uvicorn --extra celery && exec gunicorn -c /uvicorn/uvicorn.conf.py"
+    # Django 는 기동 전 migrate 1회(이 app 서비스만 — celery·beat 는 app healthy 뒤 기동해 동시 migrate 경쟁 없음).
+    #   root 로 /data SQLite 를 만든 뒤 www-data 소유로 맞춘다. flask/fastapi 는 manage.py 가 없어 건너뛰고 앱이 create_all.
+    command: bash -c "uv sync --inexact --extra uvicorn --extra celery && { [ ! -f manage.py ] || python manage.py migrate --noinput; } && chown -R www-data:www-data /data && exec gunicorn -c /uvicorn/uvicorn.conf.py"
     environment:
       TZ: "Asia/Seoul"
       DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
@@ -123,7 +125,7 @@ services:
       redis:
         condition: service_healthy
       uvicorn-app:
-        condition: service_started
+        condition: service_healthy
     profiles:
       - celery
 
@@ -154,6 +156,8 @@ services:
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
     restart: always
     depends_on:
+      uvicorn-app:
+        condition: service_healthy
       celery:
         condition: service_started
     profiles:
