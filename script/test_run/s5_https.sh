@@ -54,11 +54,12 @@ echo "  ready=$ready"
 # 각 검사는 출력만 하지 않고 명시적으로 pass/fail 을 판정한다 (과거: grep 출력만 → 자동 게이트로 무의미).
 FAILS=0
 
-# 5.1 TLS handshake — Protocol + Cipher 가 협상되어야 한다.
+# 5.1 TLS handshake — 협상 프로토콜·암호군. -brief 출력(Protocol version·Ciphersuite)은 OpenSSL 1.1·3 공통
+#     (기본 출력의 SSL-Session `Protocol  :` 줄은 OpenSSL 3 TLS1.3 에서 나오지 않는다). 연결 실패 시 두 줄 모두 없음.
 echo "===== 5.1 TLS handshake ====="
-tls=$(openssl s_client -connect 127.0.0.1:443 -servername "$DOM" </dev/null 2>&1 | grep -E "(Protocol|Cipher)" | head -5)
+tls=$(openssl s_client -brief -connect 127.0.0.1:443 -servername "$DOM" </dev/null 2>&1 | grep -E "^(Protocol version|Ciphersuite):")
 echo "$tls"
-if echo "$tls" | grep -qE "Protocol *:" && echo "$tls" | grep -qiE "Cipher *:" && ! echo "$tls" | grep -qiE "Cipher *: *\(NONE\)"; then
+if echo "$tls" | grep -qE '^Protocol version: *TLSv1\.[23]$' && echo "$tls" | grep -qE '^Ciphersuite: *[A-Z0-9_-]+$'; then
     echo "  PASS 5.1"
 else
     echo "  FAIL 5.1 (no TLS handshake)"; FAILS=$((FAILS+1))
