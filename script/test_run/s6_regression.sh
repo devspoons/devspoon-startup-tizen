@@ -30,9 +30,9 @@ assert_zero 6.3 "$n"
 echo
 
 echo "===== 6.4 LF line endings (no CRLF) ====="
-n=$(find . -type f -not -path './.git/*' -not -path './.claude/*' -not -path './log/*' -not -path './www/django_sample/.venv/*' 2>/dev/null | xargs file 2>/dev/null | grep -i CRLF | wc -l)
+n=$(find . -type f -not -path './.git/*' -not -path './.claude/*' -not -path './log/*' -not -path './www/*/.venv/*' 2>/dev/null | xargs file 2>/dev/null | grep -i CRLF | wc -l)
 echo "  (first 10 if any):"
-find . -type f -not -path './.git/*' -not -path './.claude/*' -not -path './log/*' -not -path './www/django_sample/.venv/*' 2>/dev/null | xargs file 2>/dev/null | grep -i CRLF | head -10
+find . -type f -not -path './.git/*' -not -path './.claude/*' -not -path './log/*' -not -path './www/*/.venv/*' 2>/dev/null | xargs file 2>/dev/null | grep -i CRLF | head -10
 assert_zero 6.4 "$n"
 echo
 
@@ -138,16 +138,31 @@ n=$(grep -c 'www.conf' config/app-server/php/php_conf.sh)
 if [ "$n" -ge 1 ]; then echo "  PASS 6.15 php_conf.sh 포트 충돌 안내 (php) ($n)"; else echo "  FAIL 6.15 php_conf.sh 포트 충돌 안내 없음 (php)"; FAILS=$((FAILS+1)); fi
 echo
 
-echo "===== 6.16 알림·아티팩트 비밀값 마스킹 (RV1-SEC-04) ====="
+echo "===== 6.16 알림·아티팩트 비밀값 마스킹 — 누락 형식 마스킹·정상 줄 비마스킹 (RV1-SEC-04, RV2-S-04, RV2-SEC-01/02) ====="
 if [ -f script/lib/mask_secrets.sh ]; then
     # shellcheck source=../lib/mask_secrets.sh
     . script/lib/mask_secrets.sh
-    leak=$(printf '%s\n' 'echo REDIS_PASSWORD=dummysecret' 'TELEGRAM_BOT_TOKEN: dummysecret' 'redis://:dummysecret@redis:6379/3' '{"SECRET_KEY": "dummysecret"}' 'FLOWER_BASIC_AUTH=tester:dummysecret' 'redis-server --requirepass dummysecret' 'Authorization: Bearer dummysecret' "DJANGO_SECRET_KEY='dummy secret'" 'FLOWER_PWD="dummy secret"' | mask_secrets | grep -c dummy)
-    assert_zero "6.16 마스킹 샘플 9종 누출" "$leak"
+    leak=$(printf '%s\n' 'echo REDIS_PASSWORD=dummysecret' 'TELEGRAM_BOT_TOKEN: dummysecret' 'redis://:dummysecret@redis:6379/3' \
+        '{"SECRET_KEY": "dummysecret"}' 'FLOWER_BASIC_AUTH=tester:dummysecret' 'redis-server --requirepass dummysecret' \
+        'Authorization: Bearer dummysecret' "DJANGO_SECRET_KEY='dummy secret'" 'FLOWER_PWD="dummy secret"' \
+        'redis-server --requirepass "dummy secret"' 'redis-cli --no-auth-warning -a dummysecret ping' 'requirepass dummysecret' \
+        '"command": ["redis-server", "--requirepass", "dummysecret"]' 'REDIS_PASSWORD="dum\"my,secret"' '{"SECRET_KEY": "dummy,secret", "x": 1}' \
+        '"Authorization": "Bearer dummysecret"' | mask_secrets | grep -c dummy)
+    assert_zero "6.16 누락 형식 포함 마스킹 샘플 16종 누출" "$leak"
+    keep='RUNTIME_PASS=5
+ALL PASS: dhparam
+invalid token format
+  [PASS] B.1 app reached (healthy)
+    ssl_certificate_key /etc/nginx/ssl/default/privkey.pem;
+Final: STATIC_FAIL=0 RUNTIME_PASS=12 RUNTIME_FAIL=0'
+    if [ "$(printf '%s\n' "$keep" | mask_secrets)" = "$keep" ]; then echo "  PASS 6.16 정상 줄 비마스킹 6종"; else echo "  FAIL 6.16 정상 줄 과마스킹"; printf '%s\n' "$keep" | mask_secrets | sed 's/^/    /'; FAILS=$((FAILS+1)); fi
 else
     echo "  FAIL 6.16 script/lib/mask_secrets.sh 없음"; FAILS=$((FAILS+1))
 fi
-assert_eq "6.16 run-ci 알림 본문·로그 파일 마스킹 호출" "$(grep -cE '^[[:space:]]*mask_secrets_files[[:space:]]|\|[[:space:]]*mask_secrets\)' script/ci/run-ci.sh)" 2
+assert_eq   "6.16 run-ci 알림 본문·로그 파일 마스킹 호출" "$(grep -cE '^[[:space:]]*mask_secrets_files[[:space:]]|\|[[:space:]]*mask_secrets\)' script/ci/run-ci.sh)" 2
+assert_zero "6.16 run-ci 마스킹 실패 삼킴(|| true)" "$(grep -cE 'mask_secrets_files.*\|\| true' script/ci/run-ci.sh)"
+m=$(grep -n 'mask_secrets_files log/ci log/test_run' .github/workflows/test.yml | head -1 | cut -d: -f1); u=$(grep -n 'actions/upload-artifact' .github/workflows/test.yml | head -1 | cut -d: -f1)
+if [ -n "$m" ] && [ -n "$u" ] && [ "$m" -lt "$u" ]; then echo "  PASS 6.16 test.yml 업로드 직전 마스킹 단계"; else echo "  FAIL 6.16 test.yml 업로드 전 마스킹 단계 없음"; FAILS=$((FAILS+1)); fi
 echo
 
 echo "===== 6.17 하네스는 운영 .env 를 수정·생성하지 않고 임시 env-file·전용 compose 프로젝트로 격리 (RV1-SEC-02) ====="
@@ -155,6 +170,7 @@ for f in script/test_run/verify_integration_*.sh script/test_run/verify_compose_
     w=$(grep -cE 'sed -i.*\.env|cp \.env-example \.env|>[[:space:]]*\.env([[:space:]]|$)' "$f"); e=$(grep -c -- '--env-file' "$f")
     if [ "$w" = 0 ] && [ "$e" -ge 1 ]; then echo "  PASS 6.17 ($f)"; else echo "  FAIL 6.17 ($f) env_write=$w env_file=$e"; FAILS=$((FAILS+1)); fi
 done
+assert_eq "6.17 healthcheck 프로젝트명에서 . 치환 (compose 이름 규칙)" "$(grep -cF 'PROJ="devspoon-hc-${STACK//./-}"' script/test_run/verify_healthcheck.sh)" 1
 for f in script/test_run/verify_integration_*.sh script/test_run/verify_healthcheck.sh script/test/verify-ngxblocker.sh; do
     assert_eq "6.17 전용 compose 프로젝트명 ($f)" "$(grep -cE 'docker compose -p "\$PROJ"' "$f")" 1
 done
@@ -177,7 +193,7 @@ else
     echo "  FAIL 6.18 script/lib/stability.sh 없음"; FAILS=$((FAILS+1))
 fi
 for f in script/test_run/verify_integration_*.sh; do
-    assert_eq   "6.18 containers_stable 사용 ($f)" "$(grep -c 'containers_stable ' "$f")" 1
+    assert_eq   "6.18 app·webserver containers_stable 사용 ($f)" "$(grep -cF 'containers_stable "$(cid $APP)" "$(cid webserver)"' "$f")" 1
     assert_zero "6.18 순간 RestartCount 판정 ($f)" "$(grep -c '{{.RestartCount}}' "$f")"
 done
 assert_eq   "6.18 verify_healthcheck B.2 containers_stable" "$(grep -c 'containers_stable ' script/test_run/verify_healthcheck.sh)" 1
@@ -186,7 +202,7 @@ assert_eq   "6.18 verify_healthcheck 런타임 teardown trap (RV1-S-06)" "$(grep
 echo
 
 echo "===== 6.19 앱 이미지 사전설치 버전 = django_sample uv.lock (기동마다 uv sync 재설치 방지) ====="
-lockv() { awk -v n="$1" '$0 == "name = \"" n "\"" { getline; gsub(/"/, "", $3); print $3; exit }' www/django_sample/uv.lock; }
+lockv() { awk -v n="$1" '$0 == "name = \"" n "\"" { getline; gsub(/"/, "", $3); print $3; exit }' "${2:-www/django_sample/uv.lock}"; }
 for spec in "docker/gunicorn/Dockerfile gunicorn" "docker/gunicorn/Dockerfile uvicorn" "docker/uwsgi/Dockerfile gunicorn" "docker/uwsgi/Dockerfile uvicorn" "docker/uwsgi/Dockerfile uwsgi" "docker/uwsgi/Dockerfile django"; do
     df=${spec% *}; pkg=${spec#* }
     want=$(lockv "$pkg"); got=$(grep -oE "(^|[[:space:]\"])$pkg(\[standard\])?==[0-9][0-9.]*" "$df" | head -1 | sed 's/.*==//')
@@ -201,6 +217,7 @@ if [ "$(sed -e 's/p_num/4/g' -e 's/th_num/2/g' -e 's/port_num/8000/g' config/app
 else
     echo "  FAIL 6.20 sample_uwsgi.ini ≠ uwsgi.ini"; FAILS=$((FAILS+1))
 fi
+assert_zero "6.20 개인 경로 주석(linku) (RV2-SEC-04)" "$(cat config/app-server/uwsgi/uwsgi.ini config/app-server/uwsgi/sample_uwsgi.ini | grep -ci linku)"
 assert_zero "6.20 uwsgi_conf.sh project_path/project_name 치환" "$(grep -cE 'project_(path|name)' config/app-server/uwsgi/uwsgi_conf.sh)"
 echo
 
@@ -215,6 +232,83 @@ echo
 echo "===== 6.17b (형제) 검증기는 격리 래퍼 dc() 밖에서 docker compose 를 직접 호출하지 않는다 (SRV1-S-01, RV1-SEC-02) ====="
 for f in script/test_run/verify_integration_*.sh script/test_run/verify_healthcheck.sh script/test/verify-ngxblocker.sh; do
     assert_zero "6.17b 래퍼 밖 docker compose 직접 호출 ($f)" "$(grep -vE '^[[:space:]]*#|^[[:space:]]*dc\(\)' "$f" | grep -c 'docker compose')"
+done
+echo
+
+echo "===== 6.22 Django migrate 는 app 서비스에서만 기동 전 1회, celery·beat 는 app healthy 뒤 기동 (CL-WP1-08-R2b) ====="
+for s in gunicorn uvicorn uwsgi daphne; do
+    f=compose/web_service/nginx_$s/docker-compose.yml
+    assert_eq "6.22 migrate 1회(app 만) ($s)" "$(grep -c 'manage.py migrate --noinput' "$f")" 1
+    assert_eq "6.22 uv sync → migrate → /data chown → 서버 순서 ($s)" "$(grep -cF '{ [ ! -f manage.py ] || python manage.py migrate --noinput; } && chown -R www-data:www-data /data && ' "$f")" 1
+    assert_eq "6.22 ${s}-app service_healthy 의존 3곳(webserver·celery·beat) ($s)" "$(grep -A1 -E "^      ${s}-app:\$" "$f" | grep -c 'condition: service_healthy')" 3
+done
+echo
+
+echo "===== 6.23 s5_https 는 출고 http 샘플과 겹치지 않는 도메인 + reload 후 준비 대기 (CL-WP4-08-R2) ====="
+assert_zero "6.23 s5 -d localhost (출고 http 샘플 server_name 충돌)" "$(grep -c -- '-d localhost' script/test_run/s5_https.sh)"
+n=$(grep -c 'S5_WAIT' script/test_run/s5_https.sh)
+if [ "$n" -ge 2 ]; then echo "  PASS 6.23 s5 준비 대기 ($n)"; else echo "  FAIL 6.23 s5 준비 대기 없음"; FAILS=$((FAILS+1)); fi
+echo
+
+echo "===== 6.24 .env 비밀값 한 줄 생성 헬퍼 — 빈 값·CHANGE_ME 는 채우고 기존 값·비밀 아닌 키는 불변 (RV2-S-01, 3회차 13) ====="
+if grep -q 'ensure_env_secrets()' script/lib/django_secrets.sh; then
+    tmp=$(mktemp -d)
+    printf 'FLOWER_ID=CHANGE_ME_FLOWER_USER\nDJANGO_SECRET_KEY=\nREDIS_PASSWORD=CHANGE_ME_REDIS_PASSWORD\nFLOWER_PWD=\n' > "$tmp/new.env"
+    printf 'DJANGO_SECRET_KEY=keepme\nREDIS_PASSWORD=keep-redis\nFLOWER_PWD=keep-flower\n' > "$tmp/keep.env"; ks=$(sha256sum < "$tmp/keep.env")
+    ( . script/lib/django_secrets.sh
+      ensure_env_secrets "$tmp/new.env" >/dev/null; ensure_env_secrets "$tmp/keep.env" >/dev/null
+      ensure_env_secrets "$tmp/none.env" >/dev/null 2>&1; echo "rc_none=$?" > "$tmp/rc" )
+    assert_eq   "6.24 DJANGO_SECRET_KEY 빈 값 → 100 hex" "$(grep -cE '^DJANGO_SECRET_KEY=[0-9a-f]{100}$' "$tmp/new.env")" 1
+    assert_eq   "6.24 REDIS_PASSWORD CHANGE_ME → 64 hex" "$(grep -cE '^REDIS_PASSWORD=[0-9a-f]{64}$' "$tmp/new.env")" 1
+    assert_eq   "6.24 FLOWER_PWD 빈 값 → 64 hex" "$(grep -cE '^FLOWER_PWD=[0-9a-f]{64}$' "$tmp/new.env")" 1
+    assert_eq   "6.24 비밀 아닌 FLOWER_ID 불변" "$(grep -c '^FLOWER_ID=CHANGE_ME_FLOWER_USER$' "$tmp/new.env")" 1
+    if [ "$(sha256sum < "$tmp/keep.env")" = "$ks" ]; then echo "  PASS 6.24 기존 값 파일 불변"; else echo "  FAIL 6.24 기존 값 변경됨"; FAILS=$((FAILS+1)); fi
+    assert_zero "6.24 .env 없음 → rc≠0" "$(grep -c '^rc_none=0$' "$tmp/rc")"
+    rm -rf "$tmp"
+else
+    echo "  FAIL 6.24 ensure_env_secrets 없음"; FAILS=$((FAILS+1))
+fi
+for s in gunicorn uvicorn uwsgi daphne php; do
+    assert_eq "6.24 .env-example 한 줄 생성 안내 ($s)" "$(grep -c "ensure_env_secrets compose/web_service/nginx_$s/.env" compose/web_service/nginx_$s/.env-example)" 1
+done
+echo
+
+echo "===== 6.29 compose 가 :? 로 요구하는 비밀 키는 .env-example 에서 빈 값 — 공개 예시 자격증명 금지 (3회차 13) ====="
+for d in compose/web_service/nginx_*; do
+    for k in $(grep -oE '\$\{[A-Z_]*(PASSWORD|PWD|SECRET|TOKEN|_KEY)[A-Z_]*:\?' "$d/docker-compose.yml" | sed -E 's/\$\{([A-Z_]+):\?/\1/' | sort -u); do
+        v=$(grep -E "^$k=" "$d/.env-example" | head -1 | cut -d= -f2-)
+        if grep -qE "^$k=" "$d/.env-example" && [ -z "$v" ]; then echo "  PASS 6.29 $d $k 빈 값"; else echo "  FAIL 6.29 $d $k=[$v]"; FAILS=$((FAILS+1)); fi
+    done
+done
+echo
+
+echo "===== 6.25 CI 경로에서 celery·beat 를 --profile celery 로 기동해 안정성 판정 (RV2-S-03) ====="
+f=script/test_run/verify_integration_gunicorn.sh
+assert_eq "6.25 --profile celery 기동" "$(grep -c -- '--profile celery up -d --wait' "$f")" 1
+assert_eq "6.25 celery·celery-beat containers_stable" "$(grep -c 'containers_stable "$(dc --profile celery ps -q celery)" "$(dc --profile celery ps -q celery-beat)"' "$f")" 1
+assert_eq "6.25 정리 시 celery 프로파일 포함 down" "$(grep -c 'dc --profile celery down -v' "$f")" 1
+echo
+
+echo "===== 6.26 하네스는 운영 공유 이미지 태그를 덮어쓰지 않음 — IMAGE_NAMESPACE (RV2-SEC-03) ====="
+for s in gunicorn uvicorn uwsgi daphne php; do
+    assert_zero "6.26 고정 devspoon 이미지명 ($s)" "$(grep -cE '^[[:space:]]+image: devspoon-' compose/web_service/nginx_$s/docker-compose.yml)"
+done
+for f in script/test_run/verify_integration_*.sh script/test_run/verify_healthcheck.sh script/test/verify-ngxblocker.sh; do
+    assert_eq "6.26 테스트 이미지 네임스페이스 ($f)" "$(grep -c 'IMAGE_NAMESPACE=devspoon-it' "$f")" 1
+done
+echo
+
+echo "===== 6.27 공용 nginx.conf 가 proxy.d/*/*.conf 를 zone·map 뒤, conf.d 앞에서 include (SRV1-S-02) ====="
+for f in config/web-server/nginx/{gunicorn,uvicorn,uwsgi,php}/nginx_conf/nginx.conf; do
+    i=$(grep -nE '^[[:space:]]*include[[:space:]]+/etc/nginx/proxy\.d/\*/\*\.conf;' "$f" | cut -d: -f1); z=$(grep -n 'map $http_upgrade $connection_upgrade' "$f" | cut -d: -f1); c=$(grep -nE '^[[:space:]]*include[[:space:]]+/etc/nginx/conf\.d/\*\.conf;' "$f" | cut -d: -f1)
+    if [ -n "$i" ] && [ "$(grep -cE '^[[:space:]]*include[[:space:]]+/etc/nginx/proxy\.d/' "$f")" = 1 ] && [ "$i" -gt "$z" ] && [ "$i" -lt "$c" ]; then echo "  PASS 6.27 ($f)"; else echo "  FAIL 6.27 ($f) proxy.d=$i map=$z conf.d=$c"; FAILS=$((FAILS+1)); fi
+done
+echo
+
+echo "===== 6.28 생성기 안내·.env-example 문구가 저장소 중립·실제 설정과 일치 (SRV1-S-04, SRV1-SEC-05) ====="
+assert_zero "6.28 생성기의 compose/web-service·web_service 고정 경로" "$(cat config/web-server/nginx/*/nginx_http*_conf.sh | grep -cE 'compose/web[-_]service')"
+for s in gunicorn uvicorn uwsgi daphne; do
+    assert_zero "6.28 flower '외부에 노출' 문구 ($s)" "$(grep -c '외부에 노출' compose/web_service/nginx_$s/.env-example)"
 done
 echo
 

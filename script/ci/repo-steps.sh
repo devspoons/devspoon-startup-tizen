@@ -28,6 +28,37 @@ for k in "X11Forwarding no" "AllowTcpForwarding no"; do
     if grep -qE "^$k\$" "$ROOT/docker/gitolite/system/sshd_config"; then echo "  [PASS] $k"; else fail "sshd_config — $k 없음"; fi
 done
 
+echo "### master_service python 4조합 — migrate 는 app 서비스만 기동 전 1회, celery·beat 는 app healthy 뒤 (CL-WP2-19-R2) ###"
+for s in daphne gunicorn uvicorn uwsgi; do
+    f="$ROOT/compose/master_service/docker-compose-$s.yml"
+    if [ "$(grep -c 'manage.py migrate --noinput' "$f")" = 1 ] \
+        && [ "$(grep -cF '{ [ ! -f manage.py ] || python manage.py migrate --noinput; } && chown -R www-data:www-data /data && ' "$f")" = 1 ] \
+        && [ "$(grep -A1 -E "^      ${s}-app:\$" "$f" | grep -c 'condition: service_healthy')" = 3 ]; then
+        echo "  [PASS] $s migrate·service_healthy 3곳"; else fail "$s migrate 위치·celery/beat app healthy 의존"; fi
+done
+
+echo "### master_service 비밀 키 빈 값·한 줄 생성 안내, 운영 이미지명 격리 IMAGE_NAMESPACE (RV2-S-01, RV2-SEC-03) ###"
+e="$ROOT/compose/master_service/.env-example"
+for k in $(grep -ohE '\$\{[A-Z_]*(PASSWORD|PWD|SECRET|TOKEN|_KEY)[A-Z_]*:\?' "$ROOT"/compose/master_service/*.yml | sed -E 's/\$\{([A-Z_]+):\?/\1/' | sort -u); do
+    if grep -qE "^$k=\$" "$e"; then echo "  [PASS] $k 빈 값"; else fail "master .env-example $k 예시값 존재"; fi
+done
+if grep -q 'ensure_env_secrets compose/master_service/.env' "$e"; then echo "  [PASS] ensure_env_secrets 안내"; else fail "master .env-example ensure_env_secrets 안내 없음"; fi
+if grep -nE '^[[:space:]]+image: devspoon-' "$ROOT"/compose/master_service/*.yml; then fail "고정 devspoon 이미지명"; else echo "  [PASS] 이미지명 IMAGE_NAMESPACE"; fi
+
+echo "### master_service proxy 샘플 — webserver 가 php/proxy/<svc>/ 를 /etc/nginx/proxy.d/<svc>/:ro 로 마운트, 복사본 무시 (SRV1-S-02) ###"
+for f in "$ROOT"/compose/master_service/docker-compose-*.yml; do
+    for svc in jenkins openproject; do
+        if grep -qF -- "- ../../config/web-server/nginx/php/proxy/$svc/:/etc/nginx/proxy.d/$svc/:ro" "$f"; then
+            echo "  [PASS] $(basename "$f") $svc"; else fail "$(basename "$f") $svc proxy.d 마운트 없음"; fi
+    done
+done
+if grep -rn '마운트한 conf\.d' "$ROOT"/compose/master_service "$ROOT"/config/web-server/nginx/php/proxy; then fail "conf.d 복사 안내 잔존"; else echo "  [PASS] conf.d 복사 안내 없음"; fi
+for svc in jenkins openproject; do
+    if git -C "$ROOT" check-ignore -q --no-index "config/web-server/nginx/php/proxy/$svc/${svc}_proxy.conf" \
+        && ! git -C "$ROOT" check-ignore -q --no-index "config/web-server/nginx/php/proxy/$svc/default.conf"; then
+        echo "  [PASS] $svc 복사본 무시·자리표시자 추적"; else fail "$svc proxy 복사본 ignore 규칙"; fi
+done
+
 echo "### master_service / project_mng_service compose config (운영 .env 미사용 — .env-example 로 만든 임시 env-file) ###"
 n=0
 for f in "$ROOT"/compose/master_service/docker-compose-*.yml "$ROOT"/compose/project_mng_service/{nginx_jenkins,nginx_openproject,gitolite}/docker-compose.yml; do
