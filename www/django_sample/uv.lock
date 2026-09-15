@@ -361,7 +361,6 @@ dependencies = [
     { name = "asgiref" },
     { name = "django" },
     { name = "legacy-cgi" },
-    { name = "pytz" },
     { name = "sqlparse" },
 ]
 
@@ -394,7 +393,6 @@ requires-dist = [
     { name = "django-celery-beat", marker = "extra == 'celery'", specifier = ">=2.9" },
     { name = "gunicorn", marker = "extra == 'gunicorn'", specifier = ">=21,<24" },
     { name = "legacy-cgi", specifier = ">=2.6" },
-    { name = "pytz", specifier = "==2021.1" },
     { name = "sqlparse", specifier = ">=0.5.0" },
     { name = "uvicorn", extras = ["standard"], marker = "extra == 'uvicorn'", specifier = ">=0.25,<1.0" },
     { name = "uwsgi", marker = "extra == 'uwsgi'", specifier = ">=2.0,<3" },
@@ -620,15 +618,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/82/ed/0301aeeac3e5353ef3d94b6ec08bbcabd04a72018415dcb29e588514bba8/python_dotenv-1.2.2.tar.gz", hash = "sha256:2c371a91fbd7ba082c2c1dc1f8bf89ca22564a087c2c287cd9b662adde799cf3", size = 50135, upload-time = "2026-03-01T16:00:26.196Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/0b/d7/1959b9648791274998a9c3526f6d0ec8fd2233e4d4acce81bbae76b44b2a/python_dotenv-1.2.2-py3-none-any.whl", hash = "sha256:1d8214789a24de455a8b8bd8ae6fe3c6b69a5e3d64aa8a8e5d68e694bbcb285a", size = 22101, upload-time = "2026-03-01T16:00:25.09Z" },
-]
-
-[[package]]
-name = "pytz"
-version = "2021.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/b0/61/eddc6eb2c682ea6fd97a7e1018a6294be80dba08fa28e7a3570148b4612d/pytz-2021.1.tar.gz", hash = "sha256:83a4a90894bf38e243cf052c8b58f381bfe9a7a483f6a9cab140bc7f702ac4da", size = 317945, upload-time = "2021-02-01T08:07:19.773Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/70/94/784178ca5dd892a98f113cdd923372024dc04b8d40abe77ca76b5fb90ca6/pytz-2021.1-py2.py3-none-any.whl", hash = "sha256:eb10ce3e7736052ed3623d49975ce333bcd712c7bb19a58b9e2089d4057d0798", size = 510782, upload-time = "2021-02-01T08:07:15.659Z" },
 ]
 
 [[package]]

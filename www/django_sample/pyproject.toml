@@ -7,7 +7,6 @@ dependencies = [
     # Django 6.0 — Python 3.12/3.13/3.14 지원. asgiref>=3.9.1 / sqlparse>=0.5.0 이 필수.
     "asgiref>=3.9.1",
     "django>=6.0,<6.1",
-    "pytz==2021.1",
     "sqlparse>=0.5.0",
     # legacy-cgi: Django 6.0 은 stdlib 'cgi' 미의존 → 필수 아님(무해하여 유지).
     "legacy-cgi>=2.6",
