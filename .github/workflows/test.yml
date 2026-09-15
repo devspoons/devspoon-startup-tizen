@@ -43,6 +43,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
 
       - name: 업로드 전 로그 비밀값 마스킹
+        id: mask
         if: always()
         run: |
           . script/lib/mask_secrets.sh
@@ -53,7 +54,8 @@ jobs:
           fi
 
       - name: 테스트 로그 아티팩트 업로드
-        if: always()
+        # 마스킹이 성공한 경우에만 업로드 (실패·건너뜀이면 비밀값이 남았을 수 있다)
+        if: always() && steps.mask.outcome == 'success'
         uses: actions/upload-artifact@v7
         with:
           name: ci-logs
