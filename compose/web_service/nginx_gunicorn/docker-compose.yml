@@ -98,7 +98,7 @@ services:
       PYTHONDONTWRITEBYTECODE: "1"
       WSGI_APP: "${WSGI_APP:-config.wsgi:application}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
-      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,www.localhost,127.0.0.1}"
     restart: always
     depends_on:
       redis:
@@ -150,7 +150,7 @@ services:
       SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
       PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
-      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,www.localhost,127.0.0.1}"
       # Django settings.py 가 os.environ['CELERY_BROKER_URL'] 로 읽도록 명시 주입.
       # 미주입 시 celery 가 기본값 amqp://localhost 로 떨어지면서 broker 미접속 상태로 기동.
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
@@ -186,7 +186,7 @@ services:
       SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
       PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
-      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
+      DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,www.localhost,127.0.0.1}"
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
     restart: always
     depends_on:
