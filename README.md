@@ -355,8 +355,8 @@ docker exec -u gitolite-creator -w /home/gitolite-creator gitolite bin/gitolite 
 [Harbor(KR)]: https://engineering.linecorp.com/ko/blog/harbor-for-private-docker-registry/
 [mailgun]: https://www.mailgun.com/
 [sendgrid]: https://sendgrid.com/
-[OpenProject]: https://docs.openproject.org/user-guide/wiki/
-[OpenProject docs]: https://docs.openproject.org/installation-and-operations/
+[OpenProject]: https://www.openproject.org/docs/user-guide/wiki/
+[OpenProject docs]: https://www.openproject.org/docs/installation-and-operations/
 [Jenkins]: https://en.wikipedia.org/wiki/Jenkins_(software)
 [Gitolite]: https://wiki.archlinux.org/index.php/Gitolite
 [Harbor]: https://en.wikipedia.org/wiki/Harbor
