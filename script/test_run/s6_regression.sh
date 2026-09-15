@@ -492,9 +492,10 @@ assert_zero "6.35 s3 프로젝트명 하드코딩 (3C.uwsgi 로그 = .env PROJEC
 assert_eq   "6.35 s3 3B.1 필수 키 = 스택 .env-example" "$(grep -c 'env_missing .env-example .env' "$f")" 1
 u35() { if [ "$2" = "$3" ]; then echo "  PASS 6.35 $1"; else echo "  FAIL 6.35 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
 unset -f logrotate_dry_ok lock_version env_missing
-# REV-W16-01: 표지가 빠지면 sed 범위가 파일 끝까지 가서 s3 뒷부분(docker·curl·exit)을 eval 한다 — 시작·끝 표지가 각 1개일 때만 추출
-[ "$(grep -c '^# >>> s3 순수 판정' "$f")" = 1 ] && [ "$(grep -c '^# <<< s3 순수 판정' "$f")" = 1 ] &&
-    eval "$(sed -n '/^# >>> s3 순수 판정/,/^# <<< s3 순수 판정/p' "$f")"
+# REV-W16-01·W17-01: 표지가 빠지거나·중복·뒤바뀌거나 끝 표지가 본문 뒤로 가면 sed 범위가 s3 뒷부분(docker·curl·exit)을 eval 한다 — 표지 각 1개(줄 번호 단일값)·시작<끝·블록 60줄 미만일 때만 추출
+ms=$(grep -n '^# >>> s3 순수 판정' "$f" | cut -d: -f1); me=$(grep -n '^# <<< s3 순수 판정' "$f" | cut -d: -f1)
+# 상한 60줄 = 현재 블록 17줄(s3:25-41)의 3배 여유 — 끝 표지가 s3 본문 뒤(파일 266줄)로 가면 초과, 블록이 커지면 상향
+[ "$ms" -lt "$me" ] 2>/dev/null && [ $((me - ms)) -lt 60 ] && eval "$(sed -n "${ms},${me}p" "$f")"
 if declare -F logrotate_dry_ok >/dev/null && declare -F lock_version >/dev/null && declare -F env_missing >/dev/null; then
     # 실측 logrotate 3.21.0 `-d /run/logrotate.d/nginx` 출력 발췌 (sw 4회차 part A) — Handling 행은 8행, tail -5 창 밖
     lr=$(cat <<'EOF'
