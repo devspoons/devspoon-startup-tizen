@@ -3,7 +3,7 @@
 # Let's Encrypt 초기 발급 스크립트 — 도메인당 1회 실행
 #
 # 역할:
-#   1) 사용자 입력 (webroot / domain(s) / email) 수집 및 형식 검증
+#   1) 사용자 입력 (domain(s) / email) 수집 및 형식 검증 — ACME webroot 는 /www/certbot 고정
 #   2) 이미 발급된 도메인인지 /etc/letsencrypt/live/<domain>/ 존재 여부로 판단
 #   3) certbot certonly --webroot 로 SAN 인증서 발급
 #
@@ -23,33 +23,9 @@ set -eo pipefail
 # apt-get update && apt-get install -y certbot python3-certbot-nginx ca-certificates
 
 # ─────────────────────────────────────────────────────────────────────────────
-# (1) webroot 입력 — /www/<webroot>/ 아래에 ACME challenge 가 떨어진다.
-#     /www 가 nginx server 블록의 정적 root 와 일치해야 challenge 가 서빙된다.
+# (1) ACME webroot 고정 — 모든 nginx conf 의 location ^~ /.well-known/acme-challenge/ 가 root /www/certbot
 # ─────────────────────────────────────────────────────────────────────────────
-while :
-do
-    echo -n "Enter the service webroot_folder (under /www/, e.g. django_sample) > "
-    read webroot_folder
-    echo  "Entered service webroot_folder: $webroot_folder"
-    if [[ -z "$webroot_folder" ]]; then
-        echo "  (값을 입력하세요)"
-        continue
-    fi
-    if [[ ! "$webroot_folder" =~ ^[A-Za-z0-9._/-]+$ ]]; then
-        echo "  (형식 오류 — 허용: [A-Za-z0-9._/-]+)"
-        continue
-    fi
-    if [[ ! -d "/www/$webroot_folder" ]]; then
-        echo "  [WARN] /www/$webroot_folder/ 가 존재하지 않습니다."
-        echo "  ACME HTTP-01 challenge 는 /www/$webroot_folder/.well-known/acme-challenge/<token>"
-        echo "  경로로 떨어지므로 nginx 의 server 블록 root 가 이 디렉토리를 가리키도록"
-        echo "  미리 sample_nginx_http.conf 기반 conf 를 생성해 두어야 합니다."
-        echo -n "  계속 진행하시겠습니까? [y/N] > "
-        read confirm
-        [[ "$confirm" =~ ^[Yy]$ ]] || continue
-    fi
-    break
-done
+WEBROOT=/www/certbot
 
 # ─────────────────────────────────────────────────────────────────────────────
 # (2) 도메인 입력 — 공백 구분 다중 도메인 → SAN 인증서로 묶어 발급
@@ -63,7 +39,7 @@ echo "       a-record 가 있는 primary domain (예: aaa.com) 을 먼저 두세
 while :
 do
     echo -n "Enter the service domain(s) > "
-    read domain
+    read -r domain || { echo "입력이 없습니다(EOF) — 중단" >&2; exit 2; }
     echo  "Entered service domain: $domain"
     if [[ -z "$domain" ]]; then
         echo "  (값을 입력하세요)"
@@ -89,7 +65,7 @@ done
 while :
 do
     echo -n "Enter the user e-mail > "
-    read mail
+    read -r mail || { echo "입력이 없습니다(EOF) — 중단" >&2; exit 2; }
     echo  "Entered user e-mail: $mail"
     if [[ -z "$mail" ]]; then
         echo "  (값을 입력하세요)"
@@ -123,7 +99,7 @@ LIVE_DIR="/etc/letsencrypt/live/$primary"
 if [[ -d "$LIVE_DIR" ]]; then
     echo
     echo "[SKIP] 이미 발급된 인증서가 존재합니다: $LIVE_DIR"
-    echo "       - 갱신은 docker/nginx/Dockerfile 에 등록된 cron (매주 월 05:00 UTC) 이 자동 수행합니다."
+    echo "       - 갱신은 docker/nginx/Dockerfile 에 등록된 cron (매주 월 05:00, 컨테이너 TZ=Asia/Seoul) 이 자동 수행합니다."
     echo "       - 강제 재발급이 필요하면 'certbot certonly --force-renewal --webroot ...' 를 직접 실행하세요."
     exit 0
 fi
@@ -131,16 +107,16 @@ fi
 echo
 echo "[INFO] certbot 인증서 발급 시작 — primary domain: $primary"
 echo "       certbot certonly --non-interactive --agree-tos --email $mail \\"
-echo "         --webroot -w /www/$webroot_folder$domain_string"
+echo "         --webroot -w $WEBROOT$domain_string"
 echo
 
 certbot certonly --non-interactive --agree-tos --email "$mail" \
-    --webroot -w "/www/$webroot_folder" $domain_string
+    --webroot -w "$WEBROOT" $domain_string
 
 echo
 echo "[OK] 발급 완료. nginx HTTPS conf 를 생성하고 reload 하세요."
 echo "  cd config/web-server/nginx/<stack>/"
-echo "  ./nginx_https_conf.sh -w $webroot_folder -p 80 -d $primary -a <appname> -s <svcport> -n <name>"
+echo "  ./nginx_https_conf.sh -w <webroot> -p 80 -d $primary -a <appname> -s <svcport> -n <name>"
 echo "  docker compose exec webserver nginx -t && docker compose exec webserver nginx -s reload"
 echo
 echo "참고: 인증서 자동 갱신 cron 은 docker/nginx/Dockerfile 에 이미 등록되어 있으므로"

@@ -4,7 +4,8 @@
 #   ./conf.d/<NAME>_<STACK>_ng_http.conf 로 출력한다. (HTTPS 버전은 nginx_https_conf.sh)
 # 동작 방식:
 #   - 옵션을 주면 비대화형, 생략하면 대화형으로 묻는다.
-#   - 같은 이름의 파일이 있어도 항상 덮어쓴다(백업이 필요하면 미리 복사할 것).
+#   - 같은 이름의 파일이 있으면 덮어쓴다(백업이 필요하면 미리 복사할 것).
+#     단, git 이 추적하는 출고 샘플은 -f 없이 덮어쓰지 않는다(exit 2).
 #   - nginx reload 는 자동으로 하지 않는다. 끝에 안내되는 명령을 수동 실행할 것.
 # ============================================================================
 set -euo pipefail
@@ -43,13 +44,14 @@ usage() {
                  빈 값으로 두면 ':SVCPORT' 가 제거되어 <APPNAME> (포트 없음) 형식.
   -n NAME        생성 파일/로그 식별자 (생략하면 DOMAIN 사용)
                  결과 파일명: ./conf.d/<NAME>${SUFFIX}.conf
+  -f             git 이 추적하는 출고 샘플(conf.d/*)도 덮어쓰기 허용
   -h, --help     이 도움말 표시
 
 비대화형 vs 대화형:
   - 위 옵션을 모두 주면 비대화형으로 즉시 파일 생성.
   - 일부만 주거나 전부 생략하면 누락된 항목만 대화형으로 묻습니다.
-  - 검증 규칙: 포트 1-65535, 도메인/앱/이름은 [A-Za-z0-9._-]+, 웹루트는 / 도 허용.
-  - 같은 이름의 conf 파일이 이미 있어도 항상 덮어씁니다 (백업은 호출 측 책임).
+  - 검증 규칙: 포트 1-65535, 도메인/앱/이름은 [A-Za-z0-9._-]+, 웹루트는 / 도 허용. '..'·'__' 는 금지.
+  - 같은 이름의 conf 파일은 덮어씁니다 (백업은 호출 측 책임). git 추적 샘플은 -f 가 필요합니다.
 
 사용 예시:
 
@@ -102,12 +104,13 @@ for arg in "$@"; do
 done
 set -- "${new_args[@]}"
 
-webroot="" ; portnumber="" ; domain="" ; appname="" ; serviceport="" ; name=""
+webroot="" ; portnumber="" ; domain="" ; appname="" ; serviceport="" ; name="" ; force=0
 svcport_set=0
-while getopts ":w:p:d:a:s:n:h" opt; do
+while getopts ":w:p:d:a:s:n:fh" opt; do
     case "$opt" in
         w) webroot="$OPTARG" ;; p) portnumber="$OPTARG" ;; d) domain="$OPTARG" ;;
         a) appname="$OPTARG" ;; s) serviceport="$OPTARG" ; svcport_set=1 ;; n) name="$OPTARG" ;;
+        f) force=1 ;;
         h) usage ; exit 0 ;;
         \?) echo "알 수 없는 옵션: -$OPTARG" >&2 ; usage ; exit 2 ;;
         :)  echo "옵션 -$OPTARG 에 값이 필요합니다" >&2 ; exit 2 ;;
@@ -126,7 +129,7 @@ prompt_for() {
     done
 }
 
-# placeholder 토큰(webroot/domain/appname/filename/serviceport)을 부분문자열 치환하므로,
+# placeholder 토큰(__WEBROOT__/__DOMAIN__/__APPNAME__/__FILENAME__/__SVCPORT__)을 치환하므로,
 # 토큰 자체나 sed delimiter(|) 와 충돌하는 문자가 입력에 들어오지 못하도록 정규식으로 제한한다.
 [[ -n "$webroot"    ]] || prompt_for webroot    "웹루트 (/www/ 제외, 예: shop/myapp) > " '^[A-Za-z0-9._/-]+$'
 [[ -n "$portnumber" ]] || prompt_for portnumber "서비스 listen 포트 (예: 80) > "          '^[0-9]{1,5}$'
@@ -150,15 +153,24 @@ if [[ -n "$serviceport" ]]; then
 fi
 [[ -f "$SAMPLE" ]] || { echo "샘플 파일이 없습니다: $SAMPLE (스택 디렉토리에서 실행하세요)" >&2 ; exit 1 ; }
 
+# 경로 상승(..)과 토큰 모양(__) 입력 금지 — 재치환·디렉터리 탈출 차단
+for v in "$webroot" "$domain" "$appname" "$name"; do
+    [[ "$v" != *..* && "$v" != *__* ]] || { echo "입력에 '..' 또는 '__' 사용 불가: '$v'" >&2 ; exit 2 ; }
+done
+
 outfile="./conf.d/${name}${SUFFIX}.conf"
+# 저장소가 추적하는 출고 샘플은 -f 없이 덮어쓰지 않는다 (git 밖 배포본에서는 가드 통과)
+if [[ "$force" -ne 1 ]] && git ls-files --error-unmatch "$outfile" >/dev/null 2>&1; then
+    echo "추적 중인 샘플은 -f 없이 덮어쓰지 않습니다: $outfile" >&2 ; exit 2
+fi
 [[ -f "$outfile" ]] && echo "기존 파일을 덮어씁니다: $outfile"
 
 # 단일 파이프 치환 — delimiter 를 | 로 두어 webroot 의 / 가 그대로 들어가도 안전(인용 처리됨, 임시파일 불필요)
-sed_args=( -e "s|webroot|${webroot}|g" -e "s|portnumber|${portnumber}|g"
-           -e "s|domain|${domain}|g"   -e "s|appname|${appname}|g" )
-if [[ -z "$serviceport" ]]; then sed_args+=( -e "s|:serviceport||g" )
-else                             sed_args+=( -e "s|serviceport|${serviceport}|g" ) ; fi
-sed_args+=( -e "s|filename|${name}|g" )
+sed_args=( -e "s|__WEBROOT__|${webroot}|g" -e "s|__PORT__|${portnumber}|g"
+           -e "s|__DOMAIN__|${domain}|g"   -e "s|__APPNAME__|${appname}|g" )
+if [[ -z "$serviceport" ]]; then sed_args+=( -e "s|:__SVCPORT__||g" )
+else                             sed_args+=( -e "s|__SVCPORT__|${serviceport}|g" ) ; fi
+sed_args+=( -e "s|__FILENAME__|${name}|g" )
 sed "${sed_args[@]}" "$SAMPLE" > "$outfile"
 
 echo "생성 완료: $outfile"
