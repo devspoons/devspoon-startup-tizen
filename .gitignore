@@ -22,5 +22,36 @@ compose/web_service/nginx_php/redis/
 compose/web_service/nginx_uwsgi/ssl/
 compose/web_service/nginx_uwsgi/redis/
 
+# Redis 실시간 dump (테스트/운영 중 컨테이너가 생성) — 모든 스택 공통
+# .gitkeep 은 negation 으로 유지 (디렉터리 자체는 트리 상에 보존)
+**/redis/data/*
+!**/redis/data/.gitkeep
+
+# ---------------------------------------------------------------------------
+# .env — 자격증명 보호
+# - compose/**/.env 는 FLOWER_BASIC_AUTH, REDIS_PASSWORD 등을 포함
+# - 운영 자격증명은 git 추적 대상에서 제외하고, 동일 폴더의 .env-example 만 추적
+# ---------------------------------------------------------------------------
+**/.env
+!**/.env-example
+
+# Python / uv virtualenv (컨테이너가 mount 된 /www 안에 생성)
+**/.venv/
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ---------------------------------------------------------------------------
+# 런타임 SQLite DB / 시크릿 파일은 추적 금지.
+# - secrets.json 은 .example 패턴 또는 env 주입으로 관리 권장.
+# ---------------------------------------------------------------------------
+www/*/db.sqlite3
+www/*/secrets.json
+*.sqlite3
+
+# 사용자별 proxy conf 복사본(.example 만 추적)·gitolite 관리자 공개키(빌드 전 사용자가 생성)
+config/web-server/nginx/php/proxy/*.conf
+docker/gitolite/system/*.pub
+
 # docs/YYYY-MM-DD/ — 날짜별 로컬 작업 문서(학습·설계·작업계획·체크리스트·리포트). git 추적 제외.
 docs/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
