@@ -464,6 +464,13 @@ else
 fi
 echo
 
+echo "===== 6.34 s3 봇 UA 차단 판정도 http_blocked — 코드 000(연결 거부 exit 7 등) 허용 금지 (TST-R11-01) ====="
+f=script/test_run/s3_stack_smoke.sh
+assert_zero "6.34 s3 봇 UA 코드 000 허용 판정 (3B.8·3B.8a)" "$(grep -cE '= "000" \] (&& pass "3B\.8|\|\| all_blocked)' "$f")"
+assert_eq   "6.34 s3 stability.sh source" "$(grep -cxF '. "$ROOT/script/lib/stability.sh"' "$f")" 1
+assert_eq   "6.34 s3 http_blocked 봇 단언 (3B.8·3B.8a)" "$(grep -cE '^[[:space:]]*http_blocked -A "(MJ12bot|\$ua)"' "$f")" 2
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]

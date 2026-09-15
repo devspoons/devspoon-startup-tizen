@@ -7,6 +7,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LOG="$ROOT/log/test_run"
 mkdir -p "$LOG"
 FAILS=0
+# shellcheck source=../lib/stability.sh
+. "$ROOT/script/lib/stability.sh"
 
 STACK_DIR="$1"        # nginx_gunicorn / nginx_uvicorn / nginx_uwsgi / nginx_php / nginx_daphne
 STACK="$2"            # gunicorn / uvicorn / uwsgi / php
@@ -61,16 +63,13 @@ echo "code=$code"
 [ "$code" = "000" ] && pass "3B.6" || fail "3B.6" "code=$code"
 
 echo "===== 3B.8 bad-bot MJ12bot =====" | tee -a "$SUMMARY"
-code=$(curl -sS -A "MJ12bot" -o /dev/null -w "%{http_code}" -H "Host: localhost" http://127.0.0.1/ 2>&1)
-echo "code=$code"
-[ "$code" = "000" ] && pass "3B.8" || fail "3B.8" "code=$code"
+# 차단 = curl exit 52(nginx return 444, 응답 없이 닫힘) 또는 444 만. 연결 거부(exit 7)·타임아웃은 FAIL (TST-R11-01)
+http_blocked -A "MJ12bot" -H "Host: localhost" http://127.0.0.1/ && pass "3B.8" || fail "3B.8" "MJ12bot not blocked"
 
 echo "===== 3B.8a multi UA =====" | tee -a "$SUMMARY"
 all_blocked=1
 for ua in AhrefsBot SemrushBot DotBot; do
-    c=$(curl -sS -A "$ua" -o /dev/null -w "%{http_code}" -H "Host: localhost" http://127.0.0.1/ 2>&1)
-    echo "  $ua = $c"
-    [ "$c" = "000" ] || all_blocked=0
+    http_blocked -A "$ua" -H "Host: localhost" http://127.0.0.1/ || all_blocked=0
 done
 [ $all_blocked -eq 1 ] && pass "3B.8a" || fail "3B.8a" "some UA not blocked"
 
