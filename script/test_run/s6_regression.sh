@@ -474,6 +474,65 @@ assert_zero "6.34 s3 코드 000 을 PASS 로 인정하는 판정 (3B.6 포함)" 
 assert_eq   "6.34 s3 http_blocked Host 조작 단언 (3B.6)" "$(grep -cE '^http_blocked -H "Host: evil\.com" .*&& pass "3B\.6"' "$f")" 1
 echo
 
+echo "===== 6.35 s3 판정은 rc·전체 출력, 기대 버전·필수 키는 저장소 원천(uv.lock·스택 .env-example)에서 도출 (TST-R13-01~03) ====="
+f=script/test_run/s3_stack_smoke.sh
+assert_zero "6.35 s3 잘린 출력(tail/head)을 캡처해 판정" "$(grep -cE '=\$\([^)]*\| *(tail|head) +-[0-9]+\)' "$f")"
+assert_zero "6.35 s3 하드코딩 버전 문자열 판정" "$(grep -cE 'grep -qF? "?[0-9]+\.[0-9]+\.[0-9]+' "$f")"
+assert_zero "6.35 s3 스택 공통 필수 키 목록 (need_vars)" "$(grep -c 'need_vars=(' "$f")"
+assert_eq   "6.35 s3 3B.15 rc·전체 출력 판정" "$(grep -c 'logrotate_dry_ok "\$rc" "\$out" && pass "3B\.15"' "$f")" 1
+assert_eq   "6.35 s3 3C Django 기대 버전 = uv.lock" "$(grep -c 'lock_version django ' "$f")" 1
+assert_eq   "6.35 s3 3B.1 필수 키 = 스택 .env-example" "$(grep -c 'env_missing .env-example .env' "$f")" 1
+u35() { if [ "$2" = "$3" ]; then echo "  PASS 6.35 $1"; else echo "  FAIL 6.35 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
+unset -f logrotate_dry_ok lock_version env_missing
+eval "$(sed -n '/^# >>> s3 순수 판정/,/^# <<< s3 순수 판정/p' "$f")"
+if declare -F logrotate_dry_ok >/dev/null && declare -F lock_version >/dev/null && declare -F env_missing >/dev/null; then
+    # 실측 logrotate 3.21.0 `-d /run/logrotate.d/nginx` 출력 발췌 (sw 4회차 part A) — Handling 행은 8행, tail -5 창 밖
+    lr=$(cat <<'EOF'
+warning: logrotate in debug mode does nothing except printing debug messages!  Consider using verbose mode (-v) instead if this is not what you want.
+
+reading config file /run/logrotate.d/nginx
+note: 'size' overrides previously specified 'daily'
+Reading state from file: /var/lib/logrotate/status
+Allocating hash table for state file, size 64 entries
+
+Handling 1 logs
+
+rotating pattern: /log/nginx/*.log  104857600 bytes (30 rotations)
+empty log files are not rotated, old logs are removed
+considering log /log/nginx/django_sample.com.gunicorn_access_http.log
+Creating new state
+  Now: 2026-09-15 21:20
+  Last rotated at 2026-09-15 21:00
+  log does not need rotating (log size is below the 'size' threshold)
+considering log /log/nginx/sample.com.php_error_http.log
+Creating new state
+  Now: 2026-09-15 21:20
+  Last rotated at 2026-09-15 21:00
+  log does not need rotating (log size is below the 'size' threshold)
+not running postrotate script, since no logs were rotated
+EOF
+)
+    u35 "3B.15 실측 출력 rc 0 → PASS" "$(logrotate_dry_ok 0 "$lr" && echo PASS || echo FAIL)" PASS
+    u35 "3B.15 rc 1 → FAIL" "$(logrotate_dry_ok 1 "$lr" && echo PASS || echo FAIL)" FAIL
+    u35 "3B.15 옛 tail -5 창(Handling 행 없음) → FAIL" "$(logrotate_dry_ok 0 "$(tail -5 <<<"$lr")" && echo PASS || echo FAIL)" FAIL
+    u35 "3B.15 Handling 0 logs → FAIL" "$(logrotate_dry_ok 0 "${lr/Handling 1 logs/Handling 0 logs}" && echo PASS || echo FAIL)" FAIL
+    t=$(mktemp -d)
+    printf '[[package]]\nname = "django-celery-beat"\nversion = "2.9.0"\n\n[[package]]\nname = "django"\nversion = "6.0.7"\n' > "$t/uv.lock"
+    u35 "3C uv.lock 정확한 패키지명 버전 (django-celery-beat 무시)" "$(lock_version django "$t/uv.lock")" 6.0.7
+    u35 "3C 저장소 www/django_sample/uv.lock Django 버전 도출" "$(lock_version django www/django_sample/uv.lock | grep -cE '^[0-9]+\.[0-9]+(\.[0-9]+)?$')" 1
+    for ex in compose/web[-_]service/nginx_php*/.env-example; do
+        grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "$ex" | sed 's/$/x/' > "$t/php.env"   # php .env-example 키만 가진 .env
+        u35 "3B.1 php .env-example 키만 → 누락 0 ($ex)" "$(env_missing "$ex" "$t/php.env"; echo "rc=$?")" "rc=0"
+        u35 "3B.1 같은 .env 를 gunicorn 기준으로 → FLOWER_ID 누락 보고 ($ex)" "$(env_missing compose/web[-_]service/nginx_gunicorn/.env-example "$t/php.env" | grep -cw FLOWER_ID)" 1
+    done
+    : > "$t/empty"
+    u35 "3B.1 .env-example 키 0 → 실패 rc 1" "$(env_missing "$t/empty" "$t/php.env" >/dev/null; echo $?)" 1
+    rm -rf "$t"
+else
+    echo "  FAIL 6.35 s3 순수 판정 블록(logrotate_dry_ok·lock_version·env_missing) 없음"; FAILS=$((FAILS+1))
+fi
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]

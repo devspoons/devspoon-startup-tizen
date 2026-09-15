@@ -22,17 +22,31 @@ SUMMARY="$LOG/stack_${STACK}_summary.log"
 pass() { echo "PASS $1"; echo "PASS $1" >> "$SUMMARY"; }
 fail() { echo "FAIL $1 -- $2"; echo "FAIL $1 -- $2" >> "$SUMMARY"; FAILS=$((FAILS+1)); }
 
+# >>> s3 순수 판정 (s6 6.35 가 이 블록을 추출해 단위 검사한다)
+# logrotate -d 판정 — rc 0 이고 전체 출력에 "Handling N logs"(N≥1). 이 행은 출력 앞부분이라 tail 로 자르면 항상 FAIL (TST-R13-01)
+logrotate_dry_ok() {
+    [ "$1" = 0 ] && grep -qE '^Handling [1-9][0-9]* logs' <<<"$2"
+}
+# uv.lock 의 패키지 버전 — 기대 버전을 스크립트에 적지 않는다(버전을 올려도 s3 무수정) (TST-R13-02)
+lock_version() {
+    awk -v p="$1" '$0 == "name = \"" p "\"" { getline; gsub(/^version = "|"$/, ""); print; exit }' "$2" 2>/dev/null
+}
+# 스택 .env-example 키 중 .env 에 없는 키를 출력 — 필수 키는 스택마다 다르다(php 는 PROJECT_DIR·FLOWER_* 없음) (TST-R13-03). 예시 키 0 이면 rc 1
+env_missing() {
+    local keys k
+    keys=$(grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' "$1" 2>/dev/null | tr -d =)
+    [ -n "$keys" ] || return 1
+    for k in $keys; do grep -qE "^$k=" "$2" 2>/dev/null || printf '%s ' "$k"; done
+}
+# <<< s3 순수 판정
+
 echo "===== Pre: ensure stack down =====" | tee -a "$SUMMARY"
 docker compose --profile celery --profile redis down -v 2>&1 | tail -5
 
 echo "===== 3B.1 .env content =====" | tee -a "$SUMMARY"
 cut -d= -f1 .env   # 키 이름만 출력 (값은 비밀)
-need_vars=(LOG_DRIVER LOG_OPT_MAXF LOG_OPT_MAXS PROJECT_DIR FLOWER_ID FLOWER_PWD)
-missing=()
-for v in "${need_vars[@]}"; do
-    grep -qE "^${v}=" .env || missing+=("$v")
-done
-if [ ${#missing[@]} -eq 0 ]; then pass "3B.1"; else fail "3B.1" "missing: ${missing[*]}"; fi
+# 필수 키 = 이 스택의 .env-example 키 (스택 공통 목록 금지 — TST-R13-03)
+missing=$(env_missing .env-example .env) && [ -z "$missing" ] && pass "3B.1" || fail "3B.1" "missing: ${missing:-(.env-example 키 없음)}"
 
 echo "===== 3B.2 docker compose up -d --build =====" | tee -a "$SUMMARY"
 docker compose up -d --build 2>&1 | tail -15
@@ -146,17 +160,19 @@ echo "$out"
 echo "$out" | grep -qE "^-rw-r--r--" && pass "3B.14" || fail "3B.14" "$out"
 
 echo "===== 3B.15 logrotate dry-run =====" | tee -a "$SUMMARY"
-out=$(docker compose exec -T webserver /usr/sbin/logrotate -d /run/logrotate.d/nginx 2>&1 | tail -5)
-echo "$out"
-echo "$out" | grep -q "Handling 1 logs" && pass "3B.15" || fail "3B.15" "$out"
+out=$(docker compose exec -T webserver /usr/sbin/logrotate -d /run/logrotate.d/nginx 2>&1); rc=$?
+echo "$out" | tail -5   # 표시만 자른다 — 판정은 rc·전체 출력 (TST-R13-01)
+logrotate_dry_ok "$rc" "$out" && pass "3B.15" || fail "3B.15" "rc=$rc, $(grep -m1 '^Handling' <<<"$out" || echo 'Handling 행 없음')"
 
 # Stack specific check (3-C)
 echo "===== 3-C stack-specific =====" | tee -a "$SUMMARY"
 case "$STACK" in
     gunicorn|uvicorn)
+        # 기대 버전 = 이 스택 PROJECT_DIR 의 uv.lock (이미지·uv sync 가 lock 대로 설치) (TST-R13-02)
+        want=$(lock_version django "$ROOT/www/$(sed -n 's/^PROJECT_DIR=//p' .env)/uv.lock")
         out=$(docker compose exec -T "$APPCT" python -c "import django; print(django.get_version())" 2>&1)
-        echo "$out"
-        echo "$out" | grep -q "4.0.6" && pass "3C.$STACK" || fail "3C.$STACK" "$out"
+        echo "$out (uv.lock: ${want:-없음})"
+        [ -n "$want" ] && [ "$out" = "$want" ] && pass "3C.$STACK" || fail "3C.$STACK" "$out (uv.lock: ${want:-없음})"
         ;;
     uwsgi)
         out1=$(docker compose exec -T "$APPCT" ls /log/uwsgi/django_sample-uwsgi.log 2>&1)
@@ -234,8 +250,8 @@ if [ "$STACK" = "gunicorn" ]; then
 
     echo "===== 4.3 nginx -s reopen =====" | tee -a "$SUMMARY"
     docker compose exec -T webserver nginx -s reopen 2>&1; rc=$?
-    alive=$(docker compose exec -T webserver pgrep -a nginx 2>&1 | head -5)
-    echo "$alive"
+    alive=$(docker compose exec -T webserver pgrep -a nginx 2>&1)
+    echo "$alive" | head -5   # 표시만 자른다 — master 판정은 전체 출력 (TST-R13-01 같은 유형)
     # reopen 성공(exit 0) 그리고 master 프로세스 생존을 함께 단언.
     { [ $rc -eq 0 ] && echo "$alive" | grep -q "nginx: master"; } && pass "4.3" || fail "4.3" "reopen exit=$rc 또는 master 종료"
 
