@@ -23,7 +23,7 @@ printf 'DJANGO_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENVF"
 dc() { docker compose -p "$PROJ" --env-file "$ENVF" "$@"; }
 
 cleanup() {
-  (cd "$STACK_DIR" && dc down -v --remove-orphans >/dev/null 2>&1)
+  (cd "$STACK_DIR" && dc --profile celery down -v --remove-orphans >/dev/null 2>&1)
   rm -f "$ENVF"
 }
 trap cleanup EXIT
@@ -37,6 +37,9 @@ check "봇 UA 차단 000|444"          '[[ "$(code -A MJ12bot http://127.0.0.1/)
 check "정상 UA 300회 고속(병렬 50) 503/429/444 없음" '[ "$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: localhost" http://127.0.0.1/robots.txt | grep -cE "^(503|429|000)$")" = 0 ]'
 check "$APP health=healthy"        '[ "$(docker inspect -f "{{.State.Health.Status}}" "$(cid $APP)")" = healthy ]'
 check "$APP·webserver 안정 (${STABLE_WINDOW:-15}s 창: running·RestartCount 0 불변·unhealthy 아님)" 'containers_stable "$(cid $APP)" "$(cid webserver)"'
+# celery·beat — 워커는 www-data 강하, beat 는 app 이 migrate 한 /data SQLite 의 DatabaseScheduler 사용 (CI 경로 대표 1스택)
+check "celery·celery-beat 기동 (--profile celery)" 'dc --profile celery up -d --wait --wait-timeout 240 celery celery-beat'
+check "celery·celery-beat 안정 (${STABLE_WINDOW:-15}s 창: 재시작 루프 없음)" 'containers_stable "$(dc --profile celery ps -q celery)" "$(dc --profile celery ps -q celery-beat)"'
 check "DEBUG off (404 에 URLconf 없음)" '[[ "$(curl -s --max-time 10 -H "Host: localhost" http://127.0.0.1/__debug_probe__/)" != *URLconf* ]]'
 
 echo "FAILS=$FAILS"
