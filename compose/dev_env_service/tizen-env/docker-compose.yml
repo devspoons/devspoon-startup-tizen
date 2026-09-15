@@ -14,7 +14,7 @@ services:
     volumes:
       - ../../../log/tizen/:/log/tizen/
     ports:
-      - 2222:22
+      - "${TIZEN_SSH_BIND:-127.0.0.1}:2221:22"
     environment:
       TZ: "Asia/Seoul"
     restart: always
