@@ -493,13 +493,13 @@ assert_eq   "6.35 s3 3B.1 필수 키 = 스택 .env-example" "$(grep -c 'env_miss
 u35() { if [ "$2" = "$3" ]; then echo "  PASS 6.35 $1"; else echo "  FAIL 6.35 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
 # 판정 함수 = script/lib/smoke_checks.sh(함수 정의만) 를 s3·s6 가 source — s3 일부를 표지로 잘라 실행하던 방식은 표지 편집마다 s3 본문 실행 위험 (REV-W16-01·W17-01·W18-01·W18-04)
 g=script/lib/smoke_checks.sh
-top=$(awk '/^[A-Za-z_][A-Za-z0-9_]*\(\) *\{ *$/ { infn=1; next } infn && /^\}/ { infn=0; next } !infn && !/^[[:space:]]*(#|$)/ { n++ } END { print n+0 }' "$g" 2>/dev/null)
+top=$(awk '!infn && /^[A-Za-z_][A-Za-z0-9_]*\(\) *\{ *$/ { infn=1; next } infn && /^\}[[:space:]]*$/ { infn=0; next } /^[[:space:]]*(#|$)/ { next } !infn || !/^[[:space:]]/ { n++ } END { print n+0 }' "$g" 2>/dev/null)
 assert_zero "6.35 $g 함수 밖 명령 줄(주석·빈 줄·함수 정의 외)" "$top"
 assert_zero "6.35 s3 판정 함수 정의 잔존" "$(grep -cE '^[[:space:]]*(function +)?(logrotate_dry_ok|lock_version|env_missing) *\(\)' "$f")"
 assert_eq   "6.35 s3 smoke_checks.sh source" "$(grep -cxF '. "$ROOT/script/lib/smoke_checks.sh"' "$f")" 1
 assert_zero "6.35 s6 이 절에서 s3 텍스트 추출·실행" "$(sed -n '/^echo "===== 6\.35 /,/^echo "===== 6\.36 /p' script/test_run/s6_regression.sh | grep -cE '[e]val|[s]ed -n[^|]*"\$f"')"
 unset -f logrotate_dry_ok lock_version env_missing
-[ "$top" = 0 ] && . "$g"   # 함수 밖 명령이 있으면 source 하지 않는다(부작용 0, 아래 else FAIL)
+[ "$top" = 0 ] && . "$g"   # 함수 밖 명령 형식 검사(name() { ~ 열 0 } 단독 줄 밖·함수 안 열 0 줄) 통과 시에만 source, 아니면 아래 else FAIL (REV-W19-01)
 if declare -F logrotate_dry_ok >/dev/null && declare -F lock_version >/dev/null && declare -F env_missing >/dev/null; then
     # 실측 logrotate 3.21.0 `-d /run/logrotate.d/nginx` 출력 발췌 (sw 4회차 part A) — Handling 행은 8행, tail -5 창 밖
     lr=$(cat <<'EOF'
