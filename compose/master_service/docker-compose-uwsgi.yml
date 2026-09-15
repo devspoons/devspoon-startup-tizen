@@ -203,7 +203,7 @@ services:
     restart: always
 
   jenkins:
-    image: jenkins/jenkins:latest
+    image: jenkins/jenkins:lts-jdk21
     logging:
       driver: "${LOG_DRIVER}"
       options:
