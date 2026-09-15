@@ -41,9 +41,23 @@ done
 
 echo "### master_service 비밀 키 빈 값·한 줄 생성 안내, 운영 이미지명 격리 IMAGE_NAMESPACE (RV2-S-01, RV2-SEC-03) ###"
 e="$ROOT/compose/master_service/.env-example"
-for k in $(grep -ohE '\$\{[A-Z_]*(PASSWORD|PWD|SECRET|TOKEN|_KEY)[A-Z_]*:\?' "$ROOT"/compose/master_service/*.yml | sed -E 's/\$\{([A-Z_]+):\?/\1/' | sort -u); do
-    if grep -qE "^$k=\$" "$e"; then echo "  [PASS] $k 빈 값"; else fail "master .env-example $k 예시값 존재"; fi
-done
+# <compose 폴더> 의 :? 필수 비밀 키 중 .env-example 에 예시값이 있는 키를 출력.
+#   비밀 분류는 ensure_env_secrets(SECRET·PASSWORD·PWD 포함 또는 _KEY_BASE 로 끝남) 와 같아야 하므로 정규식을 따로 두지 않고
+#   compose 사본 옆 빈 .env 에 헬퍼를 돌려 추가되는 키를 비밀 키로 쓴다 — *_SSH_KEY 같은 비밀 아닌 경로 변수는 대상 아님
+secret_keys_with_example() {
+    local w k; w=$(mktemp -d "$TMPD/cls.XXXXXX"); cp "$1"/docker-compose*.yml "$w/"; : > "$w/.env"
+    ( . "$ROOT/script/lib/django_secrets.sh"; ensure_env_secrets "$w/.env" ) >/dev/null 2>&1 || echo "<ensure_env_secrets 실패>"
+    for k in $(cut -d= -f1 "$w/.env"); do grep -qE "^$k=\$" "$1/.env-example" || echo "$k"; done
+}
+bad=$(secret_keys_with_example "$ROOT/compose/master_service")
+if [ -z "$bad" ]; then echo "  [PASS] master .env-example 비밀 키 빈 값"; else fail "master .env-example 비밀 키 예시값 존재:" $bad; fi
+# 자체 검사: 비밀 아닌 필수 경로 변수(FOO_SSH_KEY)는 예시값 허용, 비밀 키(FOO_PASSWORD) 예시값은 검출
+fx="$TMPD/secret-fixture"; mkdir -p "$fx"
+printf 'services:\n  a:\n    image: busybox\n    environment:\n      K: ${FOO_SSH_KEY:?}\n      P: ${FOO_PASSWORD:?}\n' > "$fx/docker-compose.yml"
+printf 'FOO_SSH_KEY=/home/user/.ssh/id_ed25519\nFOO_PASSWORD=\n' > "$fx/.env-example"
+if [ -z "$(secret_keys_with_example "$fx")" ]; then echo "  [PASS] 자체 검사 — 비밀 아닌 *_SSH_KEY 경로 변수 예시값 허용"; else fail "자체 검사 — 비밀 아닌 FOO_SSH_KEY 를 비밀로 분류"; fi
+printf 'FOO_SSH_KEY=/home/user/.ssh/id_ed25519\nFOO_PASSWORD=example\n' > "$fx/.env-example"
+if [ "$(secret_keys_with_example "$fx")" = FOO_PASSWORD ]; then echo "  [PASS] 자체 검사 — 비밀 키 FOO_PASSWORD 예시값 검출"; else fail "자체 검사 — FOO_PASSWORD 예시값 미검출"; fi
 if grep -q 'ensure_env_secrets compose/master_service/.env' "$e"; then echo "  [PASS] ensure_env_secrets 안내"; else fail "master .env-example ensure_env_secrets 안내 없음"; fi
 if grep -n '외부에 노출' "$e"; then fail "master .env-example flower '외부에 노출' 문구(실제 127.0.0.1 바인드) (SRV1-SEC-05)"; else echo "  [PASS] flower 문구"; fi
 if grep -nE '^[[:space:]]+image: devspoon-' "$ROOT"/compose/master_service/*.yml; then fail "고정 devspoon 이미지명"; else echo "  [PASS] 이미지명 IMAGE_NAMESPACE"; fi
