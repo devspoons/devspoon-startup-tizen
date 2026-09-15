@@ -115,12 +115,16 @@ tz=$(ports "$TZ/.env-example" "$TZ/docker-compose.yml"); gl=$(ports "$GL/.env-ex
 [ "$tz" = "127.0.0.1:2221" ] && echo "  [PASS] tizen-env SSH $tz" || fail "tizen-env SSH publish=$tz (기대 127.0.0.1:2221)"
 dup=$(printf '%s\n%s\n' "$tz" "$gl" | sed 's/.*://' | sort | uniq -d)
 [ -z "$dup" ] && echo "  [PASS] 단독 tizen-env ∩ gitolite = ∅" || fail "단독 포트 중복: $dup"
-dup=$(ports "$TMPD/3.env" "$ROOT/compose/master_service/docker-compose-php.yml" | sed 's/.*://' | sort | uniq -d)  # 3.env = 위 config 루프의 php 임시 env-file
-[ -z "$dup" ] && echo "  [PASS] master php 포트 중복 없음" || fail "master php 포트 중복: $dup"
+# master php 는 config 루프 순번과 무관하게 .env-example 로 직접 렌더 — 빈 비밀 4개는 셸 환경값이 env-file 보다 우선, 렌더 실패(포트 0)도 FAIL
+mp=$(DJANGO_SECRET_KEY=x OPENPROJECT_SECRET_KEY_BASE=x REDIS_PASSWORD=x FLOWER_PWD=x ports "$ROOT/compose/master_service/.env-example" "$ROOT/compose/master_service/docker-compose-php.yml")
+dup=$(printf '%s\n' "$mp" | sed 's/.*://' | sort | uniq -d)
+[ -n "$mp" ] && [ -z "$dup" ] && echo "  [PASS] master php 포트 중복 없음" || fail "master php 포트 중복 또는 렌더 실패: ${dup:-포트 0}"
 if TIZEN_SSH_KEY= docker compose --env-file "$TZ/.env-example" -f "$TZ/docker-compose.yml" config -q 2>/dev/null; then
     fail "TIZEN_SSH_KEY 빈 값인데 config 성공 (fail-fast 없음)"; else echo "  [PASS] TIZEN_SSH_KEY 필수"; fi
-for k in "PermitRootLogin prohibit-password" "X11Forwarding no" "AllowTcpForwarding no"; do
-    if grep -qx "$k" "$ROOT/docker/tizen-env/system/sshd_config"; then echo "  [PASS] tizen-env $k"; else fail "tizen-env sshd_config — $k 없음"; fi
+# Match 앞 유효 줄(대소문자 무시)이 전부 기대값 — sshd 가 쓰는 첫 값·마지막 값 모두 보장, 줄이 없어도 FAIL
+for k in "PermitRootLogin prohibit-password" "PasswordAuthentication no" "X11Forwarding no" "AllowTcpForwarding no"; do
+    v=$(awk -v k="${k%% *}" 'tolower($1)=="match"{exit} tolower($1)==tolower(k){print $2}' "$ROOT/docker/tizen-env/system/sshd_config" | sort -u | paste -sd,)
+    [ "$v" = "${k#* }" ] && echo "  [PASS] tizen-env $k" || fail "tizen-env sshd_config — $k 아님(유효 값: ${v:-없음})"
 done
 if grep -q 'id_rsa' "$ROOT/docker/tizen-env/Dockerfile"; then fail "Dockerfile 이 id_rsa 를 이미지에 넣음"; else echo "  [PASS] Dockerfile id_rsa 없음"; fi
 echo "=== RESULT: FAILS=$FAILS ==="
