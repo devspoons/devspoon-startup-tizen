@@ -1,8 +1,8 @@
 # =============================================================================
 # master_service — php 웹 스택 + openproject + jenkins + gitolite 조합
 # - 웹 스택 블록은 compose/web_service/nginx_php/docker-compose.yml 과 동일(상대경로만 ../../, webserver 이름 nginx-webserver).
-# - openproject·jenkins 는 webserver 가 마운트한 conf.d 에
-#   config/web-server/nginx/php/proxy/<svc>/<svc>_proxy.conf.example 을 복사(도메인 수정)해 연결한다.
+# - openproject·jenkins 는 webserver 가 config/web-server/nginx/php/proxy/<svc>/ 를 /etc/nginx/proxy.d/<svc>/ 로 읽기 전용 마운트한다.
+#   그 폴더에서 <svc>_proxy.conf.example 을 <svc>_proxy.conf 로 복사(도메인 수정)하면 nginx.conf 의 proxy.d include 로 로드된다.
 # - 필수 키는 .env-example 참조(REDIS_PASSWORD·FLOWER_*·OPENPROJECT_*).
 # =============================================================================
 
@@ -23,6 +23,9 @@ services:
       - ../../config/web-server/nginx/php/conf.d/:/etc/nginx/conf.d/
       - ../../config/web-server/nginx/php/proxy_params/proxy_params:/etc/nginx/proxy_params
       - ../../config/web-server/nginx/php/nginx_conf/nginx.conf:/etc/nginx/nginx.conf
+      # proxy 샘플 폴더(:ro) — 복사본 *_proxy.conf 만 로드(없으면 주석뿐인 default.conf 만 읽혀 무해). conf.d 와 분리.
+      - ../../config/web-server/nginx/php/proxy/jenkins/:/etc/nginx/proxy.d/jenkins/:ro
+      - ../../config/web-server/nginx/php/proxy/openproject/:/etc/nginx/proxy.d/openproject/:ro
       - ../../config/web-server/nginx/php/fastcgi/fastcgi_params:/etc/nginx/fastcgi_params
       # dhparam 백업/복원 — 이미지에 구운 /etc/nginx/dhparam.pem 을 여기에 백업/복원한다.
       # docker compose down 후 up 시 백업본이 있으면 그대로 복원, 없으면(최초 기동) 이미지본을 백업.

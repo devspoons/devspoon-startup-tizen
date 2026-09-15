@@ -3,7 +3,7 @@
 #         cp jenkins_proxy.conf.example jenkins_proxy.conf
 #       후 server_name 도메인만 수정. 단독 스택 nginx_jenkins 는 이 폴더를 conf.d 로 마운트한다
 #       (복사본이 없으면 catch-all default.conf 가 444 로 응답하며 정상 기동).
-#       master_service 는 webserver 가 마운트한 conf.d/ 로 복사.
+#       master_service 도 같은 폴더의 복사본을 쓴다 — webserver 가 이 폴더를 /etc/nginx/proxy.d/jenkins/ 로 마운트(conf.d 로 복사하지 않음).
 # 요구: nginx.conf http 블록의 map $http_upgrade $connection_upgrade (WebSocket).
 # 주의: proxy_params 가 Host·X-Forwarded-*·HTTP/1.1·버퍼링을 이미 설정한다.
 #       같은 location 에서 그 값을 다시 쓰면 헤더가 2번 전송되거나 "directive is duplicate" 로 기동 실패한다.
