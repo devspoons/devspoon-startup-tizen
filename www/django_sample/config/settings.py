@@ -22,13 +22,17 @@ SECRETS_PATH = os.path.join(BASE_DIR, 'secrets.json')
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.2/howto/deployment/checklist/
 
-# json 파일을 python 객체로 변환
-secrets = json.loads(open(SECRETS_PATH).read())
+# SECRET_KEY 는 환경변수 DJANGO_SECRET_KEY 우선(컨테이너 — compose 가 .env 에서 전달),
+# 없을 때만 secrets.json 을 읽는다(호스트에서 manage.py 실행 등). 컨테이너는 소스 트리 파일 권한과 무관하게 기동한다.
+_env_secret_key = os.environ.get("DJANGO_SECRET_KEY")
+secrets = {} if _env_secret_key else json.loads(open(SECRETS_PATH).read())
 
 # json은 dict 자료형으로 변환되므로 .items() 함수를 이용해 key와 value값을 가져온다.
 # 이때 settings 모듈에 동적으로 할당한다.
 for key, value in secrets.items():
     setattr(sys.modules[__name__], key, value)
+if _env_secret_key:
+    SECRET_KEY = _env_secret_key
 
 # SECURITY WARNING: don't run with debug turned on in production!
 # 운영 안전 기본값 — 로컬 개발에서만 .env 에 DJANGO_DEBUG=1
@@ -89,7 +93,8 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        # 컨테이너는 SQLITE_PATH(named volume /data) — 호스트 소스 트리에 쓰지 않는다
+        'NAME': os.environ.get("SQLITE_PATH", BASE_DIR / 'db.sqlite3'),
     }
 }
 

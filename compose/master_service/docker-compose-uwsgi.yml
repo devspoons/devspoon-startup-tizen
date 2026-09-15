@@ -65,20 +65,25 @@ services:
     logging: *log_opts
     # working_dir 을 프로젝트 루트로 통일 — uv 가 pyproject.toml 을 자동 인식하게 함.
     # uwsgi 자체는 ini 의 chdir = /www/%(project) 로 이동 (project = $(PROJECT_DIR) env 치환).
-    working_dir: /www/${PROJECT_DIR}
+    working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: uwsgi-app
     volumes:
       - ../../www:/www
       - ../../config/app-server/uwsgi/uwsgi.ini:/application/uwsgi.ini
       - ../../log:/log
+      - app-data:/data
     # uwsgi 본체 로그는 uwsgi.ini 의 log-maxsize (100MB) 로 네이티브 회전한다.
     # logrotate dropin 을 추가로 마운트하면 같은 파일에 두 회전 메커니즘이 동시에 작동해
     # race / 데이터 손실 가능성이 생기므로 의도적으로 마운트하지 않는다.
     # (celery / celery-beat 는 Python logging 이라 logrotate 필요 — 아래 서비스들 참조.)
-    # chown: uwsgi 워커가 www-data 로 강하(uwsgi.ini uid/gid)되므로 /www/${PROJECT_DIR} 를 www-data 소유로 맞춘다.
-    command: bash -c "chown -R www-data:www-data /www/${PROJECT_DIR} && uv sync --inexact --extra uwsgi --extra celery && exec uwsgi --ini /application/uwsgi.ini"
+    # 쓰기 경로: 워커가 www-data 로 강하되므로 SQLite 는 named volume /data(SQLITE_PATH)에 두고 그 볼륨만 www-data 소유로 맞춘다.
+    #          bind mount 된 호스트 소스 트리(/www)의 소유권은 바꾸지 않는다 (호스트 사용자 편집·CI 후속 단계·침해 시 소스 변조 방지).
+    command: bash -c "chown -R www-data:www-data /data && uv sync --inexact --extra uwsgi --extra celery && exec uwsgi --ini /application/uwsgi.ini"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
+      SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
+      PYTHONDONTWRITEBYTECODE: "1"
       PROJECT_DIR: "${PROJECT_DIR:?PROJECT_DIR must be set in .env}"
       UWSGI_MODULE: "${UWSGI_MODULE:-config.wsgi:application}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
@@ -101,13 +106,14 @@ services:
   celery:
     image: devspoon-uwsgi-app:latest
     logging: *log_opts
-    working_dir: /www/${PROJECT_DIR}
+    working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celery-app
     volumes:
       - ../../www:/www
       - ../../log:/log
+      - app-data:/data
       - ../../script/logrotate/uwsgi/celery/uwsgi-celery:/etc/logrotate.d/uwsgi-celery
-    command: bash -c "mkdir -p /log/uwsgi/celery && chown -R www-data:www-data /www/${PROJECT_DIR} /log/uwsgi/celery && \
+    command: bash -c "mkdir -p /log/uwsgi/celery && chown -R www-data:www-data /log/uwsgi/celery /data && \
       uv sync --inexact --extra uwsgi --extra celery && \
       exec celery -A config worker \
       --uid www-data --gid www-data \
@@ -117,6 +123,9 @@ services:
       --logfile=/log/uwsgi/celery/worker-%n%I.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
+      SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
+      PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
@@ -132,13 +141,14 @@ services:
   celery-beat:
     image: devspoon-uwsgi-app:latest
     logging: *log_opts
-    working_dir: /www/${PROJECT_DIR}
+    working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celerybeat-app
     volumes:
       - ../../www:/www
       - ../../log:/log
+      - app-data:/data
       - ../../script/logrotate/uwsgi/celerybeat/uwsgi-celerybeat:/etc/logrotate.d/uwsgi-celerybeat
-    command: bash -c "mkdir -p /log/uwsgi/celerybeat && chown -R www-data:www-data /www/${PROJECT_DIR} /log/uwsgi/celerybeat && \
+    command: bash -c "mkdir -p /log/uwsgi/celerybeat && chown -R www-data:www-data /log/uwsgi/celerybeat /data && \
       uv sync --inexact --extra uwsgi --extra celery && \
       exec celery -A config beat \
       --uid www-data --gid www-data \
@@ -147,6 +157,9 @@ services:
       --logfile=/log/uwsgi/celerybeat/celerybeat.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
+      SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
+      PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
@@ -262,5 +275,7 @@ services:
       TZ: "Asia/Seoul"
     restart: always
 
+# 앱 쓰기 데이터(SQLite) — 호스트 소스 트리(/www) 대신 named volume. `docker compose down -v` 는 이 볼륨도 지운다.
 volumes:
+  app-data:
   gitolite-repos:

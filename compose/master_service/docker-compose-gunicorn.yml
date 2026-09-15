@@ -71,11 +71,12 @@ services:
     # 동일 build context 가 3회 재빌드되지 않는다 (1회 빌드 → 3 서비스 재사용).
     image: devspoon-py-app:latest
     logging: *log_opts
-    working_dir: /www/${PROJECT_DIR}
+    working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: gunicorn-app
     volumes:
       - ../../www:/www
       - ../../log:/log
+      - app-data:/data
       - ../../config/app-server/gunicorn/:/gunicorn
       - ../../script/logrotate/gunicorn/gunicorn:/etc/logrotate.d/gunicorn
     # uv 네이티브 흐름 (no-venv / 시스템 Python 설치 모드):
@@ -83,12 +84,14 @@ services:
     #     uv sync 가 .venv 를 만들지 않고 /usr/local/lib/python3.14/site-packages 에 직접 설치
     #   - --inexact: Dockerfile 이 사전 설치한 패키지(fastapi/sqlalchemy/wheel 등) 제거 방지
     #   - exec 후 시스템 바이너리(gunicorn) 직접 실행 → uv run 불필요, 트러블슈팅 단순화
-    # chown: gunicorn 워커가 www-data 로 강하(gunicorn.conf.py 의 user/group)되므로,
-    #        앱이 쓰는 SQLite db / 미디어 / static 등 /www/${PROJECT_DIR} 를 www-data 소유로 맞춘다.
-    #        미설정 시 www-data 가 db 파일을 못 열어 'unable to open database file' 로 기동 실패.
-    command: bash -c "chown -R www-data:www-data /www/${PROJECT_DIR} && uv sync --inexact --extra gunicorn --extra celery && exec gunicorn -c /gunicorn/gunicorn.conf.py"
+    # 쓰기 경로: 워커가 www-data 로 강하되므로 SQLite 는 named volume /data(SQLITE_PATH)에 두고 그 볼륨만 www-data 소유로 맞춘다.
+    #          bind mount 된 호스트 소스 트리(/www)의 소유권은 바꾸지 않는다 (호스트 사용자 편집·CI 후속 단계·침해 시 소스 변조 방지).
+    command: bash -c "chown -R www-data:www-data /data && uv sync --inexact --extra gunicorn --extra celery && exec gunicorn -c /gunicorn/gunicorn.conf.py"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
+      SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
+      PYTHONDONTWRITEBYTECODE: "1"
       WSGI_APP: "${WSGI_APP:-config.wsgi:application}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
@@ -122,13 +125,14 @@ services:
     # build: 미정의 — gunicorn-app 의 image 를 그대로 사용 (재빌드 방지)
     image: devspoon-py-app:latest
     logging: *log_opts
-    working_dir: /www/${PROJECT_DIR}
+    working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celery-app
     volumes:
       - ../../www:/www
       - ../../log:/log
+      - app-data:/data
       - ../../script/logrotate/gunicorn/celery/gunicorn-celery:/etc/logrotate.d/gunicorn-celery
-    command: bash -c "mkdir -p /log/gunicorn/celery && chown -R www-data:www-data /www/${PROJECT_DIR} /log/gunicorn/celery && \
+    command: bash -c "mkdir -p /log/gunicorn/celery && chown -R www-data:www-data /log/gunicorn/celery /data && \
       uv sync --inexact --extra gunicorn --extra celery && \
       exec celery -A config worker \
       --uid www-data --gid www-data \
@@ -138,6 +142,9 @@ services:
       --logfile=/log/gunicorn/celery/worker-%n%I.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
+      SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
+      PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
       # Django settings.py 가 os.environ['CELERY_BROKER_URL'] 로 읽도록 명시 주입.
@@ -155,13 +162,14 @@ services:
   celery-beat:
     image: devspoon-py-app:latest
     logging: *log_opts
-    working_dir: /www/${PROJECT_DIR}
+    working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celerybeat-app
     volumes:
       - ../../www:/www
       - ../../log:/log
+      - app-data:/data
       - ../../script/logrotate/gunicorn/celerybeat/gunicorn-celerybeat:/etc/logrotate.d/gunicorn-celerybeat
-    command: bash -c "mkdir -p /log/gunicorn/celerybeat && chown -R www-data:www-data /www/${PROJECT_DIR} /log/gunicorn/celerybeat && \
+    command: bash -c "mkdir -p /log/gunicorn/celerybeat && chown -R www-data:www-data /log/gunicorn/celerybeat /data && \
       uv sync --inexact --extra gunicorn --extra celery && \
       exec celery -A config beat \
       --uid www-data --gid www-data \
@@ -170,6 +178,9 @@ services:
       --logfile=/log/gunicorn/celerybeat/celerybeat.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
+      SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
+      PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
@@ -291,5 +302,7 @@ services:
       TZ: "Asia/Seoul"
     restart: always
 
+# 앱 쓰기 데이터(SQLite) — 호스트 소스 트리(/www) 대신 named volume. `docker compose down -v` 는 이 볼륨도 지운다.
 volumes:
+  app-data:
   gitolite-repos:

@@ -60,18 +60,22 @@ services:
     build: ../../docker/gunicorn/
     image: devspoon-py-app:latest
     logging: *log_opts
-    working_dir: /www/${PROJECT_DIR}
+    working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: daphne-app
     volumes:
       - ../../www:/www
       - ../../log:/log
+      - app-data:/data
       - ../../script/logrotate/daphne/daphne:/etc/logrotate.d/daphne
     # uv 네이티브 흐름 — gunicorn/uvicorn stack 과 동일.
     # YAML `|` (literal block) + bash heredoc 안에서 `\` 줄바꿈이 깨질 수 있어
     # 본 command 는 단일 라인으로 유지한다.
-    command: bash -c "uv sync --inexact --extra daphne --extra celery && export PYTHONUNBUFFERED=1 && exec daphne -p 8000 -b 0.0.0.0 --websocket_timeout 60 --websocket_connect_timeout 20 -v 2 -t 120 --access-log /log/daphne/access.log --ping-interval 20 --ping-timeout 30 --application-close-timeout 30 config.asgi:application >>/log/daphne/stdout.log 2>>/log/daphne/error.log"
+    command: bash -c "chown -R www-data:www-data /data && uv sync --inexact --extra daphne --extra celery && export PYTHONUNBUFFERED=1 && exec daphne -p 8000 -b 0.0.0.0 --websocket_timeout 60 --websocket_connect_timeout 20 -v 2 -t 120 --access-log /log/daphne/access.log --ping-interval 20 --ping-timeout 30 --application-close-timeout 30 config.asgi:application >>/log/daphne/stdout.log 2>>/log/daphne/error.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
+      SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
+      PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
     restart: always
@@ -101,13 +105,14 @@ services:
   celery:
     image: devspoon-py-app:latest
     logging: *log_opts
-    working_dir: /www/${PROJECT_DIR}
+    working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celery-app
     volumes:
       - ../../www:/www
       - ../../log:/log
+      - app-data:/data
       - ../../script/logrotate/daphne/celery/daphne-celery:/etc/logrotate.d/daphne-celery
-    command: bash -c "mkdir -p /log/daphne/celery && chown -R www-data:www-data /www/${PROJECT_DIR} /log/daphne/celery && \
+    command: bash -c "mkdir -p /log/daphne/celery && chown -R www-data:www-data /log/daphne/celery /data && \
       uv sync --inexact --extra daphne --extra celery && \
       exec celery -A config worker \
       --uid www-data --gid www-data \
@@ -117,6 +122,9 @@ services:
       --logfile=/log/daphne/celery/worker-%n%I.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
+      SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
+      PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
@@ -132,13 +140,14 @@ services:
   celery-beat:
     image: devspoon-py-app:latest
     logging: *log_opts
-    working_dir: /www/${PROJECT_DIR}
+    working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celerybeat-app
     volumes:
       - ../../www:/www
       - ../../log:/log
+      - app-data:/data
       - ../../script/logrotate/daphne/celerybeat/daphne-celerybeat:/etc/logrotate.d/daphne-celerybeat
-    command: bash -c "mkdir -p /log/daphne/celerybeat && chown -R www-data:www-data /www/${PROJECT_DIR} /log/daphne/celerybeat && \
+    command: bash -c "mkdir -p /log/daphne/celerybeat && chown -R www-data:www-data /log/daphne/celerybeat /data && \
       uv sync --inexact --extra daphne --extra celery && \
       exec celery -A config beat \
       --uid www-data --gid www-data \
@@ -147,6 +156,9 @@ services:
       --logfile=/log/daphne/celerybeat/celerybeat.log"
     environment:
       TZ: "Asia/Seoul"
+      DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?DJANGO_SECRET_KEY must be set in .env}"
+      SQLITE_PATH: "/data/${PROJECT_DIR:?PROJECT_DIR must be set in .env}.sqlite3"
+      PYTHONDONTWRITEBYTECODE: "1"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,127.0.0.1}"
       CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
@@ -262,5 +274,7 @@ services:
       TZ: "Asia/Seoul"
     restart: always
 
+# 앱 쓰기 데이터(SQLite) — 호스트 소스 트리(/www) 대신 named volume. `docker compose down -v` 는 이 볼륨도 지운다.
 volumes:
+  app-data:
   gitolite-repos:
