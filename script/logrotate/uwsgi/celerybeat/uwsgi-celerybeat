@@ -3,6 +3,7 @@
 # - copytruncate: 로그 파일을 복사 후 원본을 비우는 방식 (서비스 재시작 불필요)
 # - 로테이션 순간 극소량의 로그가 누락될 수 있으나 서비스는 중단되지 않음
 /log/uwsgi/celerybeat/*.log {
+    su root root
     daily
     rotate 30
     missingok

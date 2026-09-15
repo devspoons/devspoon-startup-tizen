@@ -2,6 +2,7 @@
 # - copytruncate: Python logger 가 파일 핸들을 유지하므로 안전
 # - 다른 celery* 설정과 정합성 위해 size 100M 명시
 /log/gunicorn/celerybeat/*.log {
+    su root root
     daily
     size 100M
     rotate 30

@@ -1,8 +1,11 @@
 # Nginx 로그 로테이션 설정
-# - 회전 방식: USR1 신호로 nginx master 가 로그 파일 재오픈 (postrotate)
-#              copytruncate 미사용 — nginx 가 신호 처리에 안전하므로 손실 0건
-# - 컨테이너 환경에서 무중단 reload (worker 재시작 없음)
+# - Docker 컨테이너 환경에서 USR1 signal 방식 사용 (nginx 권장 패턴)
+# - postrotate 에서 PID 파일을 읽어 master 에게 USR1 → 워커가 새 fd 로 로그 재오픈
+# - su root root: 호스트 마운트(예: WSL /mnt/c) 가 parent 디렉토리를 0777 로 노출하는
+#   경우, logrotate 가 "insecure permissions" 로 회전을 거부한다. 컨테이너 안에서 root 로
+#   회전하도록 명시 (`man logrotate` 의 su 디렉티브 — parent dir 권한 검사 우회).
 /log/nginx/*.log {
+    su root root
     daily
     size 100M
     rotate 30

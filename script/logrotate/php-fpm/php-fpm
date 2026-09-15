@@ -2,6 +2,7 @@
 
 # Access log (트래픽 로그 - 짧게 보관)
 /log/php-fpm/access.log {
+    su root root
     daily
     size 100M
     rotate 7
@@ -18,6 +19,7 @@
 
 # Error log (에러 로그 - 길게 보관)
 /log/php-fpm/www-error.log {
+    su root root
     daily
     size 50M
     rotate 30
@@ -34,6 +36,7 @@
 
 # Slow log (나중에 활성화 대비)
 /log/php-fpm/slow.log {
+    su root root
     daily
     size 50M
     rotate 90
