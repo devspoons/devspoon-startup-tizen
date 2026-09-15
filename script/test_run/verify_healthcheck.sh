@@ -110,7 +110,7 @@ echo "=============================================================="
 cd "$ROOT/compose/web_service/$STACK" || { echo "FAIL: cd"; exit 1; }
 
 # 운영 보호: 기존 .env 는 읽지도 고치지도 않는다 — 임시 env-file + 전용 compose 프로젝트명으로 격리
-PROJ="devspoon-hc-$STACK"
+PROJ="devspoon-hc-${STACK//./-}"   # compose 프로젝트명은 소문자·숫자·-·_ 만 허용 (nginx_php 의 . 치환)
 ENVF=$(mktemp)
 sed -e 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=test-redis-pw|; s|^FLOWER_ID=.*|FLOWER_ID=test|; s|^FLOWER_PWD=.*|FLOWER_PWD=test-pw|' \
     -e '/^DJANGO_SECRET_KEY=/d' .env-example > "$ENVF"
