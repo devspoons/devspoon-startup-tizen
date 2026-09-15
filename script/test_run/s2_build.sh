@@ -31,7 +31,7 @@ build_one() {
 build_one nginx        nginx
 build_one gunicorn     gunicorn
 build_one uwsgi        uwsgi
-# php-fpm: startup-web 은 단일 php-8.4 Dockerfile 만 사용(기본 Dockerfile).
+# php-fpm: 단일 php-8.4 Dockerfile(기본 이름 Dockerfile) 사용.
 build_one php-fpm      php-fpm
 
 echo ""
