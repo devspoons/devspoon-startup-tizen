@@ -218,9 +218,10 @@ docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소
    D=compose/dev_env_service/tizen-env
    cp "$D/.env-example" "$D/.env"      # TIZEN_SSH_KEY · TIZEN_AUTHORIZED_KEYS 를 실제 호스트 경로로 수정
    chmod 600 ~/.ssh/tizen_id_rsa ~/.ssh/tizen_authorized_keys
+   sudo chown root:root ~/.ssh/tizen_authorized_keys   # authorized_keys 만 root 소유 — 개인키 tizen_id_rsa 는 본인 소유 600 그대로
    ```
 
-   - sshd `StrictModes` 가 authorized_keys 파일의 소유자·권한을 검사하므로 600 · root 소유를 권장합니다.
+   - `TIZEN_AUTHORIZED_KEYS` 파일은 **root 소유·600 이어야 합니다(필수)**. bind mount 는 호스트 파일 소유자(uid)를 컨테이너에 그대로 보이고, sshd `StrictModes` 는 root 가 아닌 사용자 소유 `/root/.ssh/authorized_keys` 를 거부합니다 — 본인 소유로 두면 `ssh -p 2221 root@127.0.0.1` 이 `Permission denied (publickey)` 로 실패합니다. `TIZEN_SSH_KEY`(`tizen_id_rsa`)는 본인 소유 600 그대로 두면 됩니다(컨테이너 root 가 읽음).
    - 두 변수가 비어 있으면 compose 가 기동을 거부합니다. **경로가 틀리면** Docker 가 호스트에 root 소유 빈 디렉터리를 만들고 컨테이너는 그대로 기동되어 SSH 인증만 실패합니다 — 생긴 디렉터리를 지우고 `.env` 경로를 고친 뒤 다시 기동하세요.
    - If a user wants to access the tizen container directly for development, add a new location to "volumes" in the docker-compose.yml.
 
