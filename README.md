@@ -280,9 +280,11 @@ docker exec -u gitolite-creator -w /home/gitolite-creator gitolite bin/gitolite 
    > ```bash
    > D=compose/master_service
    > (cd "$D" && docker compose -f docker-compose-php.yml stop openproject)
-   > if [ -d "$D/pgdata" ]; then
+   > if [ -n "$(docker ps -q -f name='^openproject$')" ]; then
+   >   echo "openproject 컨테이너가 실행 중 — 먼저 stop 하세요(stop 줄 오류 확인), 백업하지 않음"
+   > elif [ -d "$D/pgdata" ]; then
    >   docker run --rm --mount type=bind,src="$PWD/$D/pgdata",dst=/d,readonly -v "$HOME":/b alpine \
-   >     sh -c "test -f /d/PG_VERSION || { echo 'PG_VERSION 없음 — 백업하지 않음' >&2; exit 1; }; test ! -f /d/postmaster.pid || { echo 'postmaster.pid 있음 — openproject 실행 중(또는 비정상 종료), 백업하지 않음' >&2; exit 1; }; umask 077; tar czf /b/openproject-pgdata.tgz.partial -C /d . && chown $(id -u):$(id -g) /b/openproject-pgdata.tgz.partial && chmod 600 /b/openproject-pgdata.tgz.partial && mv /b/openproject-pgdata.tgz.partial /b/openproject-pgdata.tgz || { rm -f /b/openproject-pgdata.tgz.partial; exit 1; }"
+   >     sh -c "test -f /d/PG_VERSION || { echo 'PG_VERSION 없음 — 백업하지 않음' >&2; exit 1; }; umask 077; tar czf /b/openproject-pgdata.tgz.partial -C /d . && chown $(id -u):$(id -g) /b/openproject-pgdata.tgz.partial && chmod 600 /b/openproject-pgdata.tgz.partial && mv /b/openproject-pgdata.tgz.partial /b/openproject-pgdata.tgz || { rm -f /b/openproject-pgdata.tgz.partial; exit 1; }"
    > elif [ -d "$D" ]; then
    >   echo "$PWD/$D/pgdata 없음 — 첫 기동 전이면 백업할 데이터가 없습니다"
    > else
@@ -290,7 +292,7 @@ docker exec -u gitolite-creator -w /home/gitolite-creator gitolite bin/gitolite 
    > fi
    > ```
    >
-   > `stop` 줄이 오류 없이 끝났는지 먼저 확인하세요(`.env` 가 없거나 `-f` 를 빠뜨리면 실패합니다). 확인을 놓쳐도 컨테이너가 `postmaster.pid`(PostgreSQL 실행 중 표식, 정상 종료 시 삭제)가 남아 있으면 백업을 거부합니다. 없는 경로를 bind 하면 Docker Desktop 등 일부 엔진은 `--mount` 여도 빈 폴더를 만들고 빈 아카이브가 성공한 것처럼 보입니다. 그래서 호스트에서 `pgdata` 폴더를 먼저 확인하고, 컨테이너 안에서 `PG_VERSION`(PostgreSQL 클러스터 표식)이 있을 때만 아카이브를 만듭니다. 아카이브는 `.partial` 에 쓴 뒤 성공했을 때만 기존 백업과 교체합니다. 삭제는 `tar tzf ~/openproject-pgdata.tgz` 로 내용을 확인한 뒤에만 하세요. 백업만 할 때는 `(cd "$D" && docker compose -f docker-compose-php.yml start openproject)` 로 다시 기동합니다.
+   > `stop` 줄이 오류 없이 끝났는지 먼저 확인하세요(예: `-f` 를 빠뜨리면 실패합니다). 확인을 놓쳐도 `openproject` 컨테이너가 실행 중이면 백업을 거부합니다. 정상 종료가 아니라 모든 PostgreSQL 프로세스가 멈춘 뒤의 파일 복사본(crash-consistent)이므로, 복원하면 PostgreSQL 이 크래시 복구를 거쳐 기동합니다(`postmaster.pid` 가 들어 있어도 됩니다). 논리 백업(SQL)은 [OpenProject 공식 문서][OpenProject docs]의 백업 절차(`pg_dump`)를 참고하세요. 없는 경로를 bind 하면 Docker Desktop 등 일부 엔진은 `--mount` 여도 빈 폴더를 만들고 빈 아카이브가 성공한 것처럼 보입니다. 그래서 호스트에서 `pgdata` 폴더를 먼저 확인하고, 컨테이너 안에서 `PG_VERSION`(PostgreSQL 클러스터 표식)이 있을 때만 아카이브를 만듭니다. 아카이브는 `.partial` 에 쓴 뒤 성공했을 때만 기존 백업과 교체합니다. 삭제는 `tar tzf ~/openproject-pgdata.tgz` 로 내용을 확인한 뒤에만 하세요. 백업만 할 때는 `(cd "$D" && docker compose -f docker-compose-php.yml start openproject)` 로 다시 기동합니다.
 
 5. A user selection
 
