@@ -16,9 +16,15 @@ FAILED=0
 # ============================================================================
 # STEP A — 스택 정상 기동 (이전 상태 정리 후)
 # ============================================================================
-hdr "Step A — 스택 기동"
-(cd $STACK_DIR && docker compose down -v --remove-orphans >/dev/null 2>&1 || true)
-(cd $STACK_DIR && docker compose up -d webserver redis 2>&1 | tail -3)
+hdr "Step A — 스택 기동 (전용 compose 프로젝트·임시 env-file — 운영 .env·스택을 건드리지 않음)"
+PROJ=devspoon-ngxb-test
+ENVF=$(mktemp)
+sed -e 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=ngxb-test-pw|' -e 's|^FLOWER_ID=.*|FLOWER_ID=tester|' -e 's|^FLOWER_PWD=.*|FLOWER_PWD=tester-pw|' \
+    -e '/^DJANGO_SECRET_KEY=/d' "$STACK_DIR/.env-example" > "$ENVF"
+printf 'DJANGO_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENVF"
+dc() { (cd "$STACK_DIR" && docker compose -p "$PROJ" --env-file "$ENVF" "$@"); }
+trap 'dc down -v --remove-orphans >/dev/null 2>&1; rm -f "$ENVF"' EXIT
+dc up -d webserver redis 2>&1 | tail -3
 sleep 5
 docker ps --filter "name=$CONT" --format '{{.Names}} {{.Status}}'
 docker exec $CONT nginx -t 2>&1 | tail -2

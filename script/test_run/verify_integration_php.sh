@@ -9,22 +9,32 @@ APP=php-app
 FAILS=0
 check() { if eval "$2"; then echo "[PASS] $1"; else echo "[FAIL] $1"; FAILS=$((FAILS+1)); fi; }
 code()  { curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: localhost' "$@"; }
-cid()   { docker compose ps -q "$1"; }
+cid()   { dc ps -q "$1"; }
 UP="$DEVSPOON/www/php_sample/uploads"
 
+# 운영 보호: 기존 .env 는 읽지도 고치지도 않는다. .env-example 로 만든 임시 env-file 과 전용 compose 프로젝트명으로 격리한다.
+#   (container_name 이 고정이라 같은 스택이 이미 떠 있으면 up 이 이름 충돌로 실패한다 — 운영 컨테이너를 내리지 않는다)
+PROJ=devspoon-it-php
+ENVF=$(mktemp)
+sed -e 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=it-redis-pw|' -e 's|^FLOWER_ID=.*|FLOWER_ID=tester|' -e 's|^FLOWER_PWD=.*|FLOWER_PWD=tester-pw|' \
+    -e '/^DJANGO_SECRET_KEY=/d' "$STACK_DIR/.env-example" > "$ENVF"
+printf 'DJANGO_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENVF"
+dc() { docker compose -p "$PROJ" --env-file "$ENVF" "$@"; }
+
 cleanup() {
-  cd "$STACK_DIR" && docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  (cd "$STACK_DIR" && dc down -v --remove-orphans >/dev/null 2>&1)
+  rm -f "$ENVF"
   rm -f "$UP/x.php" "$UP/x.phtml"; rmdir "$UP" 2>/dev/null || true
 }
 trap cleanup EXIT
 
 cd "$STACK_DIR" || exit 1
-[ -f .env ] || cp .env-example .env
-sed -i 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=php-test-redis-pw|; s|^FLOWER_ID=.*|FLOWER_ID=tester|; s|^FLOWER_PWD=.*|FLOWER_PWD=tester-pw|' .env
 mkdir -p "$UP"; printf '<?php echo "EXECUTED";' > "$UP/x.php"; cp "$UP/x.php" "$UP/x.phtml"
 
-check "compose up --wait"          'docker compose up -d --build --wait --wait-timeout 240'
+check "compose up --wait"          'dc up -d --build --wait --wait-timeout 240'
 check "HTTP 200 (Host: localhost)" '[ "$(code http://127.0.0.1/)" = 200 ]'
+check "/.hidden/x.js 403 (dotfile 차단 우선)"      '[ "$(code http://127.0.0.1/.hidden/x.js)" = 403 ]'
+check "/uploads/x.php/y.png 403 (업로드 차단 우선)" '[ "$(code http://127.0.0.1/uploads/x.php/y.png)" = 403 ]'
 check "봇 UA 차단 000|444"          '[[ "$(code -A MJ12bot http://127.0.0.1/)" =~ ^(000|444)$ ]]'
 check "정상 UA 300회 고속(병렬 50) 503/429/444 없음" '[ "$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: localhost" http://127.0.0.1/robots.txt | grep -cE "^(503|429|000)$")" = 0 ]'
 check "$APP health=healthy"        '[ "$(docker inspect -f "{{.State.Health.Status}}" "$(cid $APP)")" = healthy ]'

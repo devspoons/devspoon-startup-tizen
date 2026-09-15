@@ -107,22 +107,24 @@ echo "=============================================================="
 
 cd "$ROOT/compose/web_service/$STACK" || { echo "FAIL: cd"; exit 1; }
 
-# .env 생성 (없으면)
-if [ ! -f .env ]; then
-    cp .env-example .env
-    sed -i 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=test-redis-pw|; s|^FLOWER_ID=.*|FLOWER_ID=test|; s|^FLOWER_PWD=.*|FLOWER_PWD=test-pw|' .env
-    echo "  (auto-created .env)"
-fi
+# 운영 보호: 기존 .env 는 읽지도 고치지도 않는다 — 임시 env-file + 전용 compose 프로젝트명으로 격리
+PROJ="devspoon-hc-$STACK"
+ENVF=$(mktemp)
+sed -e 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=test-redis-pw|; s|^FLOWER_ID=.*|FLOWER_ID=test|; s|^FLOWER_PWD=.*|FLOWER_PWD=test-pw|' \
+    -e '/^DJANGO_SECRET_KEY=/d' .env-example > "$ENVF"
+printf 'DJANGO_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENVF"
+dc() { docker compose -p "$PROJ" --env-file "$ENVF" "$@"; }
+trap 'rm -f "$ENVF"' EXIT
 
 echo
 echo "--- compose down -v (cleanup) ---"
-docker compose --profile redis --profile celery down -v 2>&1 | tail -5
+dc --profile redis --profile celery down -v 2>&1 | tail -5
 
 echo
 echo "--- compose up -d --build ---"
-if ! docker compose up -d --build; then
+if ! dc up -d --build; then
     echo "  compose up 실패 — 1회 재시도"; sleep 5
-    docker compose up -d --build || { fail "B.0 compose up" "exit≠0 (재시도 포함)"; exit 1; }
+    dc up -d --build || { fail "B.0 compose up" "exit≠0 (재시도 포함)"; exit 1; }
 fi
 
 # Wait up to 120s for app healthcheck to flip to healthy
@@ -132,7 +134,7 @@ app_service=$(echo "${APP_MAP[$STACK]}" | cut -d: -f1)
 deadline=$(( $(date +%s) + 120 ))
 app_healthy=0
 while [ "$(date +%s)" -lt "$deadline" ]; do
-    state=$(docker compose ps --format '{{.Service}} {{.Status}}' 2>/dev/null | grep "^$app_service " | head -1)
+    state=$(dc ps --format '{{.Service}} {{.Status}}' 2>/dev/null | grep "^$app_service " | head -1)
     echo "  $(date +%H:%M:%S) | $state"
     if echo "$state" | grep -q "(healthy)"; then
         app_healthy=1
@@ -149,17 +151,17 @@ fi
 
 echo
 echo "--- compose ps (final) ---"
-docker compose ps
+dc ps
 
 # webserver 는 healthcheck 가 없으므로 running + RestartCount 0 으로 판정 ("Up" 문자열은 재시작 루프도 통과시킨다)
-ws_cid=$(docker compose ps -q webserver)
+ws_cid=$(dc ps -q webserver)
 ws_state=$(docker inspect -f '{{.State.Status}} {{.RestartCount}}' "$ws_cid" 2>/dev/null)
 echo
 echo "--- webserver state: $ws_state ---"
 if [ "$ws_state" = "running 0" ]; then pass "B.2 webserver running, RestartCount=0"; else fail "B.2 webserver" "$ws_state"; fi
 
 # redis healthy 검증
-redis_status=$(docker compose ps --format '{{.Service}} {{.Status}}' 2>/dev/null | grep "^redis " | head -1)
+redis_status=$(dc ps --format '{{.Service}} {{.Status}}' 2>/dev/null | grep "^redis " | head -1)
 if [ -n "$redis_status" ]; then
     if echo "$redis_status" | grep -q "(healthy)"; then
         pass "B.3 redis (healthy)"
@@ -171,7 +173,7 @@ fi
 
 echo
 echo "--- Tear down ---"
-docker compose --profile redis --profile celery down -v 2>&1 | tail -5
+dc --profile redis --profile celery down -v 2>&1 | tail -5
 
 echo
 echo "=============================================================="

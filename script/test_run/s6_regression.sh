@@ -86,6 +86,80 @@ for f in config/web-server/nginx/{gunicorn,uvicorn,uwsgi,php}/conf.d/*_ng_http.c
 done
 echo
 
+echo "===== 6.12 호스트 소스 트리 소유권 불변 — /www chown 없음·PROJECT_DIR 가드·SECRET_KEY env·SQLite 데이터 볼륨 (RV1-S-01, RV1-SEC-03) ====="
+for f in compose/web_service/nginx_{gunicorn,uvicorn,uwsgi,daphne}/docker-compose.yml; do
+    assert_zero "6.12 /www chown ($f)" "$(grep -cE 'chown[^"]*/www/' "$f")"
+    assert_zero "6.12 가드 없는 PROJECT_DIR 치환 ($f)" "$(grep -cF '${PROJECT_DIR}' "$f")"
+    assert_eq   "6.12 DJANGO_SECRET_KEY :? ×3 ($f)" "$(grep -cF 'DJANGO_SECRET_KEY: "${DJANGO_SECRET_KEY:?' "$f")" 3
+    assert_eq   "6.12 SQLITE_PATH ×3 ($f)" "$(grep -cE '^[[:space:]]+SQLITE_PATH: ' "$f")" 3
+    assert_eq   "6.12 app-data:/data ×3 ($f)" "$(grep -cE '^[[:space:]]+- app-data:/data$' "$f")" 3
+done
+assert_eq "6.12 settings.py DJANGO_SECRET_KEY·SQLITE_PATH env" "$(grep -cE 'environ\.get\("(DJANGO_SECRET_KEY|SQLITE_PATH)"' www/django_sample/config/settings.py)" 2
+echo
+
+echo "===== 6.13 X-Forwarded-Proto 는 nginx 가 \$scheme 로 덮어쓴다 (RV1-SEC-01) ====="
+for f in config/web-server/nginx/uwsgi/sample_nginx_http.conf config/web-server/nginx/uwsgi/sample_nginx_https.conf config/web-server/nginx/uwsgi/conf.d/*_ng_http.conf; do
+    p=$(grep -cE '^[[:space:]]*uwsgi_pass[[:space:]]' "$f"); x=$(grep -cE '^[[:space:]]*uwsgi_param[[:space:]]+HTTP_X_FORWARDED_PROTO[[:space:]]+\$scheme;' "$f")
+    if [ "$p" -ge 1 ] && [ "$p" = "$x" ]; then echo "  PASS 6.13 ($f)"; else echo "  FAIL 6.13 ($f) uwsgi_pass=$p forwarded_proto=$x"; FAILS=$((FAILS+1)); fi
+done
+for f in config/web-server/nginx/{gunicorn,uvicorn,php}/proxy_params/proxy_params; do
+    assert_eq "6.13 proxy X-Forwarded-Proto \$scheme ($f)" "$(grep -cE '^proxy_set_header[[:space:]]+X-Forwarded-Proto[[:space:]]+\$scheme;' "$f")" 1
+done
+echo
+
+echo "===== 6.14 차단 location 우선 — 최상위 첫 regex·/media·/static 안 첫 location 은 dotfile 차단, php 업로드 차단은 정적 자산보다 앞 (RV1-SEC-05) ====="
+loc_order() {
+    awk '
+    { l = $0; sub(/#.*/, "", l) }
+    l ~ /^[[:space:]]*server[[:space:]]*\{/ { top = 0 }
+    l ~ /^[[:space:]]*location[[:space:]]/ {
+        if (depth == 1) {
+            nested = (l ~ /location[[:space:]]+\/(media|static)[[:space:]]*\{/)
+            if (l ~ /location[[:space:]]+~/ && !top) { top = 1; if (l !~ /location[[:space:]]+~[[:space:]]+\/\\\.[[:space:]]*\{/) { print "    최상위 첫 regex: " $0; bad++ } }
+            if (l ~ /uploads\|default/) up = NR
+            if (l ~ /location[[:space:]]+~\*[[:space:]]+\\\.\(js\|css/) st = NR
+        } else if (depth == 2 && nested) {
+            nested = 0
+            if (l !~ /location[[:space:]]+~[[:space:]]+\/\\\.[[:space:]]*\{/) { print "    /media·/static 첫 중첩 location: " $0; bad++ }
+        }
+    }
+    { o = l; depth += gsub(/\{/, "", o); o = l; depth -= gsub(/\}/, "", o) }
+    END { if (up && st && up > st) { print "    업로드 PHP 차단이 정적 자산 regex 뒤"; bad++ }; exit (bad > 0) }' "$1"
+}
+for f in config/web-server/nginx/*/sample_nginx_http*.conf config/web-server/nginx/{gunicorn,uvicorn,uwsgi,php}/conf.d/*_ng_http.conf; do
+    if out=$(loc_order "$f"); then echo "  PASS 6.14 ($f)"; else echo "  FAIL 6.14 ($f)"; echo "$out"; FAILS=$((FAILS+1)); fi
+done
+echo
+
+echo "===== 6.15 php-fpm pool 예시 security.limit_extensions·기본 pool 포트 충돌 안내 (RV1-SEC-06, RV1-S-02) ====="
+assert_eq   "6.15 limit_extensions (php example)" "$(grep -cE '^security\.limit_extensions[[:space:]]*=[[:space:]]*\.php' config/app-server/php/pool.d/sample_php.conf.example)" 1
+assert_zero "6.15 www.conf '복사해 추가' 충돌 안내 (php)" "$(grep -c '복사해 \*\.conf 로 추가한다' config/app-server/php/pool.d/www.conf)"
+n=$(grep -c 'www.conf' config/app-server/php/php_conf.sh)
+if [ "$n" -ge 1 ]; then echo "  PASS 6.15 php_conf.sh 포트 충돌 안내 (php) ($n)"; else echo "  FAIL 6.15 php_conf.sh 포트 충돌 안내 없음 (php)"; FAILS=$((FAILS+1)); fi
+echo
+
+echo "===== 6.16 알림·아티팩트 비밀값 마스킹 (RV1-SEC-04) ====="
+if [ -f script/lib/mask_secrets.sh ]; then
+    # shellcheck source=../lib/mask_secrets.sh
+    . script/lib/mask_secrets.sh
+    leak=$(printf '%s\n' 'echo REDIS_PASSWORD=dummysecret' 'TELEGRAM_BOT_TOKEN: dummysecret' 'redis://:dummysecret@redis:6379/3' '{"SECRET_KEY": "dummysecret"}' 'FLOWER_BASIC_AUTH=tester:dummysecret' 'redis-server --requirepass dummysecret' 'Authorization: Bearer dummysecret' "DJANGO_SECRET_KEY='dummy secret'" 'FLOWER_PWD="dummy secret"' | mask_secrets | grep -c dummy)
+    assert_zero "6.16 마스킹 샘플 9종 누출" "$leak"
+else
+    echo "  FAIL 6.16 script/lib/mask_secrets.sh 없음"; FAILS=$((FAILS+1))
+fi
+assert_eq "6.16 run-ci 알림 본문·로그 파일 마스킹 호출" "$(grep -cE '^[[:space:]]*mask_secrets_files[[:space:]]|\|[[:space:]]*mask_secrets\)' script/ci/run-ci.sh)" 2
+echo
+
+echo "===== 6.17 하네스는 운영 .env 를 수정·생성하지 않고 임시 env-file·전용 compose 프로젝트로 격리 (RV1-SEC-02) ====="
+for f in script/test_run/verify_integration_*.sh script/test_run/verify_compose_yml.sh script/test_run/verify_healthcheck.sh script/test/verify-ngxblocker.sh; do
+    w=$(grep -cE 'sed -i.*\.env|cp \.env-example \.env|>[[:space:]]*\.env([[:space:]]|$)' "$f"); e=$(grep -c -- '--env-file' "$f")
+    if [ "$w" = 0 ] && [ "$e" -ge 1 ]; then echo "  PASS 6.17 ($f)"; else echo "  FAIL 6.17 ($f) env_write=$w env_file=$e"; FAILS=$((FAILS+1)); fi
+done
+for f in script/test_run/verify_integration_*.sh script/test_run/verify_healthcheck.sh script/test/verify-ngxblocker.sh; do
+    assert_eq "6.17 전용 compose 프로젝트명 ($f)" "$(grep -cE 'docker compose -p "\$PROJ"' "$f")" 1
+done
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]
