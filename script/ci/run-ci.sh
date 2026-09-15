@@ -37,6 +37,9 @@ mkdir -p "$CILOG"
 # django_sample secrets.json 부트스트랩 (ensure_django_secrets)
 # shellcheck source=../lib/django_secrets.sh
 . "$ROOT/script/lib/django_secrets.sh"
+# 알림 본문·업로드 아티팩트 비밀값 마스킹 (mask_secrets, mask_secrets_files)
+# shellcheck source=../lib/mask_secrets.sh
+. "$ROOT/script/lib/mask_secrets.sh"
 
 START_EPOCH=$(date +%s)
 START_HUMAN=$(date '+%Y-%m-%d %H:%M:%S %Z')
@@ -187,12 +190,13 @@ ACTOR="${GITHUB_ACTOR:-local}"
 RUN_URL="${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-}/actions/runs/${GITHUB_RUN_ID:-}"
 PASSED_JOINED=$(IFS=', '; echo "${PASSED_STEPS[*]:-없음}")
 
+# 업로드 아티팩트(log/ci, log/test_run)에도 비밀값 원문이 남지 않도록 로그 파일을 제자리 마스킹
+mask_secrets_files "$CILOG" "$ROOT/log/test_run" || true
+
 if [ -n "$FAILED_STEP" ]; then
     LOG_TAIL=""
-    # 전송 전 비밀값 마스킹: KEY=값 / KEY: 값 형태와 URL userinfo(redis://:pw@host)
-    [ -f "$FAILED_LOG" ] && LOG_TAIL=$(tail -n 30 "$FAILED_LOG" | cut -c1-2000 \
-        | sed -E -e 's/((PASS|PWD|SECRET|TOKEN)[A-Za-z_]*[[:space:]]*[=:][[:space:]]*)[^[:space:]]+/\1***/Ig' \
-                 -e 's#(://[^:/@[:space:]]*:)[^@[:space:]]+@#\1***@#g')
+    # 전송 전 비밀값 마스킹 (script/lib/mask_secrets.sh)
+    [ -f "$FAILED_LOG" ] && LOG_TAIL=$(tail -n 30 "$FAILED_LOG" | cut -c1-2000 | mask_secrets)
     MSG="❌ [${REPO_LABEL}] CI 테스트 실패
 저장소: ${REPO}
 브랜치: ${BRANCH} @ ${SHORT}
