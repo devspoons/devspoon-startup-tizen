@@ -92,7 +92,7 @@ services:
       - redis
 
   openproject:
-    image: openproject/community:11
+    image: openproject/openproject:17
     logging:
       driver: "${LOG_DRIVER}"
       options:
@@ -104,8 +104,11 @@ services:
       - ../../log/supervisor/:/var/log/supervisor/
       - ./static/:/var/openproject/assets/
     expose:
-      - 8080
+      - "80"
     environment:
+      SECRET_KEY_BASE: ${OPENPROJECT_SECRET_KEY_BASE:?OPENPROJECT_SECRET_KEY_BASE must be set in .env}
+      OPENPROJECT_HOST__NAME: ${OPENPROJECT_HOST_NAME:?OPENPROJECT_HOST_NAME must be set in .env}
+      OPENPROJECT_HTTPS: ${OPENPROJECT_HTTPS:-false}
       EMAIL_DELIVERY_METHOD: ${EMAIL_DELIVERY_METHOD}
       SMTP_ADDRESS: ${SMTP_ADDRESS}
       SMTP_PORT: ${SMTP_PORT}
