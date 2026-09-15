@@ -147,8 +147,8 @@ if [ -f script/lib/mask_secrets.sh ]; then
         'Authorization: Bearer dummysecret' "DJANGO_SECRET_KEY='dummy secret'" 'FLOWER_PWD="dummy secret"' \
         'redis-server --requirepass "dummy secret"' 'redis-cli --no-auth-warning -a dummysecret ping' 'requirepass dummysecret' \
         '"command": ["redis-server", "--requirepass", "dummysecret"]' 'REDIS_PASSWORD="dum\"my,secret"' '{"SECRET_KEY": "dummy,secret", "x": 1}' \
-        '"Authorization": "Bearer dummysecret"' | mask_secrets | grep -c dummy)
-    assert_zero "6.16 누락 형식 포함 마스킹 샘플 16종 누출" "$leak"
+        '"Authorization": "Bearer dummysecret"' "redis-server --requirepass 'dummy secret'" "redis-cli -a 'dummy secret' ping" | mask_secrets | grep -c dummy)
+    assert_zero "6.16 누락 형식 포함 마스킹 샘플 18종 누출 (작은따옴표 requirepass·redis-cli -a, RV3-S-02)" "$leak"
     keep='RUNTIME_PASS=5
 ALL PASS: dhparam
 invalid token format
@@ -163,6 +163,8 @@ assert_eq   "6.16 run-ci 알림 본문·로그 파일 마스킹 호출" "$(grep 
 assert_zero "6.16 run-ci 마스킹 실패 삼킴(|| true)" "$(grep -cE 'mask_secrets_files.*\|\| true' script/ci/run-ci.sh)"
 m=$(grep -n 'mask_secrets_files log/ci log/test_run' .github/workflows/test.yml | head -1 | cut -d: -f1); u=$(grep -n 'actions/upload-artifact' .github/workflows/test.yml | head -1 | cut -d: -f1)
 if [ -n "$m" ] && [ -n "$u" ] && [ "$m" -lt "$u" ]; then echo "  PASS 6.16 test.yml 업로드 직전 마스킹 단계"; else echo "  FAIL 6.16 test.yml 업로드 전 마스킹 단계 없음"; FAILS=$((FAILS+1)); fi
+assert_eq   "6.16 test.yml 마스킹 단계 id: mask" "$(grep -cE '^[[:space:]]+id: mask$' .github/workflows/test.yml)" 1
+assert_eq   "6.16 test.yml 업로드는 마스킹 성공 시에만 (RV3-SEC-04)" "$(grep -cF "if: always() && steps.mask.outcome == 'success'" .github/workflows/test.yml)" 1
 echo
 
 echo "===== 6.17 하네스는 운영 .env 를 수정·생성하지 않고 임시 env-file·전용 compose 프로젝트로 격리 (RV1-SEC-02) ====="
@@ -264,6 +266,29 @@ if grep -q 'ensure_env_secrets()' script/lib/django_secrets.sh; then
     assert_eq   "6.24 비밀 아닌 FLOWER_ID 불변" "$(grep -c '^FLOWER_ID=CHANGE_ME_FLOWER_USER$' "$tmp/new.env")" 1
     if [ "$(sha256sum < "$tmp/keep.env")" = "$ks" ]; then echo "  PASS 6.24 기존 값 파일 불변"; else echo "  FAIL 6.24 기존 값 변경됨"; FAILS=$((FAILS+1)); fi
     assert_zero "6.24 .env 없음 → rc≠0" "$(grep -c '^rc_none=0$' "$tmp/rc")"
+    # RV3-S-01 키 부재 → 같은 폴더 compose 의 :? 비밀 키만 추가(개행 없는 마지막 줄 보정), RV3-SEC-03 권한 600, 재실행 멱등
+    mkdir -p "$tmp/dj" "$tmp/php" "$tmp/dup" "$tmp/crlf" "$tmp/nossl/bin"
+    cp compose/web_service/nginx_gunicorn/docker-compose.yml "$tmp/dj/"; cp compose/web_service/nginx_php/docker-compose.yml "$tmp/php/"
+    printf 'PROJECT_DIR=django_sample' > "$tmp/dj/.env"; printf 'PHP_X=1\n' > "$tmp/php/.env"; chmod 644 "$tmp/dj/.env" "$tmp/php/.env"
+    # RV3-SEC-01 중복 키 — 기존 값 줄 보존, 빈 줄만 채움 / CRLF — CR 무시 매칭·줄끝 보존
+    printf 'REDIS_PASSWORD=keep-redis\nREDIS_PASSWORD=\n' > "$tmp/dup/.env"
+    printf 'DJANGO_SECRET_KEY=\r\nREDIS_PASSWORD=CHANGE_ME_X\r\nFLOWER_PWD=keep\r\n' > "$tmp/crlf/.env"
+    # RV3-SEC-02 openssl 실패 → rc 1·파일 무변경
+    printf '#!/bin/sh\nexit 1\n' > "$tmp/nossl/bin/openssl"; chmod +x "$tmp/nossl/bin/openssl"
+    printf 'DJANGO_SECRET_KEY=\n' > "$tmp/nossl/.env"; ns=$(sha256sum < "$tmp/nossl/.env")
+    ( . script/lib/django_secrets.sh
+      for d in dj php dup crlf; do ensure_env_secrets "$tmp/$d/.env" >/dev/null; done
+      sha256sum < "$tmp/dj/.env" > "$tmp/dj.sha"; ensure_env_secrets "$tmp/dj/.env" >/dev/null
+      PATH="$tmp/nossl/bin:$PATH" ensure_env_secrets "$tmp/nossl/.env" >/dev/null 2>&1; echo "rc_nossl=$?" > "$tmp/rc2" )
+    assert_eq   "6.24 키 부재 → 기존 줄 보존·3 키 추가 (RV3-S-01)" "$(grep -cE '^(PROJECT_DIR=django_sample|DJANGO_SECRET_KEY=[0-9a-f]{100}|REDIS_PASSWORD=[0-9a-f]{64}|FLOWER_PWD=[0-9a-f]{64})$' "$tmp/dj/.env")" 4
+    assert_eq   "6.24 php 스택 키 부재 → REDIS_PASSWORD 만 추가" "$(grep -cE '^(REDIS_PASSWORD=[0-9a-f]{64}|DJANGO_SECRET_KEY=.*|FLOWER_PWD=.*)$' "$tmp/php/.env")" 1
+    assert_eq   "6.24 생성 후 권한 600 (RV3-SEC-03)" "$(stat -c %a "$tmp/dj/.env" "$tmp/php/.env" | grep -c '^600$')" 2
+    if [ "$(sha256sum < "$tmp/dj/.env")" = "$(cat "$tmp/dj.sha")" ]; then echo "  PASS 6.24 재실행 멱등(값 불변)"; else echo "  FAIL 6.24 재실행 시 값 변경"; FAILS=$((FAILS+1)); fi
+    assert_eq   "6.24 중복 키 기존 값 줄 보존 (RV3-SEC-01)" "$(grep -c '^REDIS_PASSWORD=keep-redis$' "$tmp/dup/.env")" 1
+    assert_eq   "6.24 중복 키 빈 줄만 생성" "$(grep -cE '^REDIS_PASSWORD=[0-9a-f]{64}$' "$tmp/dup/.env")" 1
+    assert_eq   "6.24 CRLF 빈 값·CHANGE_ME 생성·기존 값 보존·줄끝 보존" "$(grep -cE $'^(DJANGO_SECRET_KEY=[0-9a-f]{100}|REDIS_PASSWORD=[0-9a-f]{64}|FLOWER_PWD=keep)\r$' "$tmp/crlf/.env")" 3
+    assert_eq   "6.24 openssl 실패 → rc 1 (RV3-SEC-02)" "$(grep -c '^rc_nossl=1$' "$tmp/rc2")" 1
+    if [ "$(sha256sum < "$tmp/nossl/.env")" = "$ns" ]; then echo "  PASS 6.24 openssl 실패 시 파일 무변경"; else echo "  FAIL 6.24 openssl 실패 시 파일 변경됨"; FAILS=$((FAILS+1)); fi
     rm -rf "$tmp"
 else
     echo "  FAIL 6.24 ensure_env_secrets 없음"; FAILS=$((FAILS+1))
@@ -287,6 +312,7 @@ f=script/test_run/verify_integration_gunicorn.sh
 assert_eq "6.25 --profile celery 기동" "$(grep -c -- '--profile celery up -d --wait' "$f")" 1
 assert_eq "6.25 celery·celery-beat containers_stable" "$(grep -c 'containers_stable "$(dc --profile celery ps -q celery)" "$(dc --profile celery ps -q celery-beat)"' "$f")" 1
 assert_eq "6.25 정리 시 celery 프로파일 포함 down" "$(grep -c 'dc --profile celery down -v' "$f")" 1
+assert_eq "6.25 celery 워커 브로커 응답 판정 inspect ping (컨테이너 내부·dc 래퍼)" "$(grep -c 'dc --profile celery exec -T celery celery -A config inspect ping' "$f")" 1
 echo
 
 echo "===== 6.26 하네스는 운영 공유 이미지 태그를 덮어쓰지 않음 — IMAGE_NAMESPACE (RV2-SEC-03) ====="
