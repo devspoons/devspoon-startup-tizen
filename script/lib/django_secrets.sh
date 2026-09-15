@@ -37,7 +37,7 @@ ensure_django_secrets() {
 # compose 는 이 값들을 :? 필수로 검사한다 — 운영자 최초 설정 한 줄(저장소 루트):
 #   bash -c '. script/lib/django_secrets.sh && ensure_env_secrets compose/web-service/nginx_gunicorn/.env'
 ensure_env_secrets() {
-    local envf="${1:?사용: ensure_env_secrets <.env 경로>}" req k len val tmp set="" app="" names="" n=0
+    local envf="${1:?사용: ensure_env_secrets <.env 경로>}" req k len val tmp traps rc set="" app="" names="" n=0
     [ -f "$envf" ] || { echo "  FAIL : $envf 없음 — 먼저 .env-example 을 .env 로 복사"; return 1; }
     command -v openssl >/dev/null 2>&1 || { echo "  FAIL : openssl 없음 — 비밀값 생성 불가"; return 1; }
     req=$(cat "$(dirname "$envf")"/docker-compose*.yml 2>/dev/null | grep -vE '^[[:space:]]*#' | grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*:\?' \
@@ -56,15 +56,20 @@ ensure_env_secrets() {
         # 심볼릭 링크 .env 는 링크를 보존하고 대상 파일을 교체한다 (compose 요구 키 조회는 위에서 링크 경로 기준으로 끝남)
         [ -L "$envf" ] && { envf=$(readlink -f "$envf") || { echo "  FAIL : $1 링크 대상 확인 실패"; return 1; }; }
         tmp=$(mktemp "$envf.XXXXXX" 2>/dev/null) || { echo "  FAIL : 임시 파일 생성 실패(폴더 쓰기 불가?) — $envf 변경 안 함"; return 1; }
+        # 인터럽트 시 비밀이 담긴 임시 파일을 지운다. 호출자의 기존 trap 은 끝나면 복원
+        traps=$(trap -p INT TERM HUP); trap 'rm -f "$tmp"; exit 130' INT TERM HUP
+        # 권한은 원본(go 비트 먼저 제거)을 복사 — 임시 파일이 한순간도 원본의 group/other 권한을 갖지 않게 한다
         if awk -v set="$set" -v app="$app" '
             BEGIN { split(set, a, " "); for (i in a) { p = index(a[i], "="); v[substr(a[i], 1, p - 1)] = substr(a[i], p + 1) } }
             { eol = sub(/\r$/, "") ? "\r" : ""; p = index($0, "="); k = substr($0, 1, p - 1)
               if (p > 1 && (k in v) && substr($0, p + 1) ~ /^(CHANGE_ME_[A-Za-z0-9_]*)?$/) $0 = k "=" v[k]
               printf "%s%s\n", $0, eol }
             END { split(app, b, " "); for (i = 1; i in b; i++) printf "%s=%s%s\n", b[i], v[b[i]], eol }' "$envf" > "$tmp" \
-            && chmod --reference="$envf" "$tmp" && chmod go= "$tmp" \
-            && { chown --reference="$envf" "$tmp" 2>/dev/null || :; } && mv -f "$tmp" "$envf"; then :
-        else rm -f "$tmp"; echo "  FAIL : $envf 쓰기 실패 — 원본 변경 안 함"; return 1; fi
+            && chmod go= "$envf" && chmod --reference="$envf" "$tmp" \
+            && { chown --reference="$envf" "$tmp" 2>/dev/null || :; } && mv -f "$tmp" "$envf"; then rc=0
+        else rm -f "$tmp"; rc=1; fi
+        trap - INT TERM HUP; eval "$traps"
+        [ "$rc" -eq 0 ] || { echo "  FAIL : $envf 쓰기 실패 — 원본 내용 변경 안 함"; return 1; }
         for k in $names; do echo "  $k 생성"; done
     fi
     echo "  비밀값 $n 개 생성 — 기존 값은 그대로 ($envf)"
