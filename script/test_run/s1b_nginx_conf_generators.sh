@@ -21,9 +21,9 @@ run_stack() {
     ./nginx_https_conf.sh -w "$webroot" -p 80 -d test.local -a "$app" -s "$sport" -n autotest_https 2>&1 | tail -5
     if [ -f "conf.d/autotest_https_${stack}_ng_https.conf" ]; then echo "  PASS 1B.2 ($stack)"; else echo "  FAIL 1B.2 ($stack) no conf generated"; FAILS=$((FAILS+1)); fi
     # 1B.3 placeholder substitution — glob 은 ng_http / ng_https 양쪽 모두 매치되도록 *_ng_http*.conf
-    echo "--- 1B.3 ($stack) placeholders left in files (should be 0) ---"
-    grep -E '(domain|appname|webroot|portnumber|filename|serviceport)' conf.d/autotest_*_ng_http*.conf 2>&1
-    echo "  (grep returncode = $?)"
+    echo "--- 1B.3 ($stack) placeholder 토큰 잔여 없음 ---"
+    if ! ls conf.d/autotest_*_ng_http*.conf >/dev/null 2>&1; then echo "  FAIL 1B.3 ($stack) 검사 대상 생성물 없음"; FAILS=$((FAILS+1))
+    elif grep -qE '__[A-Z]+__' conf.d/autotest_*_ng_http*.conf; then echo "  FAIL 1B.3 ($stack) placeholder left"; FAILS=$((FAILS+1)); else echo "  PASS 1B.3 ($stack)"; fi
     # 1B.5 invalid input -> generator must reject with exit 2
     echo "--- 1B.5 ($stack) invalid input -> expect exit 2 ---"
     # 생성기 종료코드를 파이프 이전에 캡처한다 (과거: `... | tail` 뒤의 $? 는 tail 의 코드(0)였다)
@@ -34,7 +34,18 @@ run_stack() {
     else
         echo "  FAIL 1B.5 ($stack) exit=$gen_ec (expected 2)"; FAILS=$((FAILS+1))
     fi
-    # 1B.6 cleanup
+    echo "--- 1B.7 ($stack) 입력값 속 토큰 재치환 없음 ---"
+    ./nginx_http_conf.sh -w shop/domain_app -p 80 -d t7.local -a "$app" -s "$sport" -n autotest_t7 >/dev/null 2>&1
+    if grep -q '/www/shop/domain_app' "conf.d/autotest_t7_${stack}_ng_http.conf" 2>/dev/null; then echo "  PASS 1B.7 ($stack)"; else echo "  FAIL 1B.7 ($stack)"; FAILS=$((FAILS+1)); fi
+    echo "--- 1B.8 ($stack) '..' 입력 exit 2 ---"
+    ./nginx_http_conf.sh -w ../x -p 80 -d t8.local -a "$app" -s "$sport" -n autotest_t8 >/dev/null 2>&1; ec=$?
+    if [ "$ec" -eq 2 ]; then echo "  PASS 1B.8 ($stack)"; else echo "  FAIL 1B.8 ($stack) exit=$ec"; FAILS=$((FAILS+1)); fi
+    echo "--- 1B.9 ($stack) 추적 샘플 -f 없이 덮어쓰기 거부 ---"
+    tracked=$(git ls-files 'conf.d/*_ng_http.conf' | head -1); before=$(sha256sum "$tracked" | cut -d' ' -f1)
+    tname=$(basename "$tracked" "_${stack}_ng_http.conf")
+    ./nginx_http_conf.sh -w "$webroot" -p 80 -d t9.local -a "$app" -s "$sport" -n "$tname" >/dev/null 2>&1; ec=$?
+    if [ "$ec" -eq 2 ] && [ "$(sha256sum "$tracked" | cut -d' ' -f1)" = "$before" ]; then echo "  PASS 1B.9 ($stack)"; else echo "  FAIL 1B.9 ($stack) exit=$ec"; FAILS=$((FAILS+1)); fi
+    # 1B.6 cleanup (1B.7~1B.9 산출물 포함)
     echo "--- 1B.6 ($stack) cleanup autotest_* ---"
     rm -f conf.d/autotest_*
     ls conf.d/autotest_* 2>&1 | head -3

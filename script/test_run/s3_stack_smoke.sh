@@ -8,7 +8,7 @@ LOG="$ROOT/log/test_run"
 mkdir -p "$LOG"
 FAILS=0
 
-STACK_DIR="$1"        # nginx_gunicorn / nginx_uvicorn / nginx_uwsgi / nginx_php / nginx_php / nginx_daphne
+STACK_DIR="$1"        # nginx_gunicorn / nginx_uvicorn / nginx_uwsgi / nginx_php / nginx_daphne
 STACK="$2"            # gunicorn / uvicorn / uwsgi / php
 APPCT="$3"            # gunicorn-app, uvicorn-app, uwsgi-app, php-app
 LOGSUB="$4"           # gunicorn, uvicorn, uwsgi, php-fpm
@@ -24,7 +24,7 @@ echo "===== Pre: ensure stack down =====" | tee -a "$SUMMARY"
 docker compose --profile celery --profile redis down -v 2>&1 | tail -5
 
 echo "===== 3B.1 .env content =====" | tee -a "$SUMMARY"
-cat .env
+cut -d= -f1 .env   # 키 이름만 출력 (값은 비밀)
 need_vars=(LOG_DRIVER LOG_OPT_MAXF LOG_OPT_MAXS PROJECT_DIR FLOWER_ID FLOWER_PWD)
 missing=()
 for v in "${need_vars[@]}"; do

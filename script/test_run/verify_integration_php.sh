@@ -1,91 +1,44 @@
 #!/usr/bin/env bash
-# Integration test for nginx_php stack
-set +e
+# Integration test for nginx_php stack — 출고 conf.d 그대로 기동해 단언한다. 실패 시 exit 1.
+set -uo pipefail
 
 DEVSPOON="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 STACK_DIR="$DEVSPOON/compose/web_service/nginx_php"
-NGINX_CFG_DIR="$DEVSPOON/config/web-server/nginx/php"
+APP=php-app
+
+FAILS=0
+check() { if eval "$2"; then echo "[PASS] $1"; else echo "[FAIL] $1"; FAILS=$((FAILS+1)); fi; }
+code()  { curl -s -o /dev/null -w '%{http_code}' --max-time 10 -H 'Host: localhost' "$@"; }
+cid()   { docker compose ps -q "$1"; }
+UP="$DEVSPOON/www/php_sample/uploads"
 
 cleanup() {
-  echo
-  echo "=== cleanup ==="
-  cd "$STACK_DIR" 2>/dev/null && docker compose down -v --remove-orphans 2>&1 | tail -5 || true
-  rm -f "$DEVSPOON/config/app-server/php-8.4/pool.d/localhost.conf"
+  cd "$STACK_DIR" && docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+  rm -f "$UP/x.php" "$UP/x.phtml"; rmdir "$UP" 2>/dev/null || true
 }
 trap cleanup EXIT
 
-echo "=== Phase 1: prep .env ==="
-cd "$STACK_DIR"
+cd "$STACK_DIR" || exit 1
 [ -f .env ] || cp .env-example .env
-sed -i 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=php84-test-redis-pw|; s|^FLOWER_ID=.*|FLOWER_ID=tester|; s|^FLOWER_PWD=.*|FLOWER_PWD=tester-pw|' .env
-grep -E '^(REDIS_PASSWORD|PROJECT|PORT)' .env
+sed -i 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=php-test-redis-pw|; s|^FLOWER_ID=.*|FLOWER_ID=tester|; s|^FLOWER_PWD=.*|FLOWER_PWD=tester-pw|' .env
+mkdir -p "$UP"; printf '<?php echo "EXECUTED";' > "$UP/x.php"; cp "$UP/x.php" "$UP/x.phtml"
 
-echo
-echo "=== Phase 2: WSL fmask ==="
-chmod 644 "$STACK_DIR/redis/conf/redis.conf" 2>/dev/null || true
-chmod 644 "$DEVSPOON/config/app-server/php-8.4/php_ini/php.ini" 2>/dev/null || true
+check "compose up --wait"          'docker compose up -d --build --wait --wait-timeout 240'
+check "HTTP 200 (Host: localhost)" '[ "$(code http://127.0.0.1/)" = 200 ]'
+check "봇 UA 차단 000|444"          '[[ "$(code -A MJ12bot http://127.0.0.1/)" =~ ^(000|444)$ ]]'
+check "정상 UA 300회 고속(병렬 50) 503/429/444 없음" '[ "$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: localhost" http://127.0.0.1/robots.txt | grep -cE "^(503|429|000)$")" = 0 ]'
+check "$APP health=healthy"        '[ "$(docker inspect -f "{{.State.Health.Status}}" "$(cid $APP)")" = healthy ]'
+check "$APP RestartCount=0"        '[ "$(docker inspect -f "{{.RestartCount}}" "$(cid $APP)")" = 0 ]'
+check "webserver RestartCount=0"   '[ "$(docker inspect -f "{{.RestartCount}}" "$(cid webserver)")" = 0 ]'
+check "/index.php 200"          '[ "$(code http://127.0.0.1/index.php)" = 200 ]'
+check "/uploads/x.php 403"      '[ "$(code http://127.0.0.1/uploads/x.php)" = 403 ]'
+check "/uploads/x.php/foo 403"  '[ "$(code http://127.0.0.1/uploads/x.php/foo)" = 403 ]'
+check "/uploads/x.phtml 403"    '[ "$(code http://127.0.0.1/uploads/x.phtml)" = 403 ]'
 
-echo
-echo "=== Phase 3a: verify nginx php sample conf present ==="
-# Sample conf 는 영구 .conf 파일로 트래킹되어 있어 nginx 컨테이너 시작 시 자동 로드된다.
-# (과거 .example → .conf cp 단계는 conf.d 샘플 명명 정책 통일로 제거됨)
-ls "$NGINX_CFG_DIR/conf.d/"
+# php 설정 실로드 — www.conf·php.ini 단일 파일 마운트(D-PHP)가 공식 이미지 경로에서 읽히는지 (SW-06)
+check "php-fpm pool [www] 로드"    'docker compose exec -T $APP php-fpm -tt 2>&1 | grep -q "\[www\]"'
+check "php.ini 로드 경로"          'docker compose exec -T $APP php --ini | grep -q "Loaded Configuration File:.*/usr/local/etc/php/php.ini"'
+check "expose_php Off"            'docker compose exec -T $APP php -i | grep -q "^expose_php => Off"'
 
-echo
-echo "=== Phase 3b: activate php-fpm pool (placeholder 치환) ==="
-POOL_DIR="$DEVSPOON/config/app-server/php-8.4/pool.d"
-sed -e 's|\[domain\]|[localhost]|g' -e 's|:portnumber|:9000|g' \
-  "$POOL_DIR/sample_php.conf.example" > "$POOL_DIR/localhost.conf"
-echo "  created: localhost.conf"
-grep -E "^\[|^listen|^user|^group" "$POOL_DIR/localhost.conf" | head -5
-
-echo
-echo "=== Phase 4: docker compose up -d ==="
-cd "$STACK_DIR"
-docker compose up -d --build 2>&1 | tail -15
-
-echo
-echo "=== Phase 5: wait for healthcheck (45s) ==="
-for i in 1 2 3 4 5; do
-  sleep 9
-  state=$(docker compose ps --format json 2>/dev/null | grep -o '"State":"[^"]*"' | sort -u | tr '\n' ' ')
-  echo "  [$((i*9))s] states: $state"
-done
-
-echo
-echo "=== Phase 6: container state ==="
-docker compose ps
-
-echo
-echo "=== Phase 7: logs preview ==="
-echo "--- php-app logs ---"
-docker compose logs php-app 2>&1 | tail -15
-echo
-echo "--- webserver logs ---"
-docker compose logs webserver 2>&1 | tail -10
-
-echo
-echo "=== Phase 8: curl test ==="
-RESP=$(curl -s -o /tmp/php84_resp.html -w "HTTP=%{http_code} TIME=%{time_total}s SIZE=%{size_download}" -H "Host: localhost" --max-time 15 http://localhost/ 2>&1)
-echo "$RESP"
-echo
-echo "Response head (10 lines):"
-head -10 /tmp/php84_resp.html 2>/dev/null
-echo
-echo "PHP version 확인 (response 안에서):"
-grep -o "PHP Version[^<]*" /tmp/php84_resp.html 2>/dev/null | head -3
-echo
-echo "Gzip check:"
-curl -s -I -H "Accept-Encoding: gzip" --max-time 5 -H "Host: localhost" http://localhost/ 2>&1 | head -10
-
-echo
-echo "=== Phase 9: dhparam ==="
-HSHA=$(sha256sum "$STACK_DIR/ssl/dhparam/dhparam.pem" 2>/dev/null | awk '{print $1}' || echo MISSING)
-echo "dhparam sha256: $HSHA"
-
-echo
-echo "=== Phase 10: php process ==="
-docker compose exec -T php-app bash -c "ps -ef 2>&1 | grep -E 'php-fpm|UID' | head -5"
-
-echo
-echo "=== DONE ==="
+echo "FAILS=$FAILS"
+[ "$FAILS" -eq 0 ] || exit 1

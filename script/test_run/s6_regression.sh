@@ -67,6 +67,25 @@ else
 fi
 echo
 
+echo "===== 6.10 D-1 B: addr/flood zone 은 nginx.conf 가 \$bot_iplimit 키로 1회 정의 (settings include·bot2/bot4 직접 정의 없음) ====="
+for f in config/web-server/nginx/{gunicorn,uvicorn,uwsgi,php}/nginx_conf/nginx.conf; do
+    assert_eq   "6.10 zone=addr 1회 ($f)" "$(grep -c 'zone=addr' "$f")" 1
+    assert_eq   "6.10 \$bot_iplimit addr/flood ($f)" "$(grep -cE '^[[:space:]]*limit_(conn|req)_zone[[:space:]]+\$bot_iplimit[[:space:]]+zone=(addr|flood):' "$f")" 2
+    assert_zero "6.10 settings include ($f)" "$(grep -cE '^[[:space:]]*include[[:space:]]+/etc/nginx/botblocker-nginx-settings\.conf' "$f")"
+    assert_zero "6.10 bot2/bot4 zone 직접 정의 ($f)" "$(grep -cE '^[[:space:]]*limit_(conn|req)_zone.*zone=bot[24]_' "$f")"
+    assert_eq   "6.10 globalblacklist include ($f)" "$(grep -cE '^[[:space:]]*include[[:space:]]+/etc/nginx/globalblacklist\.conf;' "$f")" 1
+done
+echo
+
+echo "===== 6.11 출고 conf.d·템플릿 server 블록은 bots.d/blockbots.conf + ddos.conf 만 include ====="
+for f in config/web-server/nginx/{gunicorn,uvicorn,uwsgi,php}/conf.d/*_ng_http.conf config/web-server/nginx/*/sample_nginx_http*.conf; do
+    b=$(grep -cE '^[[:space:]]*include[[:space:]]+/etc/nginx/bots\.d/blockbots\.conf;' "$f")
+    d=$(grep -cE '^[[:space:]]*include[[:space:]]+/etc/nginx/bots\.d/ddos\.conf;' "$f")
+    a=$(grep -cE '^[[:space:]]*include[[:space:]]+/etc/nginx/bots\.d/' "$f")
+    if [ "$b" = 1 ] && [ "$d" = 1 ] && [ "$a" = 2 ]; then echo "  PASS 6.11 ($f)"; else echo "  FAIL 6.11 ($f) blockbots=$b ddos=$d bots.d_total=$a"; FAILS=$((FAILS+1)); fi
+done
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]

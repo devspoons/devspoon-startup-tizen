@@ -10,6 +10,10 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# 최소 권한 — 이 워크플로는 저장소를 읽기만 한다
+permissions:
+  contents: read
+
 jobs:
   test:
     name: 통합 테스트
@@ -18,11 +22,8 @@ jobs:
     steps:
       - name: 소스 체크아웃
         uses: actions/checkout@v7
-
-      - name: Python 설정
-        uses: actions/setup-python@v7
         with:
-          python-version: "3.12"
+          persist-credentials: false
 
       - name: uv 설치
         # setup-uv 는 v8+ 부터 공급망 보안 정책상 짧은 메이저 태그(@v9)를 발행하지

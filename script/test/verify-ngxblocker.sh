@@ -86,6 +86,13 @@ nt_out=$(docker exec $CONT nginx -t 2>&1)
 echo "$nt_out" | grep -q "syntax is ok"     && pass "nginx -t syntax OK"     || fail "nginx -t syntax error"
 echo "$nt_out" | grep -q "test is successful" && pass "nginx -t test successful" || fail "nginx -t test failed"
 
+# C-5. D-1 B 구조 — addr/flood zone 은 nginx.conf 가 $bot_iplimit 키로 1회 정의, 업스트림 settings include 없음
+za=$(docker exec $CONT grep -cE '^\s*limit_conn_zone\s+\$bot_iplimit\s+zone=addr:' /etc/nginx/nginx.conf)
+zf=$(docker exec $CONT grep -cE '^\s*limit_req_zone\s+\$bot_iplimit\s+zone=flood:' /etc/nginx/nginx.conf)
+si=$(docker exec $CONT grep -cE '^\s*include\s+/etc/nginx/botblocker-nginx-settings\.conf' /etc/nginx/nginx.conf)
+if [ "$za" = 1 ] && [ "$zf" = 1 ] && [ "$si" = 0 ]; then pass "addr/flood zone = \$bot_iplimit 키, settings include 없음"
+else fail "zone 구조 불일치 (addr=$za flood=$zf settings_include=$si)"; fi
+
 # C-4. nginx 워커 프로세스 정상 실행
 nw=$(docker exec $CONT bash -c "ps -eo comm | grep -c '^nginx$'" 2>/dev/null || echo 0)
 echo "  nginx 프로세스 수: $nw (master + workers)"
@@ -173,6 +180,11 @@ code=$(curl -s -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
 body=$(cat /tmp/resp_ok.txt 2>/dev/null | head -c 50)
 echo "  HTTP code: $code, body: $body"
 [ "$code" = "200" ] && pass "정상 UA → 200" || fail "정상 UA → $code (200 기대)"
+
+# E-3b. 정상 UA 고속 300회(병렬 50) — ddos.conf(addr/flood) 가 정상 트래픽을 제한하지 않아야 한다 (C1)
+bad=$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w '%{http_code}\n' --max-time 5 \
+      -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: blocker.test" http://localhost/ | grep -cv '^200$')
+[ "$bad" = 0 ] && pass "정상 UA 300회(병렬 50) 전부 200" || fail "정상 UA 300회 중 200 아닌 응답 $bad 건"
 
 # E-4. 알려진 봇 UA — 444 (차단) 기대
 for bot in "MJ12bot" "AhrefsBot/7.0" "SemrushBot/7.0" "BLEXBot"; do

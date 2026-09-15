@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# devspoon-web CI 테스트 오케스트레이터
+# CI 테스트 오케스트레이터
 #
 # 목적
 #   GitHub Actions(push) 에서 호출되어 아래를 순차 검증한다.
@@ -8,11 +8,13 @@
 #     2) prereq + 로그 디렉토리 생성
 #     3) nginx conf 생성기   — 각 config 설정의 적용/반영
 #     4) docker-compose 검증 — 모든 스택 compose 문법 + 마운트
+#    4b) 저장소 고유 검사   — script/ci/repo-steps.sh (형제 공통 호출 1줄, 내용은 저장소별)
 #     5) docker 이미지 빌드  — 모든 Dockerfile
 #     6) 회귀(정적 불변식)
-#     7) healthcheck 동작    — 실제 스택 1종 기동 후 healthy 전환 관찰 (동작/반영)
-#     8) 샘플 프로젝트 동작  — django/flask/fastapi/php
-#     9) 스크립트 로그 생성 검증
+#     7) healthcheck 정적    — 5스택 compose healthcheck·depends_on 선언 (정적)
+#     8) 스택 매트릭스 동작  — 5스택 직렬 기동: 200·봇 차단·healthy·RestartCount·DEBUG·업로드 403
+#     9) 샘플 프로젝트 동작  — django/php
+#    10) 스크립트 로그 생성 검증
 #
 #   - 단계 중 하나라도 실패하면 즉시 중단하고, "어떤 단계에서 / 무슨 에러로"
 #     실패했는지 상세 로그(마지막 N 줄)를 Slack + Telegram 으로 전송한다.
@@ -104,26 +106,26 @@ run_step() {
 # ----------------------------------------------------------------------------
 step_preflight()  { bash "$ROOT/script/test/preflight.sh"; }
 step_prereq()     { bash "$ROOT/script/test_run/s0_prereq.sh"; }
-step_conf_gen()   { bash "$ROOT/script/test_run/verify_conf_generators.sh"; }
+step_conf_gen()   { bash "$ROOT/script/test_run/s1b_nginx_conf_generators.sh"; }
 step_compose()    { bash "$ROOT/script/test_run/verify_compose_yml.sh"; }
 step_build()      { bash "$ROOT/script/test_run/s2_build.sh"; }
 step_regression() { bash "$ROOT/script/test_run/s6_regression.sh"; }
-step_healthcheck(){ RUNTIME=1 STACK=nginx_php bash "$ROOT/script/test_run/verify_healthcheck.sh"; }
+step_healthcheck(){ RUNTIME=0 bash "$ROOT/script/test_run/verify_healthcheck.sh"; }   # 정적 불변식만 — 런타임은 step_stacks
+# 스택 5종 직렬(80/443 공유). 하나가 실패해도 나머지를 끝까지 돌려 실패 목록을 남긴다.
+step_stacks() { local rc=0 s; for s in gunicorn uvicorn uwsgi daphne php; do
+    echo "### stack: $s ###"; bash "$ROOT/script/test_run/verify_integration_${s}.sh" || { echo "stack FAIL: $s"; rc=1; }; done; return $rc; }
 
 step_samples() {
     local rc=0
     command -v uv >/dev/null 2>&1 || { echo "uv 미설치 — 설치 시도"; pip install -q uv || rc=1; }
 
-    echo "### [django_sample] secrets.json 준비(테스트 전용) ###"
-    # settings.py:26 이 secrets.json 을 강제로 읽는다. 50f7505 이후 추적 해제(.gitignore)
-    # 되어 CI 체크아웃에는 존재하지 않으므로 .example 로부터 생성한다.
-    # (verify_integration_gunicorn.sh Phase 3b 와 동일 정책 — 단일 출처 = .example)
+    echo "### [django_sample] secrets.json 준비 ###"
+    # settings.py:26 이 secrets.json 을 강제로 읽는다(추적 해제 파일) — 없을 때만 무작위 키로 생성.
     ensure_django_secrets "$ROOT" || rc=1
 
-    echo "### [django_sample] manage.py check ###"
+    echo "### [django_sample] manage.py check (py3.14 + uv — 런타임과 동일) ###"
     ( cd "$ROOT/www/django_sample" \
-        && pip install -q -r requirements.txt \
-        && python manage.py check ) || { echo "django_sample 실패"; rc=1; }
+        && uv run --python 3.14 --frozen --extra celery python manage.py check ) || { echo "django_sample 실패"; rc=1; }
 
     # (startup-web 은 flask_sample / fastapi_sample 이 없다 — django_sample + php_sample 만 검증)
 
@@ -162,9 +164,11 @@ run_step "preflight 선결점검"        step_preflight
 run_step "prereq+로그디렉토리"       step_prereq
 run_step "nginx conf 생성기 반영"    step_conf_gen
 run_step "docker-compose 검증"       step_compose
+run_step "저장소 고유 검사"          bash "$ROOT/script/ci/repo-steps.sh"
 run_step "docker 이미지 빌드"        step_build
 run_step "정적 회귀 불변식"          step_regression
 run_step "healthcheck 동작검증"      step_healthcheck
+run_step "스택 매트릭스 동작검증"    step_stacks
 run_step "샘플 프로젝트 동작"        step_samples
 run_step "스크립트 로그 생성검증"    step_logcheck
 
@@ -185,7 +189,10 @@ PASSED_JOINED=$(IFS=', '; echo "${PASSED_STEPS[*]:-없음}")
 
 if [ -n "$FAILED_STEP" ]; then
     LOG_TAIL=""
-    [ -f "$FAILED_LOG" ] && LOG_TAIL=$(tail -n 30 "$FAILED_LOG" | cut -c1-2000)
+    # 전송 전 비밀값 마스킹: KEY=값 / KEY: 값 형태와 URL userinfo(redis://:pw@host)
+    [ -f "$FAILED_LOG" ] && LOG_TAIL=$(tail -n 30 "$FAILED_LOG" | cut -c1-2000 \
+        | sed -E -e 's/((PASS|PWD|SECRET|TOKEN)[A-Za-z_]*[[:space:]]*[=:][[:space:]]*)[^[:space:]]+/\1***/Ig' \
+                 -e 's#(://[^:/@[:space:]]*:)[^@[:space:]]+@#\1***@#g')
     MSG="❌ [${REPO_LABEL}] CI 테스트 실패
 저장소: ${REPO}
 브랜치: ${BRANCH} @ ${SHORT}

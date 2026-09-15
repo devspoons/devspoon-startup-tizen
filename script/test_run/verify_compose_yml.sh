@@ -48,6 +48,21 @@ for stack_dir in "$DEVSPOON"/compose/web_service/*/; do
     echo "  [PASS] no ssl/certs anti-pattern"
   fi
 
+  # 프로파일 포함 렌더 (celery/redis 프로파일 서비스까지)
+  if ! docker compose --profile celery --profile redis config -q; then
+    echo "  [FAIL] profile(celery,redis) 포함 config 실패"; FAIL=$((FAIL+1)); continue
+  fi
+  FULL=$(docker compose --profile celery --profile redis config --format json)
+  # 설정 파일 bind 소스가 실제로 있어야 한다 (없으면 compose 가 빈 디렉터리를 만들어 조용히 깨짐)
+  missing=$(echo "$FULL" | jq -r '.services[].volumes[]? | select(.type=="bind") | .source' | grep -E '/(config|script)/' | sort -u | while read -r p; do [ -e "$p" ] || echo "$p"; done)
+  if [ -n "$missing" ]; then echo "  [FAIL] bind 소스 없음: $missing"; FAIL=$((FAIL+1)); continue; fi
+  # flower 는 127.0.0.1 에만 publish (SEC-09)
+  if echo "$FULL" | jq -e '.services.flower' >/dev/null; then
+    hip=$(echo "$FULL" | jq -r '[.services.flower.ports[]?.host_ip] | unique | join(",")')
+    if [ "$hip" != "127.0.0.1" ]; then echo "  [FAIL] flower host_ip=$hip (127.0.0.1 기대)"; FAIL=$((FAIL+1)); continue; fi
+  fi
+  echo "  [PASS] profile config · bind 소스 · flower 127.0.0.1"
+
   PASS=$((PASS+1))
 done
 

@@ -42,7 +42,6 @@ declare -A APP_MAP=(
     [nginx_uwsgi]="uwsgi-app:8000"
     [nginx_daphne]="daphne-app:8000"
     [nginx_php]="php-app:9000"
-    [nginx_php]="php-app:9000"
 )
 
 for stack in "${!APP_MAP[@]}"; do
@@ -115,31 +114,16 @@ if [ ! -f .env ]; then
     echo "  (auto-created .env)"
 fi
 
-# php 스택은 php-fpm pool 의 placeholder([domain]/:portnumber)를 치환한 .conf 가 있어야
-# php-fpm 이 기동한다. 없으면 pool 파싱 실패로 컨테이너가 exit 78 로 crash-loop → 영원히
-# unhealthy 가 되어 본 런타임 체크가 오탐(FAIL)한다. 통합 테스트(verify_integration_php*.sh)와
-# 동일하게 localhost.conf 를 생성해 둔다.
-case "$STACK" in
-    nginx_php) PHPV=php-7.3 ;;
-    nginx_php) PHPV=php-8.4 ;;
-    *)             PHPV="" ;;
-esac
-if [ -n "$PHPV" ]; then
-    POOL_DIR="$ROOT/config/app-server/$PHPV/pool.d"
-    if [ -f "$POOL_DIR/sample_php.conf.example" ]; then
-        sed -e 's|\[domain\]|[localhost]|g' -e 's|:portnumber|:9000|g' \
-            "$POOL_DIR/sample_php.conf.example" > "$POOL_DIR/localhost.conf"
-        echo "  (auto-created php-fpm pool localhost.conf for $PHPV)"
-    fi
-fi
-
 echo
 echo "--- compose down -v (cleanup) ---"
 docker compose --profile redis --profile celery down -v 2>&1 | tail -5
 
 echo
 echo "--- compose up -d --build ---"
-docker compose up -d --build 2>&1 | tail -20
+if ! docker compose up -d --build; then
+    echo "  compose up 실패 — 1회 재시도"; sleep 5
+    docker compose up -d --build || { fail "B.0 compose up" "exit≠0 (재시도 포함)"; exit 1; }
+fi
 
 # Wait up to 120s for app healthcheck to flip to healthy
 echo
@@ -167,15 +151,12 @@ echo
 echo "--- compose ps (final) ---"
 docker compose ps
 
-# webserver healthy 도 검증 (depends_on service_healthy 가 작동했으면 webserver 도 Up 이어야)
-ws_status=$(docker compose ps --format '{{.Service}} {{.Status}}' 2>/dev/null | grep "^webserver " | head -1)
+# webserver 는 healthcheck 가 없으므로 running + RestartCount 0 으로 판정 ("Up" 문자열은 재시작 루프도 통과시킨다)
+ws_cid=$(docker compose ps -q webserver)
+ws_state=$(docker inspect -f '{{.State.Status}} {{.RestartCount}}' "$ws_cid" 2>/dev/null)
 echo
-echo "--- webserver status: $ws_status ---"
-if echo "$ws_status" | grep -qE "Up "; then
-    pass "B.2 webserver Up (after app healthy gate)"
-else
-    fail "B.2 webserver Up" "$ws_status"
-fi
+echo "--- webserver state: $ws_state ---"
+if [ "$ws_state" = "running 0" ]; then pass "B.2 webserver running, RestartCount=0"; else fail "B.2 webserver" "$ws_state"; fi
 
 # redis healthy 검증
 redis_status=$(docker compose ps --format '{{.Service}} {{.Status}}' 2>/dev/null | grep "^redis " | head -1)
