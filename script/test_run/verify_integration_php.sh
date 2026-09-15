@@ -3,6 +3,8 @@
 set -uo pipefail
 
 DEVSPOON="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=../lib/stability.sh
+. "$DEVSPOON/script/lib/stability.sh"
 STACK_DIR="$DEVSPOON/compose/web_service/nginx_php"
 APP=php-app
 
@@ -38,8 +40,7 @@ check "/uploads/x.php/y.png 403 (업로드 차단 우선)" '[ "$(code http://127
 check "봇 UA 차단 000|444"          '[[ "$(code -A MJ12bot http://127.0.0.1/)" =~ ^(000|444)$ ]]'
 check "정상 UA 300회 고속(병렬 50) 503/429/444 없음" '[ "$(seq 300 | xargs -P 50 -I{} curl -s -o /dev/null -w "%{http_code}\n" --max-time 10 -A "Mozilla/5.0 (X11; Linux x86_64)" -H "Host: localhost" http://127.0.0.1/robots.txt | grep -cE "^(503|429|000)$")" = 0 ]'
 check "$APP health=healthy"        '[ "$(docker inspect -f "{{.State.Health.Status}}" "$(cid $APP)")" = healthy ]'
-check "$APP RestartCount=0"        '[ "$(docker inspect -f "{{.RestartCount}}" "$(cid $APP)")" = 0 ]'
-check "webserver RestartCount=0"   '[ "$(docker inspect -f "{{.RestartCount}}" "$(cid webserver)")" = 0 ]'
+check "$APP·webserver 안정 (${STABLE_WINDOW:-15}s 창: running·RestartCount 0 불변·unhealthy 아님)" 'containers_stable "$(cid $APP)" "$(cid webserver)"'
 check "/index.php 200"          '[ "$(code http://127.0.0.1/index.php)" = 200 ]'
 check "/uploads/x.php 403"      '[ "$(code http://127.0.0.1/uploads/x.php)" = 403 ]'
 check "/uploads/x.php/foo 403"  '[ "$(code http://127.0.0.1/uploads/x.php/foo)" = 403 ]'

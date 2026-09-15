@@ -21,6 +21,8 @@
 set -u
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+# shellcheck source=../lib/stability.sh
+. "$ROOT/script/lib/stability.sh"
 STACK="${STACK:-nginx_php}"
 RUNTIME="${RUNTIME:-1}"
 
@@ -114,7 +116,8 @@ sed -e 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=test-redis-pw|; s|^FLOWER_ID=.*|FLOW
     -e '/^DJANGO_SECRET_KEY=/d' .env-example > "$ENVF"
 printf 'DJANGO_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENVF"
 dc() { docker compose -p "$PROJ" --env-file "$ENVF" "$@"; }
-trap 'rm -f "$ENVF"' EXIT
+# 어느 지점에서 끝나도(B.0 exit 포함) 테스트 프로젝트를 정리한다 (RV1-S-06)
+trap 'dc --profile redis --profile celery down -v --remove-orphans >/dev/null 2>&1; rm -f "$ENVF"' EXIT
 
 echo
 echo "--- compose down -v (cleanup) ---"
@@ -153,12 +156,14 @@ echo
 echo "--- compose ps (final) ---"
 dc ps
 
-# webserver 는 healthcheck 가 없으므로 running + RestartCount 0 으로 판정 ("Up" 문자열은 재시작 루프도 통과시킨다)
-ws_cid=$(dc ps -q webserver)
-ws_state=$(docker inspect -f '{{.State.Status}} {{.RestartCount}}' "$ws_cid" 2>/dev/null)
+# 순간 관측("Up"·running 0)은 기동 직후 재시작 루프도 통과시킨다 — 안정화 창 전후 두 번 관측해 판정 (TC-F9-1)
 echo
-echo "--- webserver state: $ws_state ---"
-if [ "$ws_state" = "running 0" ]; then pass "B.2 webserver running, RestartCount=0"; else fail "B.2 webserver" "$ws_state"; fi
+echo "--- app·webserver 안정화 창 ${STABLE_WINDOW:-15}s ---"
+if containers_stable "$(dc ps -q "$app_service")" "$(dc ps -q webserver)"; then
+    pass "B.2 $app_service·webserver 안정 (running·RestartCount 0 불변·unhealthy 아님)"
+else
+    fail "B.2 $app_service·webserver 안정" "재시작 또는 비running (위 unstable 로그)"
+fi
 
 # redis healthy 검증
 redis_status=$(dc ps --format '{{.Service}} {{.Status}}' 2>/dev/null | grep "^redis " | head -1)

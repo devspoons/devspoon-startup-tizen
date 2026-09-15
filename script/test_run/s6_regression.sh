@@ -160,6 +160,58 @@ for f in script/test_run/verify_integration_*.sh script/test_run/verify_healthch
 done
 echo
 
+echo "===== 6.18 컨테이너 안정성 판정 — 순간 running 이 아니라 안정화 창 전후 RestartCount 불변 (TC-F9-1) ====="
+if [ -f script/lib/stability.sh ]; then
+    # shellcheck source=../lib/stability.sh
+    . script/lib/stability.sh
+    judge_case() { local got; if stable_judge "$2" "$3"; then got=pass; else got=fail; fi
+        if [ "$got" = "$1" ]; then echo "  PASS 6.18 [$2]→[$3] = $1"; else echo "  FAIL 6.18 [$2]→[$3] = $got (expected $1)"; FAILS=$((FAILS+1)); fi; }
+    judge_case pass "running 0 healthy" "running 0 healthy"
+    judge_case pass "running 0 none"    "running 0 none"
+    judge_case fail "running 0 none"    "running 4 none"
+    judge_case fail "running 0 none"    "restarting 5 none"
+    judge_case fail "running 0 starting" "running 0 unhealthy"
+    judge_case fail "running 1 none"    "running 1 none"
+    judge_case fail ""                  ""
+else
+    echo "  FAIL 6.18 script/lib/stability.sh 없음"; FAILS=$((FAILS+1))
+fi
+for f in script/test_run/verify_integration_*.sh; do
+    assert_eq   "6.18 containers_stable 사용 ($f)" "$(grep -c 'containers_stable ' "$f")" 1
+    assert_zero "6.18 순간 RestartCount 판정 ($f)" "$(grep -c '{{.RestartCount}}' "$f")"
+done
+assert_eq   "6.18 verify_healthcheck B.2 containers_stable" "$(grep -c 'containers_stable ' script/test_run/verify_healthcheck.sh)" 1
+assert_zero "6.18 verify_healthcheck 순간 running 0 판정" "$(grep -c '"running 0"' script/test_run/verify_healthcheck.sh)"
+assert_eq   "6.18 verify_healthcheck 런타임 teardown trap (RV1-S-06)" "$(grep -cE "^trap 'dc .*down -v" script/test_run/verify_healthcheck.sh)" 1
+echo
+
+echo "===== 6.19 앱 이미지 사전설치 버전 = django_sample uv.lock (기동마다 uv sync 재설치 방지) ====="
+lockv() { awk -v n="$1" '$0 == "name = \"" n "\"" { getline; gsub(/"/, "", $3); print $3; exit }' www/django_sample/uv.lock; }
+for spec in "docker/gunicorn/Dockerfile gunicorn" "docker/gunicorn/Dockerfile uvicorn" "docker/uwsgi/Dockerfile gunicorn" "docker/uwsgi/Dockerfile uvicorn" "docker/uwsgi/Dockerfile uwsgi" "docker/uwsgi/Dockerfile django"; do
+    df=${spec% *}; pkg=${spec#* }
+    want=$(lockv "$pkg"); got=$(grep -oE "(^|[[:space:]\"])$pkg(\[standard\])?==[0-9][0-9.]*" "$df" | head -1 | sed 's/.*==//')
+    if [ -n "$want" ] && [ "$want" = "$got" ]; then echo "  PASS 6.19 $df $pkg==$got"; else echo "  FAIL 6.19 $df $pkg image=[$got] lock=[$want]"; FAILS=$((FAILS+1)); fi
+done
+assert_zero "6.19 django_sample 미사용 pytz" "$(grep -c 'pytz' www/django_sample/pyproject.toml)"
+echo
+
+echo "===== 6.20 sample_uwsgi.ini = uwsgi.ini (placeholder p_num·th_num·port_num 3줄 외 동일), 생성기에 고정 프로젝트 경로 없음 (RV1-S-07) ====="
+if [ "$(sed -e 's/p_num/4/g' -e 's/th_num/2/g' -e 's/port_num/8000/g' config/app-server/uwsgi/sample_uwsgi.ini)" = "$(cat config/app-server/uwsgi/uwsgi.ini)" ]; then
+    echo "  PASS 6.20 sample_uwsgi.ini 동기화"
+else
+    echo "  FAIL 6.20 sample_uwsgi.ini ≠ uwsgi.ini"; FAILS=$((FAILS+1))
+fi
+assert_zero "6.20 uwsgi_conf.sh project_path/project_name 치환" "$(grep -cE 'project_(path|name)' config/app-server/uwsgi/uwsgi_conf.sh)"
+echo
+
+echo "===== 6.21 DJANGO_ALLOWED_HOSTS 기본값에 nginx server_name 의 www.localhost 포함 (RV1-S-05) ====="
+assert_eq "6.21 settings.py" "$(grep -c '"localhost,www.localhost,127.0.0.1"' www/django_sample/config/settings.py)" 1
+for s in gunicorn uvicorn uwsgi daphne; do
+    assert_eq "6.21 compose ($s)"      "$(grep -c 'DJANGO_ALLOWED_HOSTS:-localhost,www.localhost,127.0.0.1}' compose/web_service/nginx_$s/docker-compose.yml)" 3
+    assert_eq "6.21 .env-example ($s)" "$(grep -c '^DJANGO_ALLOWED_HOSTS=localhost,www.localhost,127.0.0.1$' compose/web_service/nginx_$s/.env-example)" 1
+done
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]
