@@ -30,9 +30,9 @@ assert_zero 6.3 "$n"
 echo
 
 echo "===== 6.4 LF line endings (no CRLF) ====="
-n=$(find . -type f -not -path './.git/*' -not -path './.claude/*' -not -path './log/*' -not -path './www/*/.venv/*' 2>/dev/null | xargs file 2>/dev/null | grep -i CRLF | wc -l)
+n=$(git ls-files -z 2>/dev/null | xargs -0 file 2>/dev/null | grep -c CRLF)   # 추적 파일만 — 스택 기동이 만든 gitignore 런타임 파일(jenkins 등) 제외 (CL-WP5-01-R4)
 echo "  (first 10 if any):"
-find . -type f -not -path './.git/*' -not -path './.claude/*' -not -path './log/*' -not -path './www/*/.venv/*' 2>/dev/null | xargs file 2>/dev/null | grep -i CRLF | head -10
+git ls-files -z 2>/dev/null | xargs -0 file 2>/dev/null | grep CRLF | head -10
 assert_zero 6.4 "$n"
 echo
 
