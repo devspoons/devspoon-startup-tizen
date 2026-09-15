@@ -434,10 +434,12 @@ echo
 
 echo "===== 6.33 봇 UA 차단 단언은 curl exit 52(응답 없이 닫힘)·444 만 PASS — 연결 거부 등 코드 000 은 FAIL (TST-R10-01) ====="
 for f in script/test_run/verify_integration_*.sh; do
-    assert_zero "6.33 코드 000 허용 봇 단언 ($f)" "$(grep -c '"000|444"' "$f")"
+    # 옛 판정 문자열 `=~ ^(000|444)$`(ad95ff0)·`http_is "000|444"`(5ce6de1^) 둘 다 `000|444` 를 포함 (REV-W13-01)
+    assert_zero "6.33 코드 000 허용 봇 단언 ($f)" "$(grep -cF '000|444' "$f")"
     assert_eq   "6.33 http_blocked 봇 단언 ($f)" "$(grep -c 'http_blocked -A MJ12bot' "$f")" 1
 done
 assert_zero "6.33 verify-ngxblocker 코드 000 허용" "$(grep -c '"000"' script/test/verify-ngxblocker.sh)"
+assert_eq   "6.33 임시 서버·파일 정리 trap (REV-W13-10)" "$(grep -cE "^[[:space:]]+trap '[^']*kill [^']*rm -f [^']*' INT TERM" script/test_run/s6_regression.sh)" 1
 # 로컬 임시 서버: close = 요청 읽고 응답 없이 닫음(nginx return 444 모사), 200 = 정상 응답
 srv_py='import socket,sys
 s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1); s.bind(("127.0.0.1",0)); s.listen(8)
@@ -451,14 +453,16 @@ blk_case() {  # blk_case <라벨> <기대 rc 0|1> <출력 포함 문자열> <url
     if [ "$rc" = "$2" ] && [[ "$out" == *"$3"* ]]; then echo "  PASS 6.33 $1"; else echo "  FAIL 6.33 $1 rc=$rc out=[$out]"; FAILS=$((FAILS+1)); fi
 }
 if . script/lib/stability.sh && declare -F http_blocked >/dev/null; then
-    t1=$(mktemp); t2=$(mktemp)
+    t1=$(mktemp); t2=$(mktemp); p1=; p2=
+    # 중단(Ctrl-C·CI 취소) 시에도 서버·임시 파일 정리 — 비대화형 셸의 백그라운드 작업은 SIGINT 를 무시하므로 남는다 (REV-W13-10)
+    trap 'kill $p1 $p2 2>/dev/null; rm -f "$t1" "$t2"; exit 130' INT TERM
     python3 -c "$srv_py" close >"$t1" & p1=$!
     python3 -c "$srv_py" 200 >"$t2" & p2=$!
     for _ in $(seq 50); do [ -s "$t1" ] && [ -s "$t2" ] && break; sleep 0.1; done
     blk_case "연결 거부(exit 7) → FAIL·실제 exit 출력" 1 "exit 7" http://127.0.0.1:9/
     blk_case "응답 없이 닫힘(exit 52) → PASS" 0 "" "http://127.0.0.1:$(cat "$t1")/"
     blk_case "정상 200 → FAIL·실제 코드 출력" 1 "HTTP 200" "http://127.0.0.1:$(cat "$t2")/"
-    kill "$p1" "$p2" 2>/dev/null; wait "$p1" "$p2" 2>/dev/null; rm -f "$t1" "$t2"
+    kill "$p1" "$p2" 2>/dev/null; wait "$p1" "$p2" 2>/dev/null; rm -f "$t1" "$t2"; trap - INT TERM
 else
     echo "  FAIL 6.33 stability.sh 에 http_blocked 없음"; FAILS=$((FAILS+1))
 fi
@@ -468,10 +472,12 @@ echo "===== 6.34 s3 봇 UA 차단 판정도 http_blocked — 코드 000(연결 �
 f=script/test_run/s3_stack_smoke.sh
 assert_zero "6.34 s3 봇 UA 코드 000 허용 판정 (3B.8·3B.8a)" "$(grep -cE '= "000" \] (&& pass "3B\.8|\|\| all_blocked)' "$f")"
 assert_eq   "6.34 s3 stability.sh source" "$(grep -cxF '. "$ROOT/script/lib/stability.sh"' "$f")" 1
-assert_eq   "6.34 s3 http_blocked 봇 단언 (3B.8·3B.8a)" "$(grep -cE '^[[:space:]]*http_blocked -A "(MJ12bot|\$ua)"' "$f")" 2
+assert_eq   "6.34 s3 http_blocked 봇 단언 (3B.8·3B.8a)" "$(grep -cE '^[[:space:]]*out=\$\(http_blocked -A "(MJ12bot|\$ua)"' "$f")" 2
+# REV-W13-03: 실패 사유 = 헬퍼 실제 출력(curl exit·코드) — 고정 문구면 SUMMARY 로 거부/타임아웃/미차단 구분 불가
+assert_eq   "6.34 s3 차단 판정 실패 사유에 헬퍼 출력 (3B.6·3B.8·3B.8a)" "$(grep -cE 'fail "3B\.(6|8)" "\$out"$|fail "3B\.8a" "\$why"$' "$f")" 3
 # TST-R12-01: 3B.6 Host 조작도 default_server `return 444` 차단 — 000 을 PASS 로 인정하는 판정 전면 금지
 assert_zero "6.34 s3 코드 000 을 PASS 로 인정하는 판정 (3B.6 포함)" "$(grep -cE '"000" \] && pass' "$f")"
-assert_eq   "6.34 s3 http_blocked Host 조작 단언 (3B.6)" "$(grep -cE '^http_blocked -H "Host: evil\.com" .*&& pass "3B\.6"' "$f")" 1
+assert_eq   "6.34 s3 http_blocked Host 조작 단언 (3B.6)" "$(grep -cE '^out=\$\(http_blocked -H "Host: evil\.com" .*&& pass "3B\.6"' "$f")" 1
 echo
 
 echo "===== 6.35 s3 판정은 rc·전체 출력, 기대 버전·필수 키는 저장소 원천(uv.lock·스택 .env-example)에서 도출 (TST-R13-01~03) ====="
@@ -481,6 +487,8 @@ assert_zero "6.35 s3 하드코딩 버전 문자열 판정" "$(grep -cE 'grep -qF
 assert_zero "6.35 s3 스택 공통 필수 키 목록 (need_vars)" "$(grep -c 'need_vars=(' "$f")"
 assert_eq   "6.35 s3 3B.15 rc·전체 출력 판정" "$(grep -c 'logrotate_dry_ok "\$rc" "\$out" && pass "3B\.15"' "$f")" 1
 assert_eq   "6.35 s3 3C Django 기대 버전 = uv.lock" "$(grep -c 'lock_version django ' "$f")" 1
+assert_eq   "6.35 s3 3C Django 스택 분기에 daphne 포함" "$(grep -cE '^[[:space:]]+gunicorn\|uvicorn\|daphne\)' "$f")" 1
+assert_zero "6.35 s3 프로젝트명 하드코딩 (3C.uwsgi 로그 = .env PROJECT_DIR)" "$(grep -c 'django_sample' "$f")"
 assert_eq   "6.35 s3 3B.1 필수 키 = 스택 .env-example" "$(grep -c 'env_missing .env-example .env' "$f")" 1
 u35() { if [ "$2" = "$3" ]; then echo "  PASS 6.35 $1"; else echo "  FAIL 6.35 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
 unset -f logrotate_dry_ok lock_version env_missing

@@ -11,9 +11,9 @@ FAILS=0
 . "$ROOT/script/lib/stability.sh"
 
 STACK_DIR="$1"        # nginx_gunicorn / nginx_uvicorn / nginx_uwsgi / nginx_php / nginx_daphne
-STACK="$2"            # gunicorn / uvicorn / uwsgi / php
-APPCT="$3"            # gunicorn-app, uvicorn-app, uwsgi-app, php-app
-LOGSUB="$4"           # gunicorn, uvicorn, uwsgi, php-fpm
+STACK="$2"            # gunicorn / uvicorn / uwsgi / daphne / php
+APPCT="$3"            # gunicorn-app, uvicorn-app, uwsgi-app, daphne-app, php-app
+LOGSUB="$4"           # gunicorn, uvicorn, uwsgi, daphne, php-fpm
 
 cd "$ROOT/compose/web_service/$STACK_DIR" || { echo "FAIL cd"; exit 1; }
 SUMMARY="$LOG/stack_${STACK}_summary.log"
@@ -73,18 +73,18 @@ echo "code=$code"
 
 echo "===== 3B.6 host injection (Host: evil.com) =====" | tee -a "$SUMMARY"
 # 차단 = default.conf default_server `return 444`(응답 없이 닫힘, curl exit 52). 연결 거부(exit 7)·타임아웃은 FAIL (TST-R12-01)
-http_blocked -H "Host: evil.com" http://127.0.0.1/ && pass "3B.6" || fail "3B.6" "Host: evil.com not blocked"
+out=$(http_blocked -H "Host: evil.com" http://127.0.0.1/) && pass "3B.6" || fail "3B.6" "$out"
 
 echo "===== 3B.8 bad-bot MJ12bot =====" | tee -a "$SUMMARY"
 # 차단 = curl exit 52(nginx return 444, 응답 없이 닫힘) 또는 444 만. 연결 거부(exit 7)·타임아웃은 FAIL (TST-R11-01)
-http_blocked -A "MJ12bot" -H "Host: localhost" http://127.0.0.1/ && pass "3B.8" || fail "3B.8" "MJ12bot not blocked"
+out=$(http_blocked -A "MJ12bot" -H "Host: localhost" http://127.0.0.1/) && pass "3B.8" || fail "3B.8" "$out"
 
 echo "===== 3B.8a multi UA =====" | tee -a "$SUMMARY"
-all_blocked=1
+why=""   # 실패 사유 = UA 별 헬퍼 출력(curl exit·코드) — SUMMARY 에 남긴다 (REV-W13-03)
 for ua in AhrefsBot SemrushBot DotBot; do
-    http_blocked -A "$ua" -H "Host: localhost" http://127.0.0.1/ || all_blocked=0
+    out=$(http_blocked -A "$ua" -H "Host: localhost" http://127.0.0.1/) || why="$why $ua:$out"
 done
-[ $all_blocked -eq 1 ] && pass "3B.8a" || fail "3B.8a" "some UA not blocked"
+[ -z "$why" ] && pass "3B.8a" || fail "3B.8a" "$why"
 
 echo "===== 3B.8b ngxblocker installed files =====" | tee -a "$SUMMARY"
 # Dockerfile 의 'install-ngxblocker -x -c /etc/nginx' 결과로 botblocker-nginx-settings.conf 와
@@ -167,7 +167,7 @@ logrotate_dry_ok "$rc" "$out" && pass "3B.15" || fail "3B.15" "rc=$rc, $(grep -m
 # Stack specific check (3-C)
 echo "===== 3-C stack-specific =====" | tee -a "$SUMMARY"
 case "$STACK" in
-    gunicorn|uvicorn)
+    gunicorn|uvicorn|daphne)
         # 기대 버전 = 이 스택 PROJECT_DIR 의 uv.lock (이미지·uv sync 가 lock 대로 설치) (TST-R13-02)
         want=$(lock_version django "$ROOT/www/$(sed -n 's/^PROJECT_DIR=//p' .env)/uv.lock")
         out=$(docker compose exec -T "$APPCT" python -c "import django; print(django.get_version())" 2>&1)
@@ -175,7 +175,7 @@ case "$STACK" in
         [ -n "$want" ] && [ "$out" = "$want" ] && pass "3C.$STACK" || fail "3C.$STACK" "$out (uv.lock: ${want:-없음})"
         ;;
     uwsgi)
-        out1=$(docker compose exec -T "$APPCT" ls /log/uwsgi/django_sample-uwsgi.log 2>&1)
+        out1=$(docker compose exec -T "$APPCT" ls "/log/uwsgi/$(sed -n 's/^PROJECT_DIR=//p' .env)-uwsgi.log" 2>&1)   # uwsgi.ini logto = %(project)-uwsgi.log
         echo "$out1"
         out2=$(docker compose exec -T "$APPCT" grep -E "^(log-maxsize|log-reopen)" /application/uwsgi.ini 2>&1)
         echo "$out2"
