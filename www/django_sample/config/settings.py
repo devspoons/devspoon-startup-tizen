@@ -31,9 +31,13 @@ for key, value in secrets.items():
     setattr(sys.modules[__name__], key, value)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# 운영 안전 기본값 — 로컬 개발에서만 .env 에 DJANGO_DEBUG=1
+DEBUG = os.environ.get("DJANGO_DEBUG", "0") == "1"
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+
+# nginx proxy_params 가 X-Forwarded-Proto 를 전달한다 (HTTPS 종단 뒤 request.is_secure())
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Application definition
 
@@ -44,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_celery_beat',
     'main',
 ]
 
@@ -117,7 +122,7 @@ TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
-# USE_L10N 은 Django 5.0 에서 제거됨(항상 True). Django 6.0 호환 위해 삭제.
+# USE_L10N 은 Django 5.0 에서 제거됨(항상 True 로 동작). Django 6.0 호환을 위해 삭제.
 
 USE_TZ = True
 
@@ -138,3 +143,17 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+
+# ============================================================================
+# Celery — broker 는 env CELERY_BROKER_URL (compose 가 .env 로 주입) 로 설정.
+#   worker:  celery -A config worker
+#   beat:    celery -A config beat --scheduler django_celery_beat.schedulers:DatabaseScheduler
+# ============================================================================
+CELERY_BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'redis://redis:6379/3')
+CELERY_RESULT_BACKEND = os.environ.get('CELERY_RESULT_BACKEND', CELERY_BROKER_URL)
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'

@@ -1,4 +1,11 @@
+# Django 6.0 — Python 3.12/3.13/3.14 지원. asgiref>=3.9.1 / sqlparse>=0.5.0 요구.
 asgiref>=3.9.1
 Django>=6.0,<6.1
 pytz==2021.1
 sqlparse>=0.5.0
+# legacy-cgi: Django 6.0 은 stdlib 'cgi' 에 의존하지 않으므로 필수 아님(무해하여 유지).
+legacy-cgi>=2.6
+# Celery 프로파일 (worker / beat / flower) 용 — django-celery-beat>=2.9 가 Django 6.0 지원.
+celery>=5.3
+redis>=5.0
+django-celery-beat>=2.9

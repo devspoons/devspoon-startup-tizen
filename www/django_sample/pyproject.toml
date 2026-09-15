@@ -21,6 +21,9 @@ dependencies = [
 # 이 섹션이 없으면 `uv sync --extra gunicorn` 단계에서
 #   "Extra `gunicorn` is not defined in the project's `optional-dependencies` table"
 # 로 실패하여 컨테이너가 즉시 종료된다 (gunicorn-app/celery 모두 영향).
+# 베이스 이미지(Dockerfile gunicorn) 가 이미 gunicorn/uvicorn 을 사전 설치하므로
+# 본 extras 는 uv sync 의 dependency resolution 만족용이며 실제 설치도 동일 버전을
+# 재확인하는 역할.
 # ============================================================================
 [project.optional-dependencies]
 gunicorn = ["gunicorn>=21,<24"]
@@ -31,7 +34,8 @@ daphne = ["daphne>=4", "channels>=4"]
 uwsgi = ["uwsgi>=2.0,<3"]
 celery = [
     "celery[redis]>=5.3,<6",
-    # django_celery_beat v2.9.0 부터 Django 6.0 지원(Django<6.1).
+    # django_celery_beat 는 settings.py 의 INSTALLED_APPS / CELERY_BEAT_SCHEDULER 가 참조.
+    # v2.9.0 부터 Django 6.0 지원(Django<6.1). 미설치 시 django.setup() 에서 ModuleNotFoundError.
     "django-celery-beat>=2.9",
 ]
 
