@@ -20,6 +20,7 @@ ENVF=$(mktemp)
 sed -e 's|^REDIS_PASSWORD=.*|REDIS_PASSWORD=it-redis-pw|' -e 's|^FLOWER_ID=.*|FLOWER_ID=tester|' -e 's|^FLOWER_PWD=.*|FLOWER_PWD=tester-pw|' \
     -e '/^DJANGO_SECRET_KEY=/d' "$STACK_DIR/.env-example" > "$ENVF"
 printf 'DJANGO_SECRET_KEY=%s\n' "$(openssl rand -hex 32)" >> "$ENVF"
+printf 'IMAGE_NAMESPACE=devspoon-it\n' >> "$ENVF"   # 운영 공유 태그(devspoon-*) 대신 테스트 전용 이미지명으로 빌드
 dc() { docker compose -p "$PROJ" --env-file "$ENVF" "$@"; }
 
 cleanup() {

@@ -9,7 +9,7 @@
 services:
   webserver:
     build: ../../docker/nginx/
-    image: devspoon-nginx:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-nginx:latest
     logging: &log_opts
       driver: "${LOG_DRIVER:-json-file}"
       options:
@@ -69,7 +69,7 @@ services:
     # 공용 Python 앱 이미지 — daphne / uvicorn / gunicorn 스택이 동일 image 태그 공유.
     # build: 가 본 서비스에만 정의되어 있고 celery / celery-beat 는 image: 만 참조하므로
     # 동일 build context 가 3회 재빌드되지 않는다 (1회 빌드 → 3 서비스 재사용).
-    image: devspoon-py-app:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-py-app:latest
     logging: *log_opts
     working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: gunicorn-app
@@ -125,7 +125,7 @@ services:
   # ---------------------------------------------------------------------------
   celery:
     # build: 미정의 — gunicorn-app 의 image 를 그대로 사용 (재빌드 방지)
-    image: devspoon-py-app:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-py-app:latest
     logging: *log_opts
     working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celery-app
@@ -162,7 +162,7 @@ services:
       - celery
 
   celery-beat:
-    image: devspoon-py-app:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-py-app:latest
     logging: *log_opts
     working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celerybeat-app

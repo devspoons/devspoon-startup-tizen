@@ -9,7 +9,7 @@
 services:
   webserver:
     build: ../../docker/nginx/
-    image: devspoon-nginx:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-nginx:latest
     logging: &log_opts
       driver: "${LOG_DRIVER:-json-file}"
       options:
@@ -55,7 +55,7 @@ services:
 
   php-app:
     build: ../../docker/php-fpm/
-    image: devspoon-php-app:8.4
+    image: ${IMAGE_NAMESPACE:-devspoon}-php-app:8.4
     logging: *log_opts
     working_dir: /application
     container_name: php-app

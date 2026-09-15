@@ -11,7 +11,7 @@
 services:
   webserver:
     build: ../../../docker/nginx/
-    image: devspoon-nginx:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-nginx:latest
     logging: &log_opts
       driver: "${LOG_DRIVER:-json-file}"
       options:
@@ -57,7 +57,7 @@ services:
 
   uwsgi-app:
     build: ../../../docker/uwsgi/
-    image: devspoon-uwsgi-app:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-uwsgi-app:latest
     logging: *log_opts
     # working_dir 을 프로젝트 루트로 통일 — uv 가 pyproject.toml 을 자동 인식하게 함.
     # uwsgi 자체는 ini 의 chdir = /www/%(project) 로 이동 (project = $(PROJECT_DIR) env 치환).
@@ -102,7 +102,7 @@ services:
   # CELERY_BROKER_URL 은 REDIS_PASSWORD 로부터 합성 (SSOT) — drift 차단.
   # 자세한 설명은 nginx_gunicorn/docker-compose.yml 참조.
   celery:
-    image: devspoon-uwsgi-app:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-uwsgi-app:latest
     logging: *log_opts
     working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celery-app
@@ -137,7 +137,7 @@ services:
       - celery
 
   celery-beat:
-    image: devspoon-uwsgi-app:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-uwsgi-app:latest
     logging: *log_opts
     working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celerybeat-app

@@ -11,7 +11,7 @@
 services:
   webserver:
     build: ../../../docker/nginx/
-    image: devspoon-nginx:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-nginx:latest
     logging: &log_opts
       driver: "${LOG_DRIVER:-json-file}"
       options:
@@ -56,7 +56,7 @@ services:
 
   daphne-app:
     build: ../../../docker/gunicorn/
-    image: devspoon-py-app:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-py-app:latest
     logging: *log_opts
     working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: daphne-app
@@ -103,7 +103,7 @@ services:
   # CELERY_BROKER_URL 은 REDIS_PASSWORD 로부터 합성 (SSOT) — drift 차단.
   # 자세한 설명은 nginx_gunicorn/docker-compose.yml 참조.
   celery:
-    image: devspoon-py-app:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-py-app:latest
     logging: *log_opts
     working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celery-app
@@ -138,7 +138,7 @@ services:
       - celery
 
   celery-beat:
-    image: devspoon-py-app:latest
+    image: ${IMAGE_NAMESPACE:-devspoon}-py-app:latest
     logging: *log_opts
     working_dir: /www/${PROJECT_DIR:?PROJECT_DIR must be set in .env}
     container_name: celerybeat-app
