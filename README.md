@@ -195,7 +195,8 @@ docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소
 
 #### Harbor 공존
 
-- 저장소에 있던 Compose v1 설치 스크립트는 삭제됐습니다. 번들된 Harbor v2.0.0 installer(`compose/project_mng_service/harbor-v2.0.0/install.sh` · `common.sh`)는 레거시(legacy) Compose v1 바이너리 `docker-compose`(1.18.0+)가 PATH 에 있어야 동작하므로 운영자가 직접 준비합니다.
+- 저장소에 있던 Compose v1 설치 스크립트는 삭제됐습니다. 번들된 Harbor v2.0.0 installer(`compose/project_mng_service/harbor-v2.0.0/install.sh` · `common.sh`)는 `docker compose` 플러그인을 쓰지 않고 **`docker-compose` 라는 이름의 명령**을 직접 호출합니다. `common.sh` 의 `check_dockercompose` 가 `docker-compose --version` 출력을 **1.18.0 이상**으로 파싱하지 못하면 `[Step 1]` 에서 `Need to install docker-compose(1.18.0+) by yourself first and run this script again.` 를 출력하고 **exit 1** 로 중단하므로, 레거시(legacy) Compose v1(1.18.0+) 바이너리를 운영자가 직접 PATH 에 준비합니다. (관문은 이름이 `docker-compose` 인 명령의 출력만 봅니다 — v2 형식 문자열을 내는 같은 이름의 실행 파일도 이 관문은 통과하지만, 이 저장소는 그 조합으로 Harbor 를 끝까지 기동해 본 적이 없습니다.)
+- `install.sh` 는 내부에서 `./prepare` 를 **직접 실행**하므로 `prepare` 한 파일만 저장소에 **실행 권한(`100755`)으로 추적**됩니다 — 별도 `chmod` 없이 그 지점을 통과합니다. 나머지 스크립트(`install.sh` · `autoinstall.sh` · `update_harbor_config.sh` · `common.sh`)는 `100644` 이며 실행 비트가 필요 없습니다: `common.sh` 는 `install.sh` 가 `source` 하고(`install.sh:6`), 나머지는 `bash <스크립트>` 형태로 실행합니다(`autoinstall.sh` 도 내부에서 `bash install.sh` 로 호출). `bash update_harbor_config.sh` 로 `harbor.yml` 을 만든 뒤 `bash install.sh` 로 설치하며, `bash autoinstall.sh` 는 두 단계를 한 번에 실행합니다.
 - **공존**: Harbor 는 자체 nginx 로 http 포트(기본 80)를 씁니다. 이 저장소의 웹 스택·master_service·단독 proxy 와 같은 호스트라면 **별도 호스트를 권장**하고, 같은 호스트라면 `update_harbor_config.sh` 에서 다른 http 포트를 지정한 뒤 앞단 nginx(예: master_service proxy conf)에서 그 포트로 프록시하세요.
 
 ### How to build Tizen development environment
