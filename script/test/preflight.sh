@@ -35,6 +35,9 @@ warn() {
 echo "[1] Required tools"
 check "docker (>=24)"          "[ \$(docker version -f '{{.Server.Version}}' | cut -d. -f1) -ge 24 ]"
 check "docker compose (v2)"    "docker compose version"
+# buildx 는 lock 추가 빌드 컨텍스트(`--build-context`/`additional_contexts`)에 필수다. 존재 확인만으로는
+# 부족하다 — Docker Desktop 잔재 cli-plugins 심볼릭 링크가 스테일이면 stat 은 통과하고 실행에서만 깨진다.
+check "docker buildx (실행 가능 — 실패 시 cli-plugins/docker-buildx 스테일 링크 확인)" "docker buildx version"
 check "jq"                     "jq --version"
 check "curl"                   "curl --version"
 check "openssl"                "openssl version"
