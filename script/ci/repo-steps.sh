@@ -32,9 +32,11 @@ for e in compose/master_service/.env-example compose/project_mng_service/nginx_o
     if grep -qE '^OPENPROJECT_SECRET_KEY_BASE=$' "$ROOT/$e"; then echo "  [PASS] $e"; else fail "$e — OPENPROJECT_SECRET_KEY_BASE 예시값 존재"; fi
 done
 
-echo "### gitolite sshd 포워딩 차단 (SRV1-SEC-03) ###"
-for k in "X11Forwarding no" "AllowTcpForwarding no"; do
-    if grep -qE "^$k\$" "$ROOT/docker/gitolite/system/sshd_config"; then echo "  [PASS] $k"; else fail "sshd_config — $k 없음"; fi
+# Match 앞 유효 줄(대소문자 무시)이 전부 기대값 — sshd 가 쓰는 첫 값·마지막 값 모두 보장, 줄이 없어도 FAIL
+echo "### gitolite sshd 하드닝·포워딩 차단 (SRV1-SEC-03) ###"
+for k in "PermitRootLogin no" "PasswordAuthentication no" "X11Forwarding no" "AllowTcpForwarding no"; do
+    v=$(awk -v k="${k%% *}" 'tolower($1)=="match"{exit} tolower($1)==tolower(k){print $2}' "$ROOT/docker/gitolite/system/sshd_config" | sort -u | paste -sd,)
+    [ "$v" = "${k#* }" ] && echo "  [PASS] gitolite $k" || fail "gitolite sshd_config — $k 아님(유효 값: ${v:-없음})"
 done
 
 echo "### master_service python 4조합 — migrate 는 app 서비스만 기동 전 1회, celery·beat 는 app healthy 뒤 (CL-WP2-19-R2) ###"
@@ -114,9 +116,9 @@ if docker compose --env-file "$TZ/.env-example" -f "$TZ/docker-compose.yml" conf
 tz=$(ports "$TZ/.env-example" "$TZ/docker-compose.yml"); gl=$(ports "$GL/.env-example" "$GL/docker-compose.yml")
 [ "$tz" = "127.0.0.1:2221" ] && echo "  [PASS] tizen-env SSH $tz" || fail "tizen-env SSH publish=$tz (기대 127.0.0.1:2221)"
 dup=$(printf '%s\n%s\n' "$tz" "$gl" | sed 's/.*://' | sort | uniq -d)
-[ -z "$dup" ] && echo "  [PASS] 단독 tizen-env ∩ gitolite = ∅" || fail "단독 포트 중복: $dup"
-# master php 는 config 루프 순번과 무관하게 .env-example 로 직접 렌더 — 빈 비밀 4개는 셸 환경값이 env-file 보다 우선, 렌더 실패(포트 0)도 FAIL
-mp=$(DJANGO_SECRET_KEY=x OPENPROJECT_SECRET_KEY_BASE=x REDIS_PASSWORD=x FLOWER_PWD=x ports "$ROOT/compose/master_service/.env-example" "$ROOT/compose/master_service/docker-compose-php.yml")
+[ -n "$gl" ] && [ -z "$dup" ] && echo "  [PASS] 단독 tizen-env ∩ gitolite = ∅" || fail "단독 포트 중복 또는 gitolite 렌더 실패: ${dup:-포트 0}"
+# master php 는 config 루프 순번과 무관하게 .env-example 로 직접 렌더 — php 가 :? 로 요구하는 빈 비밀 2개는 셸 환경값이 env-file 보다 우선, 렌더 실패(포트 0)도 FAIL
+mp=$(OPENPROJECT_SECRET_KEY_BASE=x REDIS_PASSWORD=x ports "$ROOT/compose/master_service/.env-example" "$ROOT/compose/master_service/docker-compose-php.yml")
 dup=$(printf '%s\n' "$mp" | sed 's/.*://' | sort | uniq -d)
 [ -n "$mp" ] && [ -z "$dup" ] && echo "  [PASS] master php 포트 중복 없음" || fail "master php 포트 중복 또는 렌더 실패: ${dup:-포트 0}"
 if TIZEN_SSH_KEY= docker compose --env-file "$TZ/.env-example" -f "$TZ/docker-compose.yml" config -q 2>/dev/null; then
@@ -126,6 +128,8 @@ for k in "PermitRootLogin prohibit-password" "PasswordAuthentication no" "X11For
     v=$(awk -v k="${k%% *}" 'tolower($1)=="match"{exit} tolower($1)==tolower(k){print $2}' "$ROOT/docker/tizen-env/system/sshd_config" | sort -u | paste -sd,)
     [ "$v" = "${k#* }" ] && echo "  [PASS] tizen-env $k" || fail "tizen-env sshd_config — $k 아님(유효 값: ${v:-없음})"
 done
+# README 의 authorized_keys root 소유 필수 근거 — 주석·미설정은 기본값 yes 라 PASS, 명시적 no 만 FAIL
+awk 'tolower($1)=="match"{exit} tolower($1)=="strictmodes" && tolower($2)=="no"{f=1} END{exit !f}' "$ROOT/docker/tizen-env/system/sshd_config" && fail "tizen-env sshd_config — StrictModes no (README authorized_keys root 소유 근거 무효)" || echo "  [PASS] tizen-env StrictModes no 아님"
 if grep -q 'id_rsa' "$ROOT/docker/tizen-env/Dockerfile"; then fail "Dockerfile 이 id_rsa 를 이미지에 넣음"; else echo "  [PASS] Dockerfile id_rsa 없음"; fi
 echo "=== RESULT: FAILS=$FAILS ==="
 [ "$FAILS" -eq 0 ] || exit 1
