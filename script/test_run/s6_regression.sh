@@ -493,6 +493,7 @@ assert_eq   "6.35 s3 3B.1 필수 키 = 스택 .env-example" "$(grep -c 'env_miss
 u35() { if [ "$2" = "$3" ]; then echo "  PASS 6.35 $1"; else echo "  FAIL 6.35 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
 # 판정 함수 = script/lib/smoke_checks.sh(함수 정의만) 를 s3·s6 가 source — s3 일부를 표지로 잘라 실행하던 방식은 표지 편집마다 s3 본문 실행 위험 (REV-W16-01·W17-01·W18-01·W18-04)
 g=script/lib/smoke_checks.sh
+# 제약: $g 는 함수 정의만 두고 함수 안에서 열 0 줄을 쓰지 않는다 — 아래 awk 는 함수 안 열 0 줄도 함수 밖 명령으로 세므로 열 0 heredoc 종결자(EOF)·열 0 case 레이블을 넣으면 거짓 FAIL
 top=$(awk '!infn && /^[A-Za-z_][A-Za-z0-9_]*\(\) *\{ *$/ { infn=1; next } infn && /^\}[[:space:]]*$/ { infn=0; next } /^[[:space:]]*(#|$)/ { next } !infn || !/^[[:space:]]/ { n++ } END { print n+0 }' "$g" 2>/dev/null)
 assert_zero "6.35 $g 함수 밖 명령 줄(주석·빈 줄·함수 정의 외)" "$top"
 assert_zero "6.35 s3 판정 함수 정의 잔존" "$(grep -cE '^[[:space:]]*(function +)?(logrotate_dry_ok|lock_version|env_missing) *\(\)' "$f")"
