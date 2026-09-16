@@ -175,7 +175,7 @@ docker compose restart      # 기동 명령이 다시 돌며 이관한 DB 에 �
 
 #### Gitolite `./storage` → named volume `gitolite-repos` 이전
 
-gitolite 저장소는 호스트 `storage/` bind 가 아니라 named volume `gitolite-repos`(컨테이너 `/home/gitolite-creator/repositories`)에 저장됩니다. 이전 버전의 `storage/` 에 저장소가 있으면 아래처럼 옮깁니다. 빌드에는 관리자 공개키 `docker/gitolite/system/client_user.pub` 가 먼저 있어야 합니다([devspoon-startup-web] 가이드 Gitolite 1단계). 볼륨 이름 앞에는 compose 프로젝트(폴더) 이름이 붙습니다 — 단독 `gitolite_gitolite-repos`, master `master_service_gitolite-repos`(`docker volume ls` 로 확인).
+gitolite 저장소는 호스트 `storage/` bind 가 아니라 named volume `gitolite-repos`(컨테이너 `/home/gitolite-creator/repositories`)에 저장됩니다. 이전 버전의 `storage/` 에 저장소가 있으면 아래처럼 옮깁니다. 빌드에는 관리자 공개키 `docker/gitolite/system/client_user.pub` 가 먼저 있어야 합니다([devspoon-startup-web] 가이드 Gitolite 1단계). 볼륨 이름 앞에는 compose 프로젝트(폴더) 이름이 붙습니다 — 단독 `gitolite_gitolite-repos`, master `master_service_gitolite-repos`(`docker volume ls` 로 확인). 갓 클론한 저장소처럼 `storage/` 에 자리표시자 `.gitkeep` 뿐이면 옮길 저장소가 없으므로 이 절을 건너뜁니다 — 그대로 실행하면 `/from/*` 가 전개되지 않아 `cp: can't stat '/from/*'` 로 rc 1 입니다.
 
 ```bash
 # 저장소 루트에서 — 단독 gitolite 예. master: D=compose/master_service, V=master_service_gitolite-repos, docker compose 에 -f docker-compose-<stack>.yml
@@ -221,7 +221,7 @@ docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소
    sudo chown root:root ~/.ssh/tizen_authorized_keys   # authorized_keys 만 root 소유 — 개인키 tizen_id_rsa 는 본인 소유 600 그대로
    ```
 
-   - `TIZEN_AUTHORIZED_KEYS` 파일은 **root 소유·600 이어야 합니다(필수)**. bind mount 는 호스트 파일 소유자(uid)를 컨테이너에 그대로 보이고, sshd `StrictModes` 는 root 가 아닌 사용자 소유 `/root/.ssh/authorized_keys` 를 거부합니다 — 본인 소유로 두면 `ssh -p 2221 root@127.0.0.1` 이 `Permission denied (publickey)` 로 실패합니다. `TIZEN_SSH_KEY`(`tizen_id_rsa`)는 본인 소유 600 그대로 두면 됩니다(컨테이너 root 가 읽음).
+   - `TIZEN_AUTHORIZED_KEYS` 파일은 **root 소유·600 이어야 합니다(필수)**. bind mount 는 호스트 파일 소유자(uid)를 컨테이너에 그대로 보이고, sshd `StrictModes` 는 root 가 아닌 사용자 소유 `/root/.ssh/authorized_keys` 를 거부합니다 — 본인 소유로 두면 `ssh -p 2221 root@127.0.0.1` 이 `Permission denied (publickey)` 로 실패합니다. `TIZEN_SSH_KEY`(`tizen_id_rsa`)는 본인 소유 600 그대로 두면 됩니다(컨테이너 root 가 읽음). root 소유로 바꾼 뒤에는 이 파일에 공개키를 추가하거나 권한을 바꿀 때 `sudo` 가 필요합니다 — 위 블록을 그대로 다시 실행하면 `chmod 600` 이 `Operation not permitted` 로 실패합니다.
    - 두 변수가 비어 있으면 compose 가 기동을 거부합니다. **경로가 틀리면** Docker 가 호스트에 root 소유 빈 디렉터리를 만들고 컨테이너는 그대로 기동되어 SSH 인증만 실패합니다 — 생긴 디렉터리를 지우고 `.env` 경로를 고친 뒤 다시 기동하세요.
    - If a user wants to access the tizen container directly for development, add a new location to "volumes" in the docker-compose.yml.
 
@@ -314,7 +314,6 @@ docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소
 - System integration between jenkins, gitolite, tizen-env.
 - Development tizen image management solution.
   - The tizen image management solution UI sample design
-    Tizen image mng server
 
 ## Community
 
