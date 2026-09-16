@@ -91,7 +91,7 @@ RUN pip install --no-cache-dir uv && \
         sqlalchemy alembic pydantic \
         psycopg2-binary asyncpg \
         mysqlclient asyncmy \
-        fastapi poetry && \
+        fastapi && \
     rm -rf /tmp/lock
 
 

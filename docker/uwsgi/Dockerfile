@@ -74,8 +74,7 @@ RUN pip install --no-cache-dir uv && \
     pip install --no-cache-dir -c /tmp/lock/requirements.txt \
         sqlalchemy alembic pydantic \
         psycopg2-binary asyncpg \
-        mysqlclient asyncmy \
-        poetry && \
+        mysqlclient asyncmy && \
     rm -rf /tmp/lock
 
 
