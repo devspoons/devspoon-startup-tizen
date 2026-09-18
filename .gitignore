@@ -80,3 +80,8 @@ compose/project_mng_service/harbor-v2.0.0/ssl/*
 # ensure_env_secrets 원자 교체 임시 파일(mktemp .env.XXXXXX) — 강제 종료로 남아도 추적 안 함 (.env.example 은 7자라 비매칭)
 # 주의: 6글자 확장자 .env.* 를 추적해야 하면(예: .env.sample) 아래에 `!` 예외를 추가
 **/.env.??????
+
+# docs/livetest/ · docs/logs/ — 라이브 테스트 하네스와 원본 로그는 로컬 전용(보고서 .md 만 추적).
+# 위 !docs/** negation 보다 뒤에 있어야 적용된다(마지막 매칭 규칙 우선).
+docs/livetest/
+docs/logs/
