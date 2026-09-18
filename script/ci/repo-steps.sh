@@ -13,31 +13,41 @@ if grep -nE 'chown[^"]*/www/' "$ROOT"/compose/master_service/*.yml; then fail "/
 if grep -nF '${PROJECT_DIR}' "$ROOT"/compose/master_service/*.yml; then fail "가드 없는 PROJECT_DIR"; else echo "  [PASS] PROJECT_DIR 가드"; fi
 
 echo "### 형제 런타임 데이터 폴더는 내용물 무시, 빈 자리표시자 .gitkeep 하나만 추적 (SRV1-SEC-01, D-PH) ###"
-for d in compose/master_service/jenkins_home compose/master_service/static compose/master_service/storage compose/project_mng_service/nginx_jenkins/jenkins_home compose/project_mng_service/nginx_openproject/static compose/project_mng_service/gitolite/storage; do
+for d in compose/master_service/jenkins_home compose/project_mng_service/nginx_jenkins/jenkins_home; do
     if git -C "$ROOT" check-ignore -q --no-index "$d/master.key" && ! git -C "$ROOT" check-ignore -q --no-index "$d/.gitkeep" \
         && [ "$(git -C "$ROOT" ls-files -- "$d")" = "$d/.gitkeep" ] && [ -f "$ROOT/$d/.gitkeep" ] && [ ! -s "$ROOT/$d/.gitkeep" ]; then
         echo "  [PASS] $d"; else fail "$d — 내용물 미무시·.gitkeep 무시·미추적·비어있지 않음 또는 다른 추적 파일"; fi
 done
-echo "### OpenProject pgdata 는 폴더 전체 무시·추적 파일 0 — initdb 는 점 파일 하나만 있어도 'not empty' 로 거부 (DEF-PG-01, TC-IN-05-3) ###"
-for d in compose/master_service/pgdata compose/project_mng_service/nginx_openproject/pgdata; do
-    if git -C "$ROOT" check-ignore -q --no-index "$d/PG_VERSION" && git -C "$ROOT" check-ignore -q --no-index "$d/.gitkeep" \
-        && [ -z "$(git -C "$ROOT" ls-files -- "$d")" ]; then
-        echo "  [PASS] $d"; else fail "$d — 내용물·.gitkeep 미무시 또는 추적 파일 존재"; fi
+echo "### Plane·Gitea 데이터는 named volume — 호스트 데이터 폴더·추적 파일 0 (LIVE-R3-PLANE-VOL) ###"
+if [ -z "$(git -C "$ROOT" ls-files '*/pgdata/*')" ] && [ ! -e "$ROOT/compose/master_service/pgdata" ]; then
+    echo "  [PASS] pgdata 호스트 폴더·추적 파일 없음"; else fail "pgdata 호스트 폴더 또는 추적 파일 잔존(Plane 은 named volume 사용)"; fi
+for y in "$ROOT"/compose/common/plane-services.yml "$ROOT"/compose/common/gitea-service.yml; do
+    if grep -qE '^\s+- \./' "$y"; then fail "${y#$ROOT/} — 호스트 bind mount 사용(컨테이너 uid 불일치 위험)"; else echo "  [PASS] ${y#$ROOT/} named volume 전용"; fi
 done
-p=$(git -C "$ROOT" ls-files '*/pgdata/*')
-if [ -z "$p" ]; then echo "  [PASS] 추적 pgdata 파일 없음"; else fail "추적 pgdata 파일(첫 기동 initdb 실패):" $p; fi
 
-echo "### 공개 예시 비밀값 금지 — OPENPROJECT_SECRET_KEY_BASE 는 빈 값 (SRV1-SEC-02) ###"
-for e in compose/master_service/.env-example compose/project_mng_service/nginx_openproject/.env-example; do
-    if grep -qE '^OPENPROJECT_SECRET_KEY_BASE=$' "$ROOT/$e"; then echo "  [PASS] $e"; else fail "$e — OPENPROJECT_SECRET_KEY_BASE 예시값 존재"; fi
+echo "### 공개 예시 비밀값 금지 — Plane 비밀 키는 빈 값 (SRV1-SEC-02) ###"
+for e in compose/master_service/.env-example compose/project_mng_service/nginx_plane/.env-example; do
+    miss=""
+    for k in PLANE_SECRET_KEY PLANE_LIVE_SERVER_SECRET_KEY PLANE_DB_PASSWORD PLANE_MQ_PASSWORD PLANE_MINIO_PASSWORD; do
+        grep -qE "^$k=\$" "$ROOT/$e" || miss="$miss $k"
+    done
+    [ -z "$miss" ] && echo "  [PASS] $e" || fail "$e — 빈 값이 아닌 비밀 키:$miss"
 done
 
 # Match 앞 유효 줄(대소문자 무시)이 전부 기대값 — sshd 가 쓰는 첫 값·마지막 값 모두 보장, 줄이 없어도 FAIL
-echo "### gitolite sshd 하드닝·포워딩 차단 (SRV1-SEC-03) ###"
-for k in "PermitRootLogin no" "PasswordAuthentication no" "X11Forwarding no" "AllowTcpForwarding no"; do
-    v=$(awk -v k="${k%% *}" 'tolower($1)=="match"{exit} tolower($1)==tolower(k){print $2}' "$ROOT/docker/gitolite/system/sshd_config" | sort -u | paste -sd,)
-    [ "$v" = "${k#* }" ] && echo "  [PASS] gitolite $k" || fail "gitolite sshd_config — $k 아님(유효 값: ${v:-없음})"
+echo "### Gitea 설정 — 내장 SSH·설치잠금·데이터 named volume·SSH 포트 표기 (LIVE-R3-GITEA) ###"
+g="$ROOT/compose/common/gitea-service.yml"
+for kv in 'GITEA__security__INSTALL_LOCK: "true"' 'USER_UID: "1000"' 'gitea-data:/data'; do
+    grep -qF "$kv" "$g" && echo "  [PASS] gitea $kv" || fail "gitea-service.yml — $kv 없음"
 done
+# 클론 URL 에 찍히는 SSH_PORT 와 호스트 게시 포트가 같은 변수를 써야 한다
+if grep -qF 'GITEA__server__SSH_PORT: ${GITEA_SSH_PORT:-2222}' "$g" && grep -qF '${GITEA_SSH_PORT:-2222}:22' "$g"; then
+    echo "  [PASS] gitea SSH_PORT 와 게시 포트 동일 변수"; else fail "gitea SSH_PORT·게시 포트 불일치(클론 URL 이 잘못 안내됨)"; fi
+# 이미지의 OpenSSH 가 컨테이너 22 를 쓰므로 내장 SSH 서버를 같은 포트로 켜면 기동 실패한다
+if grep -v '^[[:space:]]*#' "$g" | grep -q 'START_SSH_SERVER'; then fail "gitea START_SSH_SERVER 설정(이미지 OpenSSH 와 22 충돌)"; else echo "  [PASS] gitea 내장 SSH 서버 미사용(이미지 OpenSSH)"; fi
+# 설정·이미지·경로에 gitolite 가 남아 있으면 실패(주석 안의 이력 설명은 허용)
+gl=$(grep -rn --exclude-dir=.git -i 'gitolite' "$ROOT/compose" "$ROOT/docker" "$ROOT/config" 2>/dev/null | grep -vE ':[[:space:]]*#' | head -3)
+[ -z "$gl" ] && echo "  [PASS] gitolite 설정 잔재 없음" || fail "gitolite 설정 잔재: $gl"
 
 echo "### master_service python 4조합 — migrate 는 app 서비스만 기동 전 1회, celery·beat 는 app healthy 뒤 (CL-WP2-19-R2) ###"
 for s in daphne gunicorn uvicorn uwsgi; do
@@ -74,51 +84,58 @@ if grep -nE '^[[:space:]]+image: devspoon-' "$ROOT"/compose/master_service/*.yml
 
 echo "### master_service proxy 샘플 — webserver 가 php/proxy/<svc>/ 를 /etc/nginx/proxy.d/<svc>/:ro 로 마운트, 복사본 무시 (SRV1-S-02) ###"
 for f in "$ROOT"/compose/master_service/docker-compose-*.yml; do
-    for svc in jenkins openproject; do
+    for svc in jenkins plane gitea; do
         if grep -qF -- "- ../../config/web-server/nginx/php/proxy/$svc/:/etc/nginx/proxy.d/$svc/:ro" "$f"; then
             echo "  [PASS] $(basename "$f") $svc"; else fail "$(basename "$f") $svc proxy.d 마운트 없음"; fi
     done
 done
 if grep -rn '마운트한 conf\.d' "$ROOT"/compose/master_service "$ROOT"/config/web-server/nginx/php/proxy; then fail "conf.d 복사 안내 잔존"; else echo "  [PASS] conf.d 복사 안내 없음"; fi
-for svc in jenkins openproject; do
+for svc in jenkins plane gitea; do
     if git -C "$ROOT" check-ignore -q --no-index "config/web-server/nginx/php/proxy/$svc/${svc}_proxy.conf" \
         && ! git -C "$ROOT" check-ignore -q --no-index "config/web-server/nginx/php/proxy/$svc/default.conf"; then
         echo "  [PASS] $svc 복사본 무시·자리표시자 추적"; else fail "$svc proxy 복사본 ignore 규칙"; fi
 done
 
-echo "### ensure_env_secrets — master·단독 openproject 에서 OPENPROJECT_SECRET_KEY_BASE 128 hex, 비밀 아닌 키 불변, 한 줄 안내 (R2S-02) ###"
-for d in compose/master_service compose/project_mng_service/nginx_openproject; do
-    w="$TMPD/sec-${d##*/}"; mkdir -p "$w"; cp "$ROOT/$d"/docker-compose*.yml "$w/"; cp "$ROOT/$d/.env-example" "$w/.env"
+echo "### ensure_env_secrets — master·단독 plane 의 Plane 비밀 키 생성, 비밀 아닌 키 불변, 한 줄 안내 (R2S-02) ###"
+# include: 로 참조하는 compose/common/ 까지 필요하므로 compose 트리를 통째로 복사해 상대경로를 보존한다
+mkdir -p "$TMPD/mirror" && cp -r "$ROOT/compose" "$TMPD/mirror/"
+for d in compose/master_service compose/project_mng_service/nginx_plane; do
+    w="$TMPD/mirror/$d"; cp "$ROOT/$d/.env-example" "$w/.env"
     nonsec() { grep -vE '^[A-Z0-9_]*(SECRET|PASSWORD|PWD)[A-Z0-9_]*=|^[A-Z0-9_]*_KEY_BASE=' "$1" | sha256sum; }
     b=$(nonsec "$w/.env"); ( . "$ROOT/script/lib/django_secrets.sh"; ensure_env_secrets "$w/.env" ) >/dev/null 2>&1
-    if grep -qE '^OPENPROJECT_SECRET_KEY_BASE=[0-9a-f]{128}$' "$w/.env" && [ "$(nonsec "$w/.env")" = "$b" ]; then
-        echo "  [PASS] $d 헬퍼 실행 → KEY_BASE 128 hex·비밀 아닌 키 불변"; else fail "$d 헬퍼가 OPENPROJECT_SECRET_KEY_BASE 미생성 또는 비밀 아닌 키 변경"; fi
+    bad=""
+    for k in PLANE_SECRET_KEY PLANE_LIVE_SERVER_SECRET_KEY PLANE_DB_PASSWORD PLANE_MQ_PASSWORD PLANE_MINIO_PASSWORD; do
+        grep -qE "^$k=[0-9a-f]{32,}\$" "$w/.env" || bad="$bad $k"
+    done
+    if [ -z "$bad" ] && [ "$(nonsec "$w/.env")" = "$b" ]; then
+        echo "  [PASS] $d 헬퍼 실행 → Plane 비밀 키 생성·비밀 아닌 키 불변"; else fail "$d 헬퍼 미생성:${bad:-없음} 또는 비밀 아닌 키 변경"; fi
     if grep -q "ensure_env_secrets $d/.env" "$ROOT/$d/.env-example" && ! grep -q 'openssl rand' "$ROOT/$d/.env-example"; then
         echo "  [PASS] $d .env-example 한 줄 안내"; else fail "$d .env-example 직접 생성(openssl) 안내 잔존 또는 헬퍼 안내 없음"; fi
 done
 
 echo "### master_service / project_mng_service compose config (운영 .env 미사용 — .env-example 로 만든 임시 env-file) ###"
 n=0
-for f in "$ROOT"/compose/master_service/docker-compose-*.yml "$ROOT"/compose/project_mng_service/{nginx_jenkins,nginx_openproject,gitolite}/docker-compose.yml; do
+for f in "$ROOT"/compose/master_service/docker-compose-*.yml "$ROOT"/compose/project_mng_service/{nginx_jenkins,nginx_plane,gitea}/docker-compose.yml; do
     d=$(dirname "$f"); n=$((n+1)); envf="$TMPD/$n.env"
-    sed -E '/^(DJANGO_SECRET_KEY|OPENPROJECT_SECRET_KEY_BASE|REDIS_PASSWORD|FLOWER_PWD)=/d' "$d/.env-example" > "$envf" \
+    sed -E '/^(DJANGO_SECRET_KEY|REDIS_PASSWORD|FLOWER_PWD|PLANE_SECRET_KEY|PLANE_LIVE_SERVER_SECRET_KEY|PLANE_DB_PASSWORD|PLANE_MQ_PASSWORD|PLANE_MINIO_PASSWORD)=/d' "$d/.env-example" > "$envf" \
         || { fail "$f — $d/.env-example 로 임시 env-file 생성 실패(위 sed 오류)"; continue; }
-    printf 'DJANGO_SECRET_KEY=%s\nOPENPROJECT_SECRET_KEY_BASE=%s\nREDIS_PASSWORD=%s\nFLOWER_PWD=%s\n' \
-        "$(openssl rand -hex 32)" "$(openssl rand -hex 64)" "$(openssl rand -hex 16)" "$(openssl rand -hex 16)" >> "$envf"
+    printf 'DJANGO_SECRET_KEY=%s\nREDIS_PASSWORD=%s\nFLOWER_PWD=%s\nPLANE_SECRET_KEY=%s\nPLANE_LIVE_SERVER_SECRET_KEY=%s\nPLANE_DB_PASSWORD=%s\nPLANE_MQ_PASSWORD=%s\nPLANE_MINIO_PASSWORD=%s\n' \
+        "$(openssl rand -hex 32)" "$(openssl rand -hex 16)" "$(openssl rand -hex 16)" "$(openssl rand -hex 32)" \
+        "$(openssl rand -hex 32)" "$(openssl rand -hex 16)" "$(openssl rand -hex 16)" "$(openssl rand -hex 16)" >> "$envf"
     docker compose --env-file "$envf" -f "$f" --profile celery --profile redis config -q \
         && echo "  [PASS] $f" || fail "$f"
 done
 [ "$n" -eq 8 ] || fail "검사 파일 수 $n (기대 8)"
 echo "### tizen-env 연결 설정 — compose 렌더·정적만, 빌드·기동 없음 (TZ-04·05, D-7, D-T1, D-T9) ###"
-TZ="$ROOT/compose/dev_env_service/tizen-env"; GL="$ROOT/compose/project_mng_service/gitolite"
+TZ="$ROOT/compose/dev_env_service/tizen-env"; GT="$ROOT/compose/project_mng_service/gitea"
 ports() { docker compose --env-file "$1" -f "$2" config --format json | jq -r '.services[].ports[]? | "\(.host_ip // "0.0.0.0"):\(.published)"'; }
 if docker compose --env-file "$TZ/.env-example" -f "$TZ/docker-compose.yml" config -q; then echo "  [PASS] tizen-env config"; else fail "tizen-env config"; fi
-tz=$(ports "$TZ/.env-example" "$TZ/docker-compose.yml"); gl=$(ports "$GL/.env-example" "$GL/docker-compose.yml")
+tz=$(ports "$TZ/.env-example" "$TZ/docker-compose.yml"); gl=$(ports "$GT/.env-example" "$GT/docker-compose.yml")
 [ "$tz" = "127.0.0.1:2221" ] && echo "  [PASS] tizen-env SSH $tz" || fail "tizen-env SSH publish=$tz (기대 127.0.0.1:2221)"
 dup=$(printf '%s\n%s\n' "$tz" "$gl" | sed 's/.*://' | sort | uniq -d)
-[ -n "$gl" ] && [ -z "$dup" ] && echo "  [PASS] 단독 tizen-env ∩ gitolite = ∅" || fail "단독 포트 중복 또는 gitolite 렌더 실패: ${dup:-포트 0}"
+[ -n "$gl" ] && [ -z "$dup" ] && echo "  [PASS] 단독 tizen-env ∩ gitea = ∅ (2221 vs 2222)" || fail "단독 포트 중복 또는 gitea 렌더 실패: ${dup:-포트 0}"
 # master php 는 config 루프 순번과 무관하게 .env-example 로 직접 렌더 — php 가 :? 로 요구하는 빈 비밀 2개는 셸 환경값이 env-file 보다 우선, 렌더 실패(포트 0)도 FAIL
-mp=$(OPENPROJECT_SECRET_KEY_BASE=x REDIS_PASSWORD=x ports "$ROOT/compose/master_service/.env-example" "$ROOT/compose/master_service/docker-compose-php.yml")
+mp=$(REDIS_PASSWORD=x PLANE_SECRET_KEY=x PLANE_LIVE_SERVER_SECRET_KEY=x PLANE_DB_PASSWORD=x PLANE_MQ_PASSWORD=x PLANE_MINIO_PASSWORD=x ports "$ROOT/compose/master_service/.env-example" "$ROOT/compose/master_service/docker-compose-php.yml")
 dup=$(printf '%s\n' "$mp" | sed 's/.*://' | sort | uniq -d)
 [ -n "$mp" ] && [ -z "$dup" ] && echo "  [PASS] master php 포트 중복 없음" || fail "master php 포트 중복 또는 렌더 실패: ${dup:-포트 0}"
 if TIZEN_SSH_KEY= docker compose --env-file "$TZ/.env-example" -f "$TZ/docker-compose.yml" config -q 2>/dev/null; then
@@ -158,11 +175,6 @@ for g in update_harbor_config.sh autoinstall.sh; do
     else fail "$g 생성 harbor.yml 불일치: $(grep -E '^hostname|certificate:|harbor_admin_password: [^H]|^  password: [^r]|data_volume: /|location: /' "$y" 2>/dev/null | tr '\n' ';')"; fi
 done
 if grep -qF 'cp -rf ssl/. "$sslpath/"' "$HB/autoinstall.sh"; then echo "  [PASS] autoinstall ssl 내용을 <ssl path>/ 아래로 복사"; else fail "autoinstall ssl 복사 경로"; fi
-
-echo "### gitolite sample-script 비대화형 — git-manager known_hosts 에 localhost 호스트 키 등록 (LIVE-R2-GITOLITE) ###"
-if grep -qF '/etc/ssh/ssh_host_*_key.pub; do echo "localhost' "$ROOT/docker/gitolite/Dockerfile" \
-    && awk '/known_hosts/{k=NR} /chown git-manager:git-manager/{c=NR} END{exit !(k && c && k<c)}' "$ROOT/docker/gitolite/Dockerfile"; then
-    echo "  [PASS] Dockerfile known_hosts 등록(소유권 정리 전)"; else fail "gitolite Dockerfile — localhost known_hosts 미등록 또는 chown 뒤"; fi
 
 echo "### tizenenv 는 amd64 전용 — compose 에 platform: linux/amd64 고정 (LIVE-R1-TIZENARCH) ###"
 for f in "$ROOT/compose/master_service/docker-compose-php.yml" "$ROOT/compose/dev_env_service/tizen-env/docker-compose.yml"; do
