@@ -141,6 +141,17 @@ services:
       PASSENGER_START_TIMEOUT: ${PASSENGER_START_TIMEOUT}
     restart: always
 
+  # jenkins_home 은 저장소가 추적하는 호스트 폴더(.gitkeep)라 클론한 사용자 소유다. jenkins 이미지는 uid 1000 으로
+  # 동작하므로 호스트 사용자가 1000 이 아니면 "missing rw permissions on JENKINS_HOME" 으로 재시작을 반복한다.
+  # 같은 이미지를 root 로 1회 실행해 폴더(최상위만) 소유자를 1000 으로 맞춘 뒤 jenkins 를 기동한다.
+  jenkins-init:
+    image: jenkins/jenkins:lts-jdk21
+    user: "0:0"
+    entrypoint: ["chown", "1000:1000", "/var/jenkins_home"]
+    volumes:
+      - ./jenkins_home:/var/jenkins_home
+    restart: "no"
+
   jenkins:
     image: jenkins/jenkins:lts-jdk21
     logging:
@@ -156,6 +167,9 @@ services:
     environment:
       TZ: "Asia/Seoul"
     restart: always
+    depends_on:
+      jenkins-init:
+        condition: service_completed_successfully
 
   tizenenv:
     build: ../../docker/tizen-env/
