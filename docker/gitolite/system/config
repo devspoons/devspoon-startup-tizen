@@ -1,5 +1,0 @@
-Host gitolite
-   User gitolite-creator
-   Hostname localhost
-   Port 22
-   IdentityFile ~/.ssh/git-manager

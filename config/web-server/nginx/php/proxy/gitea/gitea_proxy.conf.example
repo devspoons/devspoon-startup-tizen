@@ -1,0 +1,32 @@
+# Gitea reverse proxy sample
+# 사용: 이 폴더(config/web-server/nginx/php/proxy/gitea/)에서
+#         cp gitea_proxy.conf.example gitea_proxy.conf
+#       후 server_name 도메인만 수정. 단독 스택 gitea 는 이 폴더를 conf.d 로 마운트한다
+#       (복사본이 없으면 catch-all default.conf 가 444 로 응답하며 정상 기동).
+#       master_service 도 같은 폴더의 복사본을 쓴다 — webserver 가 /etc/nginx/proxy.d/gitea/ 로 마운트.
+#       compose .env 의 GITEA_DOMAIN · GITEA_ROOT_URL 을 같은 도메인으로 맞춘다.
+# 구조: proxy_params 는 server 컨텍스트에서 include 하고, 바꿔야 하는 값만 location 에서 덮어쓴다
+#       (같은 컨텍스트 중복 선언은 "directive is duplicate" 로 기동 실패).
+# 참고: git over SSH 는 이 프록시를 거치지 않는다 — gitea 컨테이너가 호스트 2222 를 직접 게시한다.
+server {
+    listen 80;
+    server_name gitea.example.com;
+    include /etc/nginx/bots.d/blockbots.conf;
+    include /etc/nginx/bots.d/ddos.conf;
+    include /etc/nginx/proxy_params;
+
+    # git push 의 팩 파일은 크다 — 본문 한도를 넉넉히 둔다.
+    client_max_body_size 512m;
+
+    location /.well-known/acme-challenge/ { root /www/certbot; }
+
+    location / {
+        # clone/push 한 요청이 오래 걸릴 수 있어 이 location 만 타임아웃을 늘리고,
+        # 대용량 전송이 nginx 버퍼·임시파일을 거치지 않도록 버퍼링을 끈다.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_pass http://gitea:3000;
+    }
+}

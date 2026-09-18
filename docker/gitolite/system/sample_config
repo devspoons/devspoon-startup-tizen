@@ -1,5 +1,0 @@
-Host host_name
-   User user_name
-   Hostname domain
-   Port portnumber
-   IdentityFile identityFile_path

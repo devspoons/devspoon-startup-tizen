@@ -1,0 +1,58 @@
+# =============================================================================
+# Gitea (go-gitea/gitea) 공용 서비스 정의 — master_service 5조합과 단독
+# project_mng_service/gitea 가 `include:` 로 함께 쓴다 (Compose ≥ 2.20).
+#
+# 기존 gitolite 자리를 대체한다.
+#   - SSH: 호스트 2222 → 컨테이너 22 (gitolite 와 같은 포트). 컨테이너 안에서는 이미지의
+#     OpenSSH(git 계정)가 22 를 서비스하고, 클론 URL 에 찍히는 포트는 GITEA__server__SSH_PORT 로 알린다.
+#   - HTTP: 호스트 포트를 열지 않고 3000 을 expose 만 한다 — 앞단 nginx 가
+#     config/web-server/nginx/php/proxy/gitea/ 의 conf 로 프록시한다.
+#   - 데이터: named volume gitea-data(/data, 저장소·sqlite DB·ssh 호스트키).
+#     호스트 bind 가 아니라 컨테이너 uid(1000)와 호스트 사용자 uid 불일치 문제가 없다.
+#   - DB: 내장 SQLite. 외부 DB 를 쓰려면 GITEA__database__* 를 .env 로 덮어쓴다.
+# =============================================================================
+
+services:
+  gitea:
+    image: gitea/gitea:${GITEA_RELEASE:-1.27}
+    container_name: gitea
+    logging:
+      driver: "${LOG_DRIVER:-json-file}"
+      options:
+        max-file: "${LOG_OPT_MAXF:-5}"
+        max-size: "${LOG_OPT_MAXS:-100m}"
+    environment:
+      TZ: "Asia/Seoul"
+      USER_UID: "1000"
+      USER_GID: "1000"
+      # 최초 기동 시 설치 화면을 건너뛰고 아래 설정으로 확정한다.
+      GITEA__security__INSTALL_LOCK: "true"
+      GITEA__database__DB_TYPE: ${GITEA_DB_TYPE:-sqlite3}
+      GITEA__server__DOMAIN: ${GITEA_DOMAIN:?GITEA_DOMAIN must be set in .env}
+      GITEA__server__ROOT_URL: ${GITEA_ROOT_URL:?GITEA_ROOT_URL must be set in .env}
+      GITEA__server__SSH_DOMAIN: ${GITEA_SSH_DOMAIN:-${GITEA_DOMAIN}}
+      GITEA__server__SSH_PORT: ${GITEA_SSH_PORT:-2222}      # 클론 URL 에 표기되는 포트(= 아래 호스트 게시 포트)
+      # 이미지에 포함된 OpenSSH(git 계정, 컨테이너 22번)를 그대로 쓴다. 내장 SSH 서버
+      # (START_SSH_SERVER=true)를 켜면서 SSH_LISTEN_PORT 를 22 로 두면 둘이 같은 포트를 잡아
+      # "Failed to start SSH server: listen tcp :22: bind: address already in use" 로 죽는다.
+      GITEA__service__DISABLE_REGISTRATION: ${GITEA_DISABLE_REGISTRATION:-true}
+      GITEA__service__REQUIRE_SIGNIN_VIEW: ${GITEA_REQUIRE_SIGNIN_VIEW:-false}
+      # webhook 대상 허용 목록 — [webhook].ALLOWED_HOST_LIST 는 v28.0.0 에서 제거 예정이라
+      # 현재 권장 위치인 [security] 에 둔다(기동 로그의 Deprecation 경고 해소).
+      GITEA__security__ALLOWED_HOST_LIST: ${GITEA_WEBHOOK_ALLOWED_HOSTS:-private}
+    volumes:
+      - gitea-data:/data
+    expose:
+      - "3000"
+    ports:
+      - "${GITEA_SSH_BIND:-0.0.0.0}:${GITEA_SSH_PORT:-2222}:22"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:3000/api/healthz || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: always
+
+volumes:
+  gitea-data:
