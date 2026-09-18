@@ -28,7 +28,8 @@ ensure_django_secrets() {
 }
 
 # .env 의 비밀값을 무작위 hex 로 채운다. 이미 값이 있는 줄은 절대 바꾸지 않는다.
-#   - 대상 키: DJANGO_SECRET_KEY·REDIS_PASSWORD·FLOWER_PWD + 같은 폴더 docker-compose*.yml 전부(주석 줄 제외)가 ${KEY:?} 로 요구하는 키 중
+#   - 대상 키: DJANGO_SECRET_KEY·REDIS_PASSWORD·FLOWER_PWD + 같은 폴더 docker-compose*.yml 과 그 파일들이
+#     include: 로 참조하는 조각(주석 줄 제외)이 ${KEY:?} 로 요구하는 키 중
 #     이름이 비밀 규칙(SECRET·PASSWORD·PWD 포함 또는 _KEY_BASE 로 끝남)인 키. 비밀 아닌 필수 키(PROJECT_DIR·FLOWER_ID·*_HOST__NAME 등)는 채우지 않음
 #   - 길이: DJANGO_SECRET_KEY 50바이트(100 hex), *_KEY_BASE 64바이트(128 hex, Rails `rails secret` 관례), 그 외 32바이트(64 hex)
 #   - 비었거나 옛 CHANGE_ME_* 인 줄만 치환(같은 키가 중복돼도 그 줄만). CRLF .env 는 CR 을 무시해 매칭하고 줄끝을 보존
@@ -40,8 +41,23 @@ ensure_env_secrets() {
     local envf="${1:?사용: ensure_env_secrets <.env 경로>}" req k len val tmp traps rc set="" app="" names="" n=0
     [ -f "$envf" ] || { echo "  FAIL : $envf 없음 — 먼저 .env-example 을 .env 로 복사"; return 1; }
     command -v openssl >/dev/null 2>&1 || { echo "  FAIL : openssl 없음 — 비밀값 생성 불가"; return 1; }
-    req=$(cat "$(dirname "$envf")"/docker-compose*.yml 2>/dev/null | grep -vE '^[[:space:]]*#' | grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*:\?' \
-        | sed -E 's/^\$\{(.*):\?$/\1/' | grep -E 'SECRET|PASSWORD|PWD|_KEY_BASE$' | sort -u) || :
+    # 같은 폴더 docker-compose*.yml + 그 파일들이 include: 로 참조하는 compose 조각까지 훑는다
+    # (compose/common/*.yml 처럼 여러 스택이 공유하는 정의의 ${KEY:?} 도 대상에 포함).
+    local d files inc
+    d=$(dirname "$envf")
+    files=$(ls "$d"/docker-compose*.yml 2>/dev/null) || :
+    if [ -n "$files" ]; then
+        inc=$(grep -hA20 '^include:' $files </dev/null 2>/dev/null | grep -oE '^[[:space:]]+- [^[:space:]]+\.ya?ml' | sed -E 's/^[[:space:]]+- //') || :
+        for k in $inc; do
+            case $k in /*) [ -f "$k" ] && files="$files
+$k" ;; *) [ -f "$d/$k" ] && files="$files
+$d/$k" ;; esac
+        done
+        req=$(cat $files </dev/null 2>/dev/null | grep -vE '^[[:space:]]*#' | grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*:\?' \
+            | sed -E 's/^\$\{(.*):\?$/\1/' | grep -E 'SECRET|PASSWORD|PWD|_KEY_BASE$' | sort -u) || :
+    else
+        req=""
+    fi
     for k in DJANGO_SECRET_KEY REDIS_PASSWORD FLOWER_PWD $(grep -vxE 'DJANGO_SECRET_KEY|REDIS_PASSWORD|FLOWER_PWD' <<< "$req"); do
         case $k in DJANGO_SECRET_KEY) len=50 ;; *_KEY_BASE) len=64 ;; *) len=32 ;; esac
         if grep -qE "^${k}=(CHANGE_ME_[A-Za-z0-9_]*)?"$'\r?$' "$envf"; then :

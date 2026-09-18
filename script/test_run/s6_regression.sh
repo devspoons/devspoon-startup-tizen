@@ -332,14 +332,14 @@ if grep -q 'ensure_env_secrets()' script/lib/django_secrets.sh; then
     # R2S-02 docker-compose*.yml 전부의 :? 필수 키 합집합 중 비밀 이름(SECRET·PASSWORD·PWD 포함, _KEY_BASE 끝)만 채움/추가
     #        비밀 아닌 필수 키·주석 줄 키는 손대지 않음, _KEY_BASE 는 128 hex
     mkdir -p "$tmp/multi"
-    printf 'services:\n  op:\n    environment:\n      - SECRET_KEY_BASE=${OPENPROJECT_SECRET_KEY_BASE:?set}\n      - HOST=${OPENPROJECT_HOST__NAME:?set}\n      - R=${REDIS_PASSWORD:?}\n      - D=${PROJECT_DIR:?} F=${FLOWER_ID:?}\n      # - C=${COMMENTED_PASSWORD:?}\n' > "$tmp/multi/docker-compose-foo.yml"
+    printf 'services:\n  op:\n    environment:\n      - SECRET_KEY_BASE=${FOO_SECRET_KEY_BASE:?set}\n      - HOST=${FOO_HOST__NAME:?set}\n      - R=${REDIS_PASSWORD:?}\n      - D=${PROJECT_DIR:?} F=${FLOWER_ID:?}\n      # - C=${COMMENTED_PASSWORD:?}\n' > "$tmp/multi/docker-compose-foo.yml"
     printf 'services:\n  db:\n    environment:\n      - P=${BAR_DB_PASSWORD:?}\n      - A=${DJANGO_ALLOWED_HOSTS:?}\n' > "$tmp/multi/docker-compose-bar.yml"
-    printf 'FLOWER_ID=\nOPENPROJECT_HOST__NAME=\nBAR_DB_PASSWORD=CHANGE_ME_X\n' > "$tmp/multi/.env"
+    printf 'FLOWER_ID=\nFOO_HOST__NAME=\nBAR_DB_PASSWORD=CHANGE_ME_X\n' > "$tmp/multi/.env"
     ( . script/lib/django_secrets.sh; ensure_env_secrets "$tmp/multi/.env" >/dev/null 2>&1 )
-    assert_eq "6.24 docker-compose-foo.yml _KEY_BASE 부재 → 128 hex 추가 (R2S-02)" "$(grep -cE '^OPENPROJECT_SECRET_KEY_BASE=[0-9a-f]{128}$' "$tmp/multi/.env")" 1
+    assert_eq "6.24 docker-compose-foo.yml _KEY_BASE 부재 → 128 hex 추가 (R2S-02)" "$(grep -cE '^FOO_SECRET_KEY_BASE=[0-9a-f]{128}$' "$tmp/multi/.env")" 1
     assert_eq "6.24 docker-compose-foo.yml REDIS_PASSWORD 부재 → 64 hex 추가 (R2S-02)" "$(grep -cE '^REDIS_PASSWORD=[0-9a-f]{64}$' "$tmp/multi/.env")" 1
     assert_eq "6.24 여러 compose 합집합 — bar 의 CHANGE_ME 비밀 채움 (R2S-02)" "$(grep -cE '^BAR_DB_PASSWORD=[0-9a-f]{64}$' "$tmp/multi/.env")" 1
-    assert_eq "6.24 비밀 아닌 필수 키 빈 값 불변 (FLOWER_ID·OPENPROJECT_HOST__NAME)" "$(grep -cE '^(FLOWER_ID|OPENPROJECT_HOST__NAME)=$' "$tmp/multi/.env")" 2
+    assert_eq "6.24 비밀 아닌 필수 키 빈 값 불변 (FLOWER_ID·FOO_HOST__NAME)" "$(grep -cE '^(FLOWER_ID|FOO_HOST__NAME)=$' "$tmp/multi/.env")" 2
     assert_zero "6.24 비밀 아닌·주석·compose 미요구 키 추가 없음" "$(grep -cE '^(PROJECT_DIR|DJANGO_ALLOWED_HOSTS|COMMENTED_PASSWORD|DJANGO_SECRET_KEY|FLOWER_PWD)=' "$tmp/multi/.env")"
     assert_eq "6.24 compose 여러 개 — 총 줄 수 (3 기존 + 2 추가)" "$(wc -l < "$tmp/multi/.env")" 5
     # RV7-01 원본 644 여도 비밀이 담긴 임시 파일은 어느 chmod 직후에도 group/other 비트 0 — chmod 래퍼가 매 호출 뒤 임시 파일 권한 기록
@@ -596,6 +596,21 @@ u38 "해석 불가 시 WAIT 초 후 경고·exit 0 (기동 계속)" "$rc:$([ "$t
 u38 "NGINX_UPSTREAM_WAIT=0 은 비활성 (즉시 exit 0, 출력 없음)" "$(NGINX_UPSTREAM_CONF="$w38/*.conf" NGINX_UPSTREAM_WAIT=0 sh "$h" 2>&1; echo "rc=$?")" "rc=0"
 u38 "conf 없음 → 즉시 exit 0" "$(NGINX_UPSTREAM_CONF="$w38/none/*.conf" sh "$h" 2>&1; echo "rc=$?")" "rc=0"
 rm -rf "$w38"
+echo
+
+echo "===== 6.39 ensure_env_secrets 가 include: 로 참조한 compose 조각의 \${KEY:?} 도 채운다 (LIVE-R3-INCLUDE) ====="
+w39=$(mktemp -d); mkdir -p "$w39/stack" "$w39/common"
+printf 'services:\n  a:\n    image: busybox\n    environment:\n      S: ${SHARED_DB_PASSWORD:?}\n' > "$w39/common/frag.yml"
+printf 'include:\n  - ../common/frag.yml\nservices:\n  b:\n    image: busybox\n    environment:\n      L: ${LOCAL_SECRET_KEY:?}\n' > "$w39/stack/docker-compose.yml"
+: > "$w39/stack/.env"
+( . script/lib/django_secrets.sh; ensure_env_secrets "$w39/stack/.env" ) >/dev/null 2>&1
+u39() { if [ "$2" = "$3" ]; then echo "  PASS 6.39 $1"; else echo "  FAIL 6.39 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
+u39 "include 한 조각의 비밀 키 생성" "$(grep -cE '^SHARED_DB_PASSWORD=[0-9a-f]{64}$' "$w39/stack/.env")" 1
+u39 "같은 폴더 compose 의 비밀 키 생성" "$(grep -cE '^LOCAL_SECRET_KEY=[0-9a-f]{64}$' "$w39/stack/.env")" 1
+# compose 가 없는 폴더에서도 멈추지 않고(표준입력 대기 금지) 기본 3키만 처리
+: > "$w39/bare.env"
+u39 "compose 없는 폴더 — 5초 내 종료" "$(timeout 5 bash -c '. script/lib/django_secrets.sh; ensure_env_secrets "$1" >/dev/null 2>&1; echo $?' _ "$w39/bare.env")" 0
+rm -rf "$w39"
 echo
 
 echo "===== 6 FAILS=$FAILS ====="
