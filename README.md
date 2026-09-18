@@ -4,7 +4,7 @@ devspoon-startup-tizen is an open source solution that can easily build a reliab
 
 ## based project
 
-devspoon-startup-tizen is built on top of the open source project [devspoon-startup-web], an integrated management solution catered to startups. It provides nginx-based PHP and Python platforms to develop web and API services. It also enables installing, backing up and managing project solutions critical for startups such as OpenProject, Jenkins, Gitolite (private Git server), and Harbour (private Docker server).
+devspoon-startup-tizen is built on top of the open source project [devspoon-startup-web], an integrated management solution catered to startups. It provides nginx-based PHP and Python platforms to develop web and API services. It also enables installing, backing up and managing project solutions critical for startups such as Plane, Jenkins, Gitea (private Git server), and Harbor (private Docker server).
 
 ## introduce "Devspoon-Projects"
 
@@ -16,11 +16,11 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 
 ## Project management solutions
 
-- **[OpenProject]** : Open source project management software to help you work on your project efficiently
+- **[Plane]** : Open source project management software (issues · cycles · modules) to help you work on your project efficiently
 
 - **[Jenkins]** : As one of the CI tools, CI (Continuous Integration) refers to continuous integration, which is an automated process for developers, and new code changes are automatically built and tested regularly to notify developers to solve problems that can occur when multiple developers develop simultaneously. Software that helps secure development stability and reliability
 
-- **[Gitolite]** : Configuration Management Tool. user can install git server software at own server
+- **[Gitea]** : Lightweight self-hosted git service — web UI, issues, pull requests, and git over SSH/HTTP
 
 - **[Harbor]** : The Private Docker Registry Server for businesses that store and distribute Docker Images
 
@@ -34,9 +34,9 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 
 - devspoon-startup-tizen can easily build the complex configuration required to develop Samsung Tizen-based IoT devices using the already verified Dockerfile and Docker-compose.
 
-- Development automation (CI:Continuous Integration) can be configured using jenkins provided as [devspoon-startup-web], and projects can be efficiently managed with openproject.
+- Development automation (CI:Continuous Integration) can be configured using jenkins provided as [devspoon-startup-web], and projects can be efficiently managed with Plane.
 
-- Gitolite is linked with openproject and jenkins, and can be used efficiently without repository public and limitations on the capacity restriction of git server and public storage.
+- Gitea is linked with Plane and jenkins, and can be used efficiently without repository public and limitations on the capacity restriction of git server and public storage.
 
 - Using the harbor, you can build an independent docker image according to the type, version, and kernel environment type of the smart TV, IoT development board, and download and install the docker image to any new server at any time from the docker hub.
 
@@ -88,7 +88,7 @@ bash -c ". script/lib/django_secrets.sh && ensure_env_secrets $D/.env"
 
 - 값이 비었거나 옛 `CHANGE_ME_*` 인 비밀 키만 `openssl rand -hex` 무작위 값으로 채웁니다(`DJANGO_SECRET_KEY` 100 hex, `*_KEY_BASE` 128 hex, 그 외 64 hex). 이미 값이 있는 키는 바꾸지 않습니다.
 - 같은 폴더의 임시 파일에 쓴 뒤 교체하며, 값을 생성했으면 권한을 600 으로 좁힙니다(더 엄격하면 유지). openssl 이 없거나 실패하면 `FAIL` 로 끝나고 `.env` 내용은 바뀌지 않습니다.
-- **비밀이 아닌 자리표시자는 헬퍼가 채우지 않습니다 — 운영 전에 직접 입력하세요**: `FLOWER_ID`(`CHANGE_ME_FLOWER_USER`), master·openproject 의 `OPENPROJECT_HOST_NAME`(compose 에서 `OPENPROJECT_HOST__NAME` 으로 전달, proxy conf 의 `server_name` 과 동일), `SMTP_*`, `DJANGO_ALLOWED_HOSTS`(도메인 추가).
+- **비밀이 아닌 자리표시자는 헬퍼가 채우지 않습니다 — 운영 전에 직접 입력하세요**: `FLOWER_ID`(`CHANGE_ME_FLOWER_USER`), master·단독 plane 의 `PLANE_DOMAIN`·`PLANE_WEB_URL`·`PLANE_CORS_ALLOWED_ORIGINS`(proxy conf 의 `server_name` 과 동일), gitea 의 `GITEA_DOMAIN`·`GITEA_ROOT_URL`, `DJANGO_ALLOWED_HOSTS`(도메인 추가).
 - 호스트에서 `manage.py` 를 직접 실행할 때만 `www/django_sample` 의 `secrets.json` 이 필요합니다: `bash -c '. script/lib/django_secrets.sh && ensure_django_secrets'` (없을 때만 생성, 600). 컨테이너는 `DJANGO_SECRET_KEY` 환경변수를 씁니다.
 
 > **업그레이드 노트 — 이전 버전에서 쓰던 `.env` 를 유지하는 경우**: 옛 `.env` 에는 `DJANGO_SECRET_KEY` 줄이 없거나 `CHANGE_ME_*` 값이 남아 있을 수 있습니다. 위 헬퍼를 같은 `.env` 에 한 번 실행하면 같은 폴더 `docker-compose*.yml` 이 `:?` 로 요구하는 비밀 키(이름에 SECRET·PASSWORD·PWD 포함 또는 `_KEY_BASE` 로 끝남) 중 없는 키를 끝에 추가하고 `CHANGE_ME_*` 를 교체하며, 기존 값은 보존하고 권한을 600 으로 맞춥니다. `KEY=""` 처럼 따옴표로 둘러싼 빈 값은 채우지 않으니 먼저 `KEY=` 로 고치세요.
@@ -134,7 +134,7 @@ docker compose exec gunicorn-app chown www-data:www-data /data/django_sample.sql
 docker compose restart gunicorn-app   # 기동 명령이 다시 돌며 이관한 DB 에 미적용 migrate 반영 (app 만 — 전체 restart 는 nginx 기동 경합)
 ```
 
-> ⚠️ **`docker compose down -v` 는 `app-data` 볼륨, 즉 SQLite DB 를 삭제합니다.** 컨테이너만 내리려면 `docker compose stop` 을 쓰세요 (`down` 은 비권장, 특히 `-v`; 프로필 서비스는 2절처럼 `--profile` 을 붙임). 백업: `docker compose cp gunicorn-app:/data/django_sample.sqlite3 ./backup.sqlite3`. master_service 의 gitolite 저장소 볼륨(`gitolite-repos`)도 `-v` 로 삭제됩니다.
+> ⚠️ **`docker compose down -v` 는 `app-data` 볼륨, 즉 SQLite DB 를 삭제합니다.** 컨테이너만 내리려면 `docker compose stop` 을 쓰세요 (`down` 은 비권장, 특히 `-v`; 프로필 서비스는 2절처럼 `--profile` 을 붙임). 백업: `docker compose cp gunicorn-app:/data/django_sample.sqlite3 ./backup.sqlite3`. master_service 의 Plane 데이터 볼륨(`plane-pgdata`·`plane-uploads` 등)과 Gitea 저장소 볼륨(`gitea-data`)도 `-v` 로 삭제됩니다.
 
 #### 4. 이미지 이름 · 빌드 · uv
 
@@ -163,36 +163,24 @@ docker compose restart gunicorn-app   # 기동 명령이 다시 돌며 이관한
 - 실제 컨테이너를 띄우므로 호스트 80/443/5555 가 비어 있어야 합니다. 필요 도구: docker(Compose ≥ 2.17), uv, jq, curl, openssl, php-cli.
 - GitHub Actions(`.github/workflows/test.yml`)는 같은 스크립트를 실행합니다. 알림은 선택 — 저장소 secrets `SLACK_WEBHOOK_URL`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID` 가 없으면 해당 알림을 건너뜁니다. 업로드 로그(`log/ci`, `log/test_run`)는 `script/lib/mask_secrets.sh` 로 비밀값을 마스킹한 뒤 올립니다.
 
-### How to build project management solutions(openproject, jenkins, gitolite[private git server], harbor[private docker server])
+### How to build project management solutions(plane, jenkins, gitea[private git server], harbor[private docker server])
 
-- Refer the guide : [devspoon-startup-web] — master_service · 단독 openproject · jenkins · gitolite 의 `.env` · proxy 샘플 · gitolite 관리자 공개키 절차는 그 가이드를 따릅니다. tizenenv 가 포함된 master php 조합 명령은 아래 Tizen 절 4단계에 있습니다.
+- Refer the guide : [devspoon-startup-web] — master_service · 단독 plane · jenkins · gitea 의 `.env` · proxy 샘플 · 관리자 계정 생성 절차는 그 가이드를 따릅니다. tizenenv 가 포함된 master php 조합 명령은 아래 Tizen 절 4단계에 있습니다.
 
 #### 단독 서비스 동시 기동 규칙
 
-- **단독 서비스는 한 번에 하나만 기동합니다.** `nginx_openproject` · `nginx_jenkins` 는 둘 다 호스트 80/443 을, `gitolite` 는 2222 를 쓰고, `openproject` · `jenkins` · `gitolite` 컨테이너 이름이 master_service 와 같습니다. 웹 스택(`compose/web_service`)·master_service 와도 동시에 띄울 수 없습니다.
+- **단독 서비스는 한 번에 하나만 기동합니다.** `nginx_plane` · `nginx_jenkins` 는 둘 다 호스트 80/443 을, `gitea` 는 2222 를 쓰고, `plane-*` · `jenkins` · `gitea` 컨테이너 이름이 master_service 와 같습니다. 웹 스택(`compose/web_service`)·master_service 와도 동시에 띄울 수 없습니다.
 - **여러 서비스를 동시에 운영하려면 master_service 를 쓰세요.**
-- **단독 proxy 스택(`nginx_openproject` · `nginx_jenkins`)은 HTTP 전용입니다(80, TLS 없음).** 443 은 매핑돼 있지만 catch-all `default.conf` 가 TLS 핸드셰이크를 거부(`ssl_reject_handshake on`)할 뿐 서비스용 TLS 서버 블록이 없어, 로그인 자격증명이 80 으로 평문 전송됩니다. 공개망 운영은 앞단 TLS 종단(별도 리버스 프록시·LB) 뒤에 두거나, TLS 를 구성할 수 있는 master_service 를 쓰세요.
+- **단독 proxy 스택(`nginx_plane` · `nginx_jenkins` · `gitea`)은 HTTP 전용입니다(80, TLS 없음).** 443 은 매핑돼 있지만 catch-all `default.conf` 가 TLS 핸드셰이크를 거부(`ssl_reject_handshake on`)할 뿐 서비스용 TLS 서버 블록이 없어, 로그인 자격증명이 80 으로 평문 전송됩니다. 공개망 운영은 앞단 TLS 종단(별도 리버스 프록시·LB) 뒤에 두거나, TLS 를 구성할 수 있는 master_service 를 쓰세요.
 - 단독 tizen-env(`compose/dev_env_service/tizen-env`)는 호스트 포트 2221 만 쓰므로 웹 스택·단독 서비스와 함께 띄울 수 있지만, tizenenv 가 들어 있는 master php 조합과는 동시에 띄울 수 없습니다.
 
-#### Gitolite `./storage` → named volume `gitolite-repos` 이전
+#### Plane · Gitea 데이터 볼륨
 
-gitolite 저장소는 호스트 `storage/` bind 가 아니라 named volume `gitolite-repos`(컨테이너 `/home/gitolite-creator/repositories`)에 저장됩니다. 이전 버전의 `storage/` 에 저장소가 있으면 아래처럼 옮깁니다. 빌드에는 관리자 공개키 `docker/gitolite/system/client_user.pub` 가 먼저 있어야 합니다([devspoon-startup-web] 가이드 Gitolite 1단계). 볼륨 이름 앞에는 compose 프로젝트(폴더) 이름이 붙습니다 — 단독 `gitolite_gitolite-repos`, master `master_service_gitolite-repos`(`docker volume ls` 로 확인). 갓 클론한 저장소처럼 `storage/` 에 자리표시자 `.gitkeep` 뿐이면 옮길 저장소가 없으므로 이 절을 건너뜁니다 — 그대로 실행하면 `/from/*` 가 전개되지 않아 `cp: can't stat '/from/*'` 로 rc 1 입니다.
+Plane 데이터(`plane-pgdata` · `plane-uploads` · `plane-rabbitmq` · `plane-redisdata` · `plane-proxy-*` · `plane-logs-*`)와 Gitea 저장소(`gitea-data`)는 호스트 bind 가 아니라 named volume 입니다 — 호스트 폴더를 미리 만들 필요가 없고 컨테이너 uid 와 호스트 계정의 소유권이 어긋나지 않습니다. 볼륨 이름 앞에는 compose 프로젝트(폴더) 이름이 붙습니다(단독 `gitea_gitea-data`, master `master_service_gitea-data` — `docker volume ls` 로 확인).
 
-```bash
-# 저장소 루트에서 — 단독 gitolite 예. master: D=compose/master_service, V=master_service_gitolite-repos, docker compose 에 -f docker-compose-<stack>.yml
-D=compose/project_mng_service/gitolite
-V=gitolite_gitolite-repos
-[ -f "$D/.env" ] || cp "$D/.env-example" "$D/.env"    # 단독 gitolite .env 는 로그 설정만(master 는 기존 .env)
-(cd "$D" && docker compose up -d --build && docker compose stop gitolite)   # 볼륨 생성 — 이미지의 gitolite-admin.git 이 채워짐
-docker run --rm --mount type=bind,src="$PWD/$D/storage",dst=/from,readonly -v "$V":/to alpine sh -c 'cp -an /from/* /to/'
-(cd "$D" && docker compose start gitolite)
-docker exec gitolite chown -R gitolite-creator:gitolite-creator /home/gitolite-creator/repositories
-docker exec -u gitolite-creator -w /home/gitolite-creator gitolite bin/gitolite setup   # 옮긴 저장소에 gitolite hook 설치
-docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소 이름이 보이는지 확인
-```
+- **`docker compose down -v` 는 이 볼륨을 전부 삭제합니다.** 컨테이너만 내릴 때는 `stop` 을 쓰세요.
+- 백업·복원 절차(Plane `pg_dump` · MinIO 업로드 아카이브, Gitea `gitea dump`)는 [devspoon-startup-web] 가이드의 Plane · Gitea 절을 따릅니다.
 
-- 복사는 `storage/` 최상위 항목(저장소 폴더 `*.git`) 단위입니다. 볼륨에 같은 이름(`gitolite-admin.git` 등)이 이미 있으면 그 저장소는 통째로 건너뛰고(안쪽 파일도 합치지 않음), 없는 이름만 복사합니다. 점으로 시작하는 항목(자리표시자 `.gitkeep`)은 복사하지 않습니다. `sh -c` 는 빼면 안 됩니다 — `/from/*` 는 컨테이너 안에서 펼쳐져야 합니다(alpine BusyBox `cp -an /from/. /to/` 는 대상이 있으면 아무것도 복사하지 않고 성공으로 끝납니다). 옮긴 저장소는 gitolite-admin 의 `conf/gitolite.conf` 에 등록해야 사용자에게 권한이 생깁니다.
-- 볼륨은 `docker compose down -v` 로 삭제되므로 옮긴 뒤 `storage/` 원본은 확인이 끝날 때까지 지우지 마세요.
 
 #### Harbor 공존
 
@@ -265,40 +253,25 @@ docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소
    ssh -p 2221 root@127.0.0.1    # SSH 는 기본 127.0.0.1:2221 에만 바인드 — 원격 허용은 .env 의 TIZEN_SSH_BIND=0.0.0.0
    ```
 
-   - How to build full service (require setting [devspoon-web], [devspoon-startup-web]) — tizenenv 는 `docker-compose-php.yml` 에만 있습니다. 단독 tizen-env 와 컨테이너 이름(`tizenenv`)·포트(2221)가 같으므로 둘 중 하나만 기동합니다. gitolite 관리자 공개키·openproject/jenkins proxy 샘플 복사는 [devspoon-startup-web] 가이드의 master_service 절을 먼저 따릅니다.
+   - How to build full service (require setting [devspoon-web], [devspoon-startup-web]) — tizenenv 는 `docker-compose-php.yml` 에만 있습니다. 단독 tizen-env 와 컨테이너 이름(`tizenenv`)·포트(2221)가 같으므로 둘 중 하나만 기동합니다. plane/gitea/jenkins proxy 샘플 복사는 [devspoon-startup-web] 가이드의 master_service 절을 먼저 따릅니다.
 
    ```sh
    # 저장소 루트에서
    D=compose/master_service
-   cp "$D/.env-example" "$D/.env"    # TIZEN_* 경로, OPENPROJECT_HOST_NAME · SMTP_* 자리표시자는 직접 입력
+   cp "$D/.env-example" "$D/.env"    # TIZEN_* 경로, PLANE_DOMAIN · PLANE_WEB_URL · PLANE_CORS_ALLOWED_ORIGINS · GITEA_DOMAIN · GITEA_ROOT_URL 자리표시자는 직접 입력
    bash -c ". script/lib/django_secrets.sh && ensure_env_secrets $D/.env"
    cd "$D"
-   docker compose -f docker-compose-php.yml up -d --build                    # php + openproject · jenkins · gitolite · tizenenv
+   docker compose -f docker-compose-php.yml up -d --build                    # php + plane · jenkins · gitea · tizenenv
    docker compose -f docker-compose-php.yml --profile redis up -d --build    # + redis
    docker compose -f docker-compose-php.yml --profile redis stop             # 프로필 없는 stop 은 redis 컨테이너를 남깁니다
    ```
 
    php 조합의 프로필은 `redis` 뿐입니다(celery 없음).
 
-   > ⚠️ **pgdata 는 비워 두세요**: `compose/master_service/pgdata/` 는 저장소에 없고 첫 기동 시 Docker 가 만든 뒤 openproject 내장 PostgreSQL 이 초기화합니다. 폴더에 파일이 하나라도 있으면(`.gitkeep` 같은 점 파일 포함) `initdb` 가 `directory ... exists but is not empty` 로 실패해 컨테이너가 재시작을 반복합니다(nginx 502) — 파일을 넣지 마세요. 이미지가 `openproject/openproject:17`(내장 PostgreSQL 17)이라 이전 버전으로 만든 `pgdata/` 는 그대로 기동할 수 없습니다 — 먼저 백업하고 [OpenProject 공식 문서][OpenProject docs]의 업그레이드 절차를 따르세요.
-   > 생성된 데이터는 컨테이너 postgres 사용자 소유(권한 700)라 호스트 계정으로 읽기·삭제할 수 없습니다. 백업·삭제는 서비스를 멈춘 뒤 컨테이너로 합니다. 백업 예(저장소 루트에서, 결과는 저장소 밖 `$HOME` 에 본인 소유 600 으로 저장 — DB 에 비밀번호 해시가 들어 있음):
+   > ⚠️ **첫 기동은 Plane 마이그레이션 때문에 수 분 걸립니다**: `plane-migrator` 가 성공으로 끝난 뒤 `plane-api` 가 뜨고, 그 뒤에 `plane-proxy` 가 준비됩니다. 그 전까지 nginx 는 502 를 돌려줄 수 있습니다. Plane · Gitea 데이터는 named volume 이므로 호스트 폴더(`pgdata/` 등)를 만들 필요가 없습니다 — 위 [Plane · Gitea 데이터 볼륨](#plane--gitea-데이터-볼륨) 참고.
    >
-   > ```bash
-   > D=compose/master_service
-   > (cd "$D" && docker compose -f docker-compose-php.yml stop openproject)
-   > if [ -n "$(docker ps -q -f name='^openproject$')" ]; then
-   >   echo "openproject 컨테이너가 실행 중 — 먼저 stop 하세요(stop 줄 오류 확인), 백업하지 않음"
-   > elif [ -d "$D/pgdata" ]; then
-   >   docker run --rm --mount type=bind,src="$PWD/$D/pgdata",dst=/d,readonly -v "$HOME":/b alpine \
-   >     sh -c "test -f /d/PG_VERSION || { echo 'PG_VERSION 없음 — 백업하지 않음' >&2; exit 1; }; umask 077; tar czf /b/openproject-pgdata.tgz.partial -C /d . && chown $(id -u):$(id -g) /b/openproject-pgdata.tgz.partial && chmod 600 /b/openproject-pgdata.tgz.partial && mv /b/openproject-pgdata.tgz.partial /b/openproject-pgdata.tgz || { rm -f /b/openproject-pgdata.tgz.partial; exit 1; }"
-   > elif [ -d "$D" ]; then
-   >   echo "$PWD/$D/pgdata 없음 — 첫 기동 전이면 백업할 데이터가 없습니다"
-   > else
-   >   echo "$PWD/$D 없음 — 저장소 루트에서 실행하세요"
-   > fi
-   > ```
-   >
-   > `stop` 줄이 오류 없이 끝났는지 먼저 확인하세요(예: `-f` 를 빠뜨리면 실패합니다). 확인을 놓쳐도 `openproject` 컨테이너가 실행 중이면 백업을 거부합니다. 정상 종료가 아니라 모든 PostgreSQL 프로세스가 멈춘 뒤의 파일 복사본(crash-consistent)이므로, 복원하면 PostgreSQL 이 크래시 복구를 거쳐 기동합니다(`postmaster.pid` 가 들어 있어도 됩니다). 논리 백업(SQL)은 [OpenProject 공식 문서][OpenProject backup]의 백업 절차(`pg_dump`)를 참고하세요. 없는 경로를 bind 하면 Docker Desktop 등 일부 엔진은 `--mount` 여도 빈 폴더를 만들고 빈 아카이브가 성공한 것처럼 보입니다. 그래서 호스트에서 `pgdata` 폴더를 먼저 확인하고, 컨테이너 안에서 `PG_VERSION`(PostgreSQL 클러스터 표식)이 있을 때만 아카이브를 만듭니다. 아카이브는 `.partial` 에 쓴 뒤 성공했을 때만 기존 백업과 교체합니다. 삭제는 `tar tzf ~/openproject-pgdata.tgz` 로 내용을 확인한 뒤에만 하세요. 백업만 할 때는 `(cd "$D" && docker compose -f docker-compose-php.yml start openproject)` 로 다시 기동합니다.
+   > ⚠️ **`PLANE_DB_PASSWORD` 를 나중에 바꾸면 기존 볼륨과 어긋납니다**: 이 값은 `plane-pgdata` 볼륨이 처음 만들어질 때의 PostgreSQL 비밀번호로 굳습니다. `.env` 를 새로 만들어 값이 바뀌면 `plane-migrator` 가 `FATAL: password authentication failed for user "plane"` 으로 실패하고 뒤따르는 앱 컨테이너가 전부 기동하지 못합니다. DB 안의 비밀번호도 함께 바꾸거나(`docker compose -f docker-compose-php.yml exec plane-db psql -U plane -c "ALTER USER plane PASSWORD '<새 값>';"`), 데이터를 버려도 되면 볼륨을 새로 만드세요(`down -v`).
+
 
 5. A user selection
 
@@ -315,7 +288,7 @@ docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소
 
 ## Additional development item
 
-- System integration between jenkins, gitolite, tizen-env.
+- System integration between jenkins, gitea, tizen-env.
 - Development tizen image management solution.
   - The tizen image management solution UI sample design
 
@@ -342,10 +315,10 @@ docker exec gitolite ls /home/gitolite-creator/repositories   # 옮긴 저장소
 
 [devspoon-web]: https://github.com/devspoons/devspoon-web
 [devspoon-startup-web]: https://github.com/devspoons/devspoon-startup-web
-[OpenProject]: https://www.openproject.org/docs/user-guide/wiki/
-[OpenProject docs]: https://www.openproject.org/docs/installation-and-operations/operation/upgrading/#compose-based-installation
-[OpenProject backup]: https://www.openproject.org/docs/installation-and-operations/operation/backing-up/#docker-based-installation
+[Plane]: https://plane.so/
+[Plane docs]: https://developers.plane.so/self-hosting/overview
 [Jenkins]: https://en.wikipedia.org/wiki/Jenkins_(software)
-[Gitolite]: https://wiki.archlinux.org/index.php/Gitolite
+[Gitea]: https://about.gitea.com/
+[Gitea docs]: https://docs.gitea.com/installation/install-with-docker
 [Harbor]: https://en.wikipedia.org/wiki/Harbor
 [tizen web-site]: https://www.tizen.org/user/register

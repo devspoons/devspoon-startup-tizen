@@ -49,30 +49,19 @@ www/*/db.sqlite3
 www/*/secrets.json
 *.sqlite3
 
-# 사용자별 proxy conf 복사본(.example·마운트 자리표시자 default.conf 만 추적)·gitolite 관리자 공개키(빌드 전 사용자가 생성)
+# 사용자별 proxy conf 복사본(.example·마운트 자리표시자 default.conf 만 추적)
 config/web-server/nginx/php/proxy/*/*.conf
 !config/web-server/nginx/php/proxy/*/default.conf
-docker/gitolite/system/*.pub
 
 # docs/YYYY-MM-DD/ — 날짜별 로컬 작업 문서(학습·설계·작업계획·체크리스트·리포트). git 추적 제외.
 docs/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
 
-# 형제 전용 런타임 데이터(Jenkins home·OpenProject assets·gitolite storage) — 내용물 무시, 빈 자리표시자 .gitkeep 만 추적 (SRV1-SEC-01, D-PH)
-# OpenProject pgdata 는 폴더 전체 무시·자리표시자 없음 — initdb 가 빈 폴더를 요구, 첫 기동 시 Docker 가 생성 (DEF-PG-01)
-compose/master_service/pgdata/
-compose/project_mng_service/nginx_openproject/pgdata/
+# 형제 전용 런타임 데이터(Jenkins home) — 내용물 무시, 빈 자리표시자 .gitkeep 만 추적 (SRV1-SEC-01, D-PH)
+# Plane·Gitea 의 데이터(pgdata·uploads·저장소·sqlite)는 호스트 폴더가 아니라 named volume 이라 무시 규칙이 필요 없다.
 compose/master_service/jenkins_home/*
 !compose/master_service/jenkins_home/.gitkeep
-compose/master_service/static/*
-!compose/master_service/static/.gitkeep
-compose/master_service/storage/*
-!compose/master_service/storage/.gitkeep
 compose/project_mng_service/nginx_jenkins/jenkins_home/*
 !compose/project_mng_service/nginx_jenkins/jenkins_home/.gitkeep
-compose/project_mng_service/nginx_openproject/static/*
-!compose/project_mng_service/nginx_openproject/static/.gitkeep
-compose/project_mng_service/gitolite/storage/*
-!compose/project_mng_service/gitolite/storage/.gitkeep
 # Harbor ssl — autoinstall.sh 가 폴더째 cp 하므로 폴더는 유지, 인증서 내용물은 무시·빈 .gitkeep 만 추적 (D-PH)
 !compose/project_mng_service/harbor-v2.0.0/ssl/
 compose/project_mng_service/harbor-v2.0.0/ssl/*
