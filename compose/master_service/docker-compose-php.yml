@@ -180,6 +180,9 @@ services:
         max-size: "${LOG_OPT_MAXS}"
     working_dir: /application
     container_name: tizenenv
+    # Tizen 도구 저장소(download.tizen.org …/Ubuntu_18.04)의 gbs 의존성 librpm-tizen 은 amd64 전용이고 JAVA_HOME 도 amd64 경로다.
+    # arm64 등 다른 호스트에서도 amd64 이미지로 빌드·실행하도록 고정한다(비 x86_64 호스트는 qemu binfmt 에뮬레이션 필요).
+    platform: linux/amd64
     # 확인필요(RR-03): Tizen mic 이미지 생성의 loop mount 용 — 빌드 검증 전까지 유지.
     # 대체 후보: cap_add: [SYS_ADMIN] + devices: [/dev/loop-control]
     privileged: true
