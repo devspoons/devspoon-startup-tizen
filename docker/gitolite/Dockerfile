@@ -44,6 +44,10 @@ ADD system/client_user.pub /home/git-manager/.ssh/authorized_keys
 ADD system/client_user.pub /home/git-manager/client_user.pub
 
 ADD system/config /home/git-manager/.ssh/config
+# sample-script(clone_admin.sh·add_user.sh)가 컨테이너 안 sshd(localhost)에 처음 붙을 때 호스트 키 확인 프롬프트에서 멈추지 않도록
+# (비대화형 실행 시 "Host key verification failed"), 이미지에 생성된 sshd 호스트 공개키를 git-manager 의 known_hosts 에 등록한다.
+RUN for k in /etc/ssh/ssh_host_*_key.pub; do echo "localhost $(cut -d' ' -f1,2 "$k")"; done > /home/git-manager/.ssh/known_hosts \
+ && test -s /home/git-manager/.ssh/known_hosts
 
 ADD sample-script /home/git-manager/sample-script
 
