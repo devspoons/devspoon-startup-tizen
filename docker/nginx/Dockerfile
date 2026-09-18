@@ -152,3 +152,12 @@ RUN openssl dhparam -out /etc/nginx/dhparam.pem 2048 && \
 # ============================================================================
 RUN printf '#!/bin/sh\nset -e\nBK=/etc/nginx/dhparam-backup/dhparam.pem\nLV=/etc/nginx/dhparam.pem\nmkdir -p /etc/nginx/dhparam-backup\nif [ -s "$BK" ]; then\n  cp -f "$BK" "$LV"\nelse\n  cp -f "$LV" "$BK"\nfi\n' > /docker-entrypoint.d/20-dhparam.sh && \
     chmod +x /docker-entrypoint.d/20-dhparam.sh
+
+# ============================================================================
+# 10. upstream 이름 해석 대기 훅 (30-wait-upstreams.sh — 설명은 스크립트 머리 주석)
+#    - docker compose restart / 호스트 재부팅처럼 app 컨테이너가 잠시 네트워크에서 빠진 순간
+#      webserver 가 먼저 기동하면 nginx 가 [emerg] host not found in upstream 으로 종료한다.
+#    - 20-dhparam 뒤·nginx 기동 직전에 conf 의 upstream 이름이 해석될 때까지 최대
+#      NGINX_UPSTREAM_WAIT 초(기본 30) 기다린다. 해석 실패여도 기동은 계속(exit 0).
+# ============================================================================
+COPY --chmod=755 30-wait-upstreams.sh /docker-entrypoint.d/30-wait-upstreams.sh
