@@ -1,0 +1,32 @@
+# Plane reverse proxy sample
+# 사용: 이 폴더(config/web-server/nginx/php/proxy/plane/)에서
+#         cp plane_proxy.conf.example plane_proxy.conf
+#       후 server_name 도메인만 수정. 단독 스택 nginx_plane 은 이 폴더를 conf.d 로 마운트한다
+#       (복사본이 없으면 catch-all default.conf 가 444 로 응답하며 정상 기동).
+#       master_service 도 같은 폴더의 복사본을 쓴다 — webserver 가 /etc/nginx/proxy.d/plane/ 로 마운트.
+#       compose .env 의 PLANE_DOMAIN · PLANE_WEB_URL · PLANE_CORS_ALLOWED_ORIGINS 를 같은 도메인으로 맞춘다.
+# 요구: nginx.conf http 블록의 map $http_upgrade $connection_upgrade (Plane live 서버가 WebSocket 사용).
+# 구조: proxy_params 는 server 컨텍스트에서 include 하고, 바꿔야 하는 값만 location 에서 덮어쓴다.
+#       같은 컨텍스트에서 같은 지시어를 두 번 쓰면 "directive is duplicate" 로 기동 실패한다.
+#       스택 내부 plane-proxy(Caddy)가 web/space/admin/api/live 라우팅을 이미 처리하므로 단일 upstream 으로 넘긴다.
+server {
+    listen 80;
+    server_name plane.example.com;
+    include /etc/nginx/bots.d/blockbots.conf;
+    include /etc/nginx/bots.d/ddos.conf;
+    include /etc/nginx/proxy_params;
+
+    # 첨부 파일 업로드 한도 — compose .env 의 PLANE_FILE_SIZE_LIMIT(바이트) 과 맞춘다.
+    client_max_body_size 50m;
+
+    location /.well-known/acme-challenge/ { root /www/certbot; }
+
+    location / {
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
+        # live 서버의 실시간 협업 커넥션이 proxy_params 의 60s 에 끊기지 않도록 이 location 만 늘린다.
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_pass http://plane-proxy:80;
+    }
+}

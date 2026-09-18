@@ -1,0 +1,322 @@
+# =============================================================================
+# Plane (makeplane/plane) 공용 서비스 정의 — master_service 5조합과 단독
+# project_mng_service/nginx_plane 이 `include:` 로 함께 쓴다 (Compose ≥ 2.20).
+#
+# - 업스트림 deployments/cli/community/docker-compose.yml (v1.4.2) 를 이 저장소 관례에
+#   맞춘 것: container_name 명시, ${LOG_DRIVER} 로깅, 비밀값은 ${VAR:?} 로 fail-fast,
+#   호스트 포트 미게시(앞단 nginx 가 plane-proxy:80 으로 프록시).
+# - 데이터는 전부 named volume (pgdata·redisdata·uploads·rabbitmq_data·logs_*).
+#   호스트 bind 가 없으므로 컨테이너 uid 와 호스트 사용자 uid 불일치 문제가 없다.
+# - `docker compose down -v` 는 이 볼륨들을 지운다 — 운영에서는 stop/start 를 쓸 것.
+# =============================================================================
+
+x-plane-logging: &plane-logging
+  driver: "${LOG_DRIVER:-json-file}"
+  options:
+    max-file: "${LOG_OPT_MAXF:-5}"
+    max-size: "${LOG_OPT_MAXS:-100m}"
+
+x-db-env: &db-env
+  PGHOST: plane-db
+  PGDATABASE: ${PLANE_DB_NAME:-plane}
+  POSTGRES_USER: ${PLANE_DB_USER:-plane}
+  POSTGRES_PASSWORD: ${PLANE_DB_PASSWORD:?PLANE_DB_PASSWORD must be set in .env}
+  POSTGRES_DB: ${PLANE_DB_NAME:-plane}
+  POSTGRES_PORT: "5432"
+  PGDATA: /var/lib/postgresql/data
+
+x-redis-env: &redis-env
+  REDIS_HOST: plane-redis
+  REDIS_PORT: "6379"
+  REDIS_URL: redis://plane-redis:6379/
+
+x-minio-env: &minio-env
+  MINIO_ROOT_USER: ${PLANE_MINIO_USER:-plane-minio}
+  MINIO_ROOT_PASSWORD: ${PLANE_MINIO_PASSWORD:?PLANE_MINIO_PASSWORD must be set in .env}
+
+x-aws-s3-env: &aws-s3-env
+  AWS_REGION: ""
+  AWS_ACCESS_KEY_ID: ${PLANE_MINIO_USER:-plane-minio}
+  AWS_SECRET_ACCESS_KEY: ${PLANE_MINIO_PASSWORD:?PLANE_MINIO_PASSWORD must be set in .env}
+  AWS_S3_ENDPOINT_URL: http://plane-minio:9000
+  AWS_S3_BUCKET_NAME: ${PLANE_BUCKET_NAME:-uploads}
+
+x-mq-env: &mq-env
+  RABBITMQ_HOST: plane-mq
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_DEFAULT_USER: ${PLANE_MQ_USER:-plane}
+  RABBITMQ_DEFAULT_PASS: ${PLANE_MQ_PASSWORD:?PLANE_MQ_PASSWORD must be set in .env}
+  RABBITMQ_DEFAULT_VHOST: ${PLANE_MQ_VHOST:-plane}
+  RABBITMQ_VHOST: ${PLANE_MQ_VHOST:-plane}
+
+# plane-proxy(Caddy) 는 이 스택 안에서만 80 을 연다. 앞단 nginx 가 TLS 종단·도메인 라우팅을
+# 담당하므로 SITE_ADDRESS 는 :80 고정이고 Caddy 의 자동 인증서 기능은 쓰지 않는다.
+x-proxy-env: &proxy-env
+  APP_DOMAIN: ${PLANE_DOMAIN:?PLANE_DOMAIN must be set in .env}
+  FILE_SIZE_LIMIT: ${PLANE_FILE_SIZE_LIMIT:-5242880}
+  BUCKET_NAME: ${PLANE_BUCKET_NAME:-uploads}
+  SITE_ADDRESS: ":80"
+  LISTEN_HTTP_PORT: "80"
+  LISTEN_HTTPS_PORT: "443"
+  # 앞단 nginx 가 X-Forwarded-For 를 넘기므로 Caddy 가 그 값을 신뢰하도록 둔다.
+  TRUSTED_PROXIES: ${PLANE_TRUSTED_PROXIES:-0.0.0.0/0}
+  # CERT_EMAIL·CERT_ACME_CA·CERT_ACME_DNS 는 정의하지 않는다 — 이미지의 Caddyfile 이
+  # `acme_ca {$CERT_ACME_CA:<기본 URL>}` 형태라 빈 문자열을 넘기면 기본값이 적용되지 않고
+  # "wrong argument count ... after 'acme_ca'" 로 Caddy 가 기동 실패한다. TLS 는 앞단 nginx 담당.
+
+x-app-env: &app-env
+  WEB_URL: ${PLANE_WEB_URL:?PLANE_WEB_URL must be set in .env}
+  CORS_ALLOWED_ORIGINS: ${PLANE_CORS_ALLOWED_ORIGINS:?PLANE_CORS_ALLOWED_ORIGINS must be set in .env}
+  DEBUG: ${PLANE_DEBUG:-0}
+  GUNICORN_WORKERS: ${PLANE_GUNICORN_WORKERS:-1}
+  USE_MINIO: "1"
+  MINIO_ENDPOINT_SSL: "0"
+  DATABASE_URL: postgresql://${PLANE_DB_USER:-plane}:${PLANE_DB_PASSWORD:?PLANE_DB_PASSWORD must be set in .env}@plane-db/${PLANE_DB_NAME:-plane}
+  AMQP_URL: amqp://${PLANE_MQ_USER:-plane}:${PLANE_MQ_PASSWORD:?PLANE_MQ_PASSWORD must be set in .env}@plane-mq:5672/${PLANE_MQ_VHOST:-plane}
+  SECRET_KEY: ${PLANE_SECRET_KEY:?PLANE_SECRET_KEY must be set in .env}
+  LIVE_SERVER_SECRET_KEY: ${PLANE_LIVE_SERVER_SECRET_KEY:?PLANE_LIVE_SERVER_SECRET_KEY must be set in .env}
+  API_KEY_RATE_LIMIT: ${PLANE_API_KEY_RATE_LIMIT:-60/minute}
+  AUTHENTICATION_RATE_LIMIT: ${PLANE_AUTHENTICATION_RATE_LIMIT:-10/minute}
+  WEBHOOK_ALLOWED_IPS: ""
+  WEBHOOK_ALLOWED_HOSTS: ""
+
+services:
+  # ── 데이터 계층 ────────────────────────────────────────────────────────────
+  plane-db:
+    image: postgres:15.7-alpine
+    container_name: plane-db
+    logging: *plane-logging
+    command: postgres -c 'max_connections=1000'
+    environment:
+      <<: *db-env
+      TZ: "Asia/Seoul"
+    volumes:
+      - plane-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PLANE_DB_USER:-plane} -d ${PLANE_DB_NAME:-plane}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: always
+
+  plane-redis:
+    image: valkey/valkey:7.2.11-alpine
+    container_name: plane-redis
+    logging: *plane-logging
+    volumes:
+      - plane-redisdata:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: always
+
+  plane-mq:
+    image: rabbitmq:3.13.6-management-alpine
+    container_name: plane-mq
+    logging: *plane-logging
+    environment:
+      <<: *mq-env
+      TZ: "Asia/Seoul"
+    volumes:
+      - plane-rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    restart: always
+
+  # 업스트림은 minio/minio:latest(Docker Hub)를 쓰지만 그 저장소는 더 이상 익명 pull 이 되지 않는다
+  # ("pull access denied ... may require 'docker login'"). MinIO 가 공식 배포하는 quay.io 이미지를
+  # 버전 고정해 사용한다(arm64·amd64·ppc64le 멀티아치). 업그레이드는 PLANE_MINIO_IMAGE 로 덮어쓴다.
+  plane-minio:
+    image: ${PLANE_MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z}
+    container_name: plane-minio
+    logging: *plane-logging
+    command: server /export --console-address ":9090"
+    environment:
+      <<: *minio-env
+      TZ: "Asia/Seoul"
+    volumes:
+      - plane-uploads:/export
+    restart: always
+
+  # ── 애플리케이션 계층 ──────────────────────────────────────────────────────
+  # migrator 는 1회성(DB 마이그레이션). api 는 이 작업이 성공으로 끝난 뒤 기동한다.
+  plane-migrator:
+    image: makeplane/plane-backend:${PLANE_RELEASE:-stable}
+    container_name: plane-migrator
+    logging: *plane-logging
+    command: ./bin/docker-entrypoint-migrator.sh
+    environment:
+      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+      TZ: "Asia/Seoul"
+    volumes:
+      - plane-logs-migrator:/code/plane/logs
+    depends_on:
+      plane-db:
+        condition: service_healthy
+      plane-redis:
+        condition: service_healthy
+    restart: "no"
+
+  plane-api:
+    image: makeplane/plane-backend:${PLANE_RELEASE:-stable}
+    container_name: plane-api
+    logging: *plane-logging
+    command: ./bin/docker-entrypoint-api.sh
+    environment:
+      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+      TZ: "Asia/Seoul"
+    volumes:
+      - plane-logs-api:/code/plane/logs
+    depends_on:
+      plane-migrator:
+        condition: service_completed_successfully
+      plane-mq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import socket,sys; s=socket.create_connection(('127.0.0.1',8000),3); sys.exit(0)\""]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: always
+    networks:
+      default:
+        aliases:
+          - api            # plane-live 의 API_BASE_URL 기본값(http://api:8000) 호환
+
+  plane-worker:
+    image: makeplane/plane-backend:${PLANE_RELEASE:-stable}
+    container_name: plane-worker
+    logging: *plane-logging
+    command: ./bin/docker-entrypoint-worker.sh
+    environment:
+      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+      TZ: "Asia/Seoul"
+    volumes:
+      - plane-logs-worker:/code/plane/logs
+    depends_on:
+      plane-api:
+        condition: service_started
+    restart: always
+
+  plane-beat-worker:
+    image: makeplane/plane-backend:${PLANE_RELEASE:-stable}
+    container_name: plane-beat-worker
+    logging: *plane-logging
+    command: ./bin/docker-entrypoint-beat.sh
+    environment:
+      <<: [*app-env, *db-env, *redis-env, *minio-env, *aws-s3-env, *proxy-env]
+      TZ: "Asia/Seoul"
+    volumes:
+      - plane-logs-beat-worker:/code/plane/logs
+    depends_on:
+      plane-api:
+        condition: service_started
+    restart: always
+
+  plane-web:
+    image: makeplane/plane-frontend:${PLANE_RELEASE:-stable}
+    container_name: plane-web
+    logging: *plane-logging
+    environment:
+      TZ: "Asia/Seoul"
+    depends_on:
+      plane-api:
+        condition: service_started
+    restart: always
+    networks:
+      default:
+        aliases:
+          - web            # plane-proxy(Caddy) 가 참조하는 서비스 이름
+
+  plane-space:
+    image: makeplane/plane-space:${PLANE_RELEASE:-stable}
+    container_name: plane-space
+    logging: *plane-logging
+    environment:
+      TZ: "Asia/Seoul"
+    depends_on:
+      plane-web:
+        condition: service_started
+    restart: always
+    networks:
+      default:
+        aliases:
+          - space
+
+  plane-admin:
+    image: makeplane/plane-admin:${PLANE_RELEASE:-stable}
+    container_name: plane-admin
+    logging: *plane-logging
+    environment:
+      TZ: "Asia/Seoul"
+    depends_on:
+      plane-web:
+        condition: service_started
+    restart: always
+    networks:
+      default:
+        aliases:
+          - admin
+
+  plane-live:
+    image: makeplane/plane-live:${PLANE_RELEASE:-stable}
+    container_name: plane-live
+    logging: *plane-logging
+    environment:
+      <<: *redis-env
+      API_BASE_URL: http://plane-api:8000
+      LIVE_SERVER_SECRET_KEY: ${PLANE_LIVE_SERVER_SECRET_KEY:?PLANE_LIVE_SERVER_SECRET_KEY must be set in .env}
+      TZ: "Asia/Seoul"
+    depends_on:
+      plane-api:
+        condition: service_started
+    restart: always
+    networks:
+      default:
+        aliases:
+          - live
+
+  # 스택 내부 전용 리버스 프록시(Caddy). 호스트 포트를 열지 않고 앞단 nginx 가
+  # http://plane-proxy:80 으로 프록시한다 — 기존 openproject 자리와 동일한 구조.
+  plane-proxy:
+    image: makeplane/plane-proxy:${PLANE_RELEASE:-stable}
+    container_name: plane-proxy
+    logging: *plane-logging
+    environment:
+      <<: *proxy-env
+      TZ: "Asia/Seoul"
+    expose:
+      - "80"
+    volumes:
+      - plane-proxy-config:/config
+      - plane-proxy-data:/data
+    depends_on:
+      plane-web:
+        condition: service_started
+      plane-space:
+        condition: service_started
+      plane-admin:
+        condition: service_started
+      plane-live:
+        condition: service_started
+    restart: always
+
+volumes:
+  plane-pgdata:
+  plane-redisdata:
+  plane-uploads:
+  plane-rabbitmq:
+  plane-logs-api:
+  plane-logs-worker:
+  plane-logs-beat-worker:
+  plane-logs-migrator:
+  plane-proxy-config:
+  plane-proxy-data:
