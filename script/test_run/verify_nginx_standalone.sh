@@ -19,9 +19,14 @@ cleanup() {
   rm -f "$NGINX_CFG_DIR/conf.d/sa_gunicorn_ng_https.conf" || true
 }
 trap cleanup EXIT
+# [FAIL] 판정 수 — 출력만 하고 exit 0 이면 자동 게이트(run-ci·검증 러너)에서 무의미
+SA_FAILS=0
 
 echo "=== Pre: clean prior backup dhparam (force fresh test) ==="
-rm -f "$BACKUP_DIR/dhparam.pem"
+# ssl/dhparam 은 추적하지 않는 런타임 폴더 — 새 클론에는 없으므로 먼저 만든다 (없으면 set -e 로 아래 ls 에서 즉시 종료)
+mkdir -p "$BACKUP_DIR"
+# 앞선 스택 기동이 남긴 백업본은 컨테이너(root)가 만든 파일 — 호스트 사용자 rm 은 Permission denied 이므로 같은 이미지로 지운다
+docker run --rm --entrypoint rm -v "$BACKUP_DIR/":/b devspoon-nginx:latest -f /b/dhparam.pem
 ls -la "$BACKUP_DIR/"
 
 echo
@@ -76,7 +81,7 @@ if [ -f "$BACKUP_DIR/dhparam.pem" ]; then
     if [ "$HSHA" = "$CSHA" ]; then
       echo "  [PASS] backup matches container dhparam — backup-on-first-run works"
     else
-      echo "  [FAIL] backup and container dhparam differ"
+      SA_FAILS=$((SA_FAILS+1)); echo "  [FAIL] backup and container dhparam differ"
     fi
   else
     rm -f "$TMP_PEM"
@@ -85,7 +90,7 @@ if [ -f "$BACKUP_DIR/dhparam.pem" ]; then
     docker logs standalone-nginx 2>&1 | tail -10 || true
   fi
 else
-  echo "  [FAIL] no host backup created"
+  SA_FAILS=$((SA_FAILS+1)); echo "  [FAIL] no host backup created"
 fi
 
 echo
@@ -126,7 +131,7 @@ if docker ps --filter "name=standalone-nginx" --filter "status=running" --format
   if [ "$C2SHA" = "$HSHA" ]; then
     echo "  [PASS] same dhparam restored from host backup after restart"
   else
-    echo "  [FAIL] dhparam changed across restart"
+    SA_FAILS=$((SA_FAILS+1)); echo "  [FAIL] dhparam changed across restart"
   fi
 else
   # 컨테이너가 종료된 경우에도 docker cp 로 종료된 컨테이너 안의 dhparam.pem 을 읽을 수 있다.
@@ -139,7 +144,7 @@ else
     if [ "$C2SHA" = "$HSHA" ]; then
       echo "  [PASS] same dhparam restored from host backup after restart"
     else
-      echo "  [FAIL] dhparam changed across restart"
+      SA_FAILS=$((SA_FAILS+1)); echo "  [FAIL] dhparam changed across restart"
     fi
   else
     rm -f "$TMP_PEM"
@@ -163,4 +168,5 @@ docker exec standalone-nginx nginx -t 2>&1 | tail -8 || true
 echo "(nginx -t fail is EXPECTED because cert files /etc/letsencrypt/live/sa.test/* don't exist - this proves path resolution is correct)"
 
 echo
-echo "=== ALL DONE ==="
+echo "=== ALL DONE (FAILS=$SA_FAILS) ==="
+[ "$SA_FAILS" -eq 0 ]
