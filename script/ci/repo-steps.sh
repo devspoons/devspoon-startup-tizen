@@ -131,5 +131,53 @@ done
 # README 의 authorized_keys root 소유 필수 근거 — 주석·미설정은 기본값 yes 라 PASS, 명시적 no 만 FAIL
 awk 'tolower($1)=="match"{exit} tolower($1)=="strictmodes" && tolower($2)=="no"{f=1} END{exit !f}' "$ROOT/docker/tizen-env/system/sshd_config" && fail "tizen-env sshd_config — StrictModes no (README authorized_keys root 소유 근거 무효)" || echo "  [PASS] tizen-env StrictModes no 아님"
 if grep -q 'id_rsa' "$ROOT/docker/tizen-env/Dockerfile"; then fail "Dockerfile 이 id_rsa 를 이미지에 넣음"; else echo "  [PASS] Dockerfile id_rsa 없음"; fi
+echo "### jenkins_home 소유권 — jenkins-init(root 1회 chown 1000) 뒤 jenkins 기동, 호스트 uid 가 1000 이 아니어도 재시작 루프 없음 (LIVE-R1-JENKINS) ###"
+for f in "$ROOT"/compose/master_service/docker-compose-*.yml "$ROOT"/compose/project_mng_service/nginx_jenkins/docker-compose.yml; do
+    j=$(awk '/^  jenkins-init:$/{f=1;next} f&&/^  [a-z]/{f=0} f' "$f")
+    k=$(awk '/^  jenkins:$/{f=1;next} f&&/^  [a-z]/{f=0} f' "$f")
+    if grep -q 'user: "0:0"' <<<"$j" && grep -qF 'entrypoint: ["chown", "1000:1000", "/var/jenkins_home"]' <<<"$j" && grep -q 'restart: "no"' <<<"$j" \
+        && grep -A1 'jenkins-init:' <<<"$k" | grep -q 'condition: service_completed_successfully'; then
+        echo "  [PASS] ${f#$ROOT/} jenkins-init → jenkins"; else fail "${f#$ROOT/} jenkins-init 없음 또는 jenkins 가 완료 대기 안 함"; fi
+done
+
+echo "### Harbor 설정 생성기 — 일반 경로·특수문자 입력, 인증서 경로에 입력 도메인 (LIVE-R1-HARBOR) ###"
+HB="$ROOT/compose/project_mng_service/harbor-v2.0.0"
+if grep -q 'cococok' "$HB/sample-harbor.yml"; then fail "sample-harbor.yml 에 고정 도메인 잔존"; else echo "  [PASS] sample-harbor.yml 고정 도메인 없음"; fi
+for g in update_harbor_config.sh autoinstall.sh; do
+    w="$TMPD/hb-$g"; mkdir -p "$w"; cp "$HB/update_harbor_config.sh" "$HB/sample-harbor.yml" "$w/"
+    # autoinstall.sh 는 설치 전까지(harbor.yml 생성)만 같은 입력 처리 — 생성부만 잘라 검사
+    sed '/^echo "created a harbor.yml successfully!!!"/,$d' "$HB/$g" > "$w/gen.sh"
+    ( cd "$w" && printf 'ex.test\n8080\ny\n8443\n/opt/my ssl\nA&b/c\\d\ndb pw\n/srv/h data\n\\/var\\/log\\/hb\n' | bash gen.sh >/dev/null 2>&1 )
+    y="$w/harbor.yml"
+    if [ -f "$y" ] && grep -qx 'hostname: ex.test' "$y" && grep -qx '  port: 8080' "$y" && grep -qx '  port: 8443' "$y" \
+        && grep -qx '  certificate: /opt/my ssl/letsencrypt/live/ex.test/fullchain.pem' "$y" \
+        && grep -qx '  private_key: /opt/my ssl/letsencrypt/live/ex.test/privkey.pem' "$y" \
+        && grep -qxF 'harbor_admin_password: A&b/c\d' "$y" && grep -qx '  password: db pw' "$y" \
+        && grep -qx 'data_volume: /srv/h data ' "$y" && grep -qx '    location: /var/log/hb' "$y"; then
+        echo "  [PASS] $g 생성 harbor.yml (경로·특수문자·레거시 \\/ 입력·도메인 인증서 경로)"
+    else fail "$g 생성 harbor.yml 불일치: $(grep -E '^hostname|certificate:|harbor_admin_password: [^H]|^  password: [^r]|data_volume: /|location: /' "$y" 2>/dev/null | tr '\n' ';')"; fi
+done
+if grep -qF 'cp -rf ssl/. "$sslpath/"' "$HB/autoinstall.sh"; then echo "  [PASS] autoinstall ssl 내용을 <ssl path>/ 아래로 복사"; else fail "autoinstall ssl 복사 경로"; fi
+
+echo "### gitolite sample-script 비대화형 — git-manager known_hosts 에 localhost 호스트 키 등록 (LIVE-R2-GITOLITE) ###"
+if grep -qF '/etc/ssh/ssh_host_*_key.pub; do echo "localhost' "$ROOT/docker/gitolite/Dockerfile" \
+    && awk '/known_hosts/{k=NR} /chown git-manager:git-manager/{c=NR} END{exit !(k && c && k<c)}' "$ROOT/docker/gitolite/Dockerfile"; then
+    echo "  [PASS] Dockerfile known_hosts 등록(소유권 정리 전)"; else fail "gitolite Dockerfile — localhost known_hosts 미등록 또는 chown 뒤"; fi
+
+echo "### tizenenv 는 amd64 전용 — compose 에 platform: linux/amd64 고정 (LIVE-R1-TIZENARCH) ###"
+for f in "$ROOT/compose/master_service/docker-compose-php.yml" "$ROOT/compose/dev_env_service/tizen-env/docker-compose.yml"; do
+    if awk '/^  tizenenv:$/{f=1;next} f&&/^  [a-z]/{f=0} f' "$f" | grep -qx '    platform: linux/amd64'; then
+        echo "  [PASS] ${f#$ROOT/} tizenenv platform linux/amd64"; else fail "${f#$ROOT/} tizenenv platform 미고정(arm64 호스트에서 gbs 의존성 설치 불가)"; fi
+done
+
+echo "### tizen-env ssh 설정 — config 파싱 가능·known_hosts 가 비표준 포트 형식([host]:port) (LIVE-R2-TIZENSSH) ###"
+TZS="$ROOT/docker/tizen-env/.ssh"
+if o=$(ssh -G -F "$TZS/config" tizen 2>&1) && grep -qx 'hostname review.tizen.org' <<<"$o" && grep -qx 'port 29418' <<<"$o"; then
+    echo "  [PASS] ssh -G 로 config 파싱 (tizen → review.tizen.org:29418)"; else fail "tizen-env .ssh/config 파싱 실패: $(head -c 200 <<<"$o")"; fi
+# 컨테이너(Ubuntu 18.04, OpenSSH 7.6)는 줄 끝 주석을 "garbage at end of line" 으로 거부 — 호스트 ssh 가 최신이면 위 파싱은 통과하므로 따로 검사
+if grep -nE '^[[:space:]]*[^#[:space:]][^#]*[[:space:]]#' "$TZS/config"; then fail "tizen-env .ssh/config 줄 끝 주석(구버전 ssh 파싱 실패)"; else echo "  [PASS] config 줄 끝 주석 없음"; fi
+if ssh-keygen -F '[review.tizen.org]:29418' -f "$TZS/known_hosts" >/dev/null; then
+    echo "  [PASS] known_hosts 에 [review.tizen.org]:29418 항목"; else fail "tizen-env known_hosts 가 [review.tizen.org]:29418 형식이 아님(호스트 키 검증 항상 실패)"; fi
+
 echo "=== RESULT: FAILS=$FAILS ==="
 [ "$FAILS" -eq 0 ] || exit 1
