@@ -570,6 +570,34 @@ u37 "3B.13 webserver 정지(exec 오류 문구, rc 1) → FAIL" "$(s37 3B.13 'do
 u37 "3B.13 cron 없음(rc 1, 출력 없음) → FAIL" "$(s37 3B.13 'docker() { return 1; }')" FAIL
 echo
 
+echo "===== 6.38 nginx 기동 전 upstream 이름 해석 대기 훅 — compose restart·재부팅 시 [emerg] host not found 방지 (LIVE-R1-DAPHNE) ====="
+h=docker/nginx/30-wait-upstreams.sh
+assert_eq   "6.38 Dockerfile 이 훅을 /docker-entrypoint.d/30-wait-upstreams.sh 로 설치" "$(grep -cxF 'COPY --chmod=755 30-wait-upstreams.sh /docker-entrypoint.d/30-wait-upstreams.sh' docker/nginx/Dockerfile)" 1
+w38=$(mktemp -d)
+cat > "$w38/a.conf" <<'CONF'
+upstream grp { server backend-pool:1; }
+server {
+    location /   { proxy_pass http://gunicorn-app:8000; }
+    location /g  { proxy_pass http://grp; }
+    location /y  { uwsgi_pass uwsgi-app:8000; }
+    location ~ \.php$ { fastcgi_pass     php-app:9000; }
+    location /u  { proxy_pass http://unix:/run/g.sock; }
+    location /v  { proxy_pass http://$be; }
+    location /w  { proxy_pass http://127.0.0.1:8000; }
+    location /l  { proxy_pass http://localhost:8000/; }
+    # proxy_pass http://commented-app:1;
+}
+CONF
+u38() { if [ "$2" = "$3" ]; then echo "  PASS 6.38 $1"; else echo "  FAIL 6.38 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
+u38 "추출 = 컨테이너 이름만 (upstream 블록명·unix·변수·IP·localhost·주석 제외)" "$(NGINX_UPSTREAM_CONF="$w38/*.conf" sh "$h" --list | xargs)" "gunicorn-app php-app uwsgi-app"
+u38 "출고 conf.d 추출 = 스택 app 이름" "$(NGINX_UPSTREAM_CONF="config/web-server/nginx/*/conf.d/*.conf" sh "$h" --list | xargs)" "gunicorn-app php-app uvicorn-app uwsgi-app"
+t0=$(date +%s); out=$(NGINX_UPSTREAM_CONF="$w38/*.conf" NGINX_UPSTREAM_WAIT=1 sh "$h" 2>&1); rc=$?; t=$(( $(date +%s) - t0 ))
+u38 "해석 불가 시 WAIT 초 후 경고·exit 0 (기동 계속)" "$rc:$([ "$t" -le 5 ] && echo fast):$(grep -c '경고' <<<"$out")" "0:fast:1"
+u38 "NGINX_UPSTREAM_WAIT=0 은 비활성 (즉시 exit 0, 출력 없음)" "$(NGINX_UPSTREAM_CONF="$w38/*.conf" NGINX_UPSTREAM_WAIT=0 sh "$h" 2>&1; echo "rc=$?")" "rc=0"
+u38 "conf 없음 → 즉시 exit 0" "$(NGINX_UPSTREAM_CONF="$w38/none/*.conf" sh "$h" 2>&1; echo "rc=$?")" "rc=0"
+rm -rf "$w38"
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]
