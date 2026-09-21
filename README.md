@@ -16,11 +16,11 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 
 ## Project management solutions
 
-- **[Plane]** : Open source project management software (issues · cycles · modules) to help you work on your project efficiently
+- **[Plane]** : Open source project management software (issues · cycles · modules) to help you work on your project efficiently ([self-hosting 문서][Plane docs])
 
 - **[Jenkins]** : As one of the CI tools, CI (Continuous Integration) refers to continuous integration, which is an automated process for developers, and new code changes are automatically built and tested regularly to notify developers to solve problems that can occur when multiple developers develop simultaneously. Software that helps secure development stability and reliability
 
-- **[Gitea]** : Lightweight self-hosted git service — web UI, issues, pull requests, and git over SSH/HTTP
+- **[Gitea]** : Lightweight self-hosted git service — web UI, issues, pull requests, and git over SSH/HTTP ([docker 설치 문서][Gitea docs])
 
 - **[Harbor]** : The Private Docker Registry Server for businesses that store and distribute Docker Images
 
@@ -49,6 +49,10 @@ devspoon-startup-tizen is built on top of the open source project [devspoon-star
 - **Development-oriented docker service** : This open source is perfect for startups or new service development teams that require frequent modifications and testing.
 
 - **This open-source considers generic servers that are not support AWS, GCM** : This open source is intended to be installed and operated on a server that is directly operated, and on general server hosting, and plans to integrate with cloud services such as AWS and GCM in the future
+
+- **Docker Compose 2.20 이상 필요** : Plane · Gitea 정의를 `compose/common/{plane-services,gitea-service}.yml` 한 곳에 두고 master_service 5조합과 단독 스택이 `include:` 로 참조합니다. 2.20 미만에서는 `include:` 를 인식하지 못해 `docker compose config` 부터 실패합니다.
+
+- **git over SSH 는 호스트 2222** : Gitea 컨테이너가 호스트 `2222`(`GITEA_SSH_PORT`)를 직접 게시합니다. 클라우드라면 방화벽·보안 그룹(예: OCI VCN 보안 목록)에도 인바운드 2222 를 열어야 외부에서 SSH clone 이 됩니다 — 호스트 방화벽만 열면 Docker 가 게시한 포트는 그대로 막혀 있습니다. 단독 tizen-env 는 2221 을 쓰므로 둘은 겹치지 않습니다.
 
 - **Tizen 환경 제약 (잔여 위험)** :
   - tizen-env 이미지는 빌드 검증을 하지 않았습니다. 베이스 이미지가 `ubuntu:18.04` 입니다(Tizen 도구 apt 소스가 Ubuntu 18.04 전용 — `docker/tizen-env/Dockerfile`). CI(`script/ci/repo-steps.sh`)는 tizen-env 를 빌드·기동하지 않고 compose 렌더·SSH 포트·키 fail-fast·sshd 설정만 정적으로 검사합니다.
