@@ -95,6 +95,10 @@ services:
       ASGI_APP: "${ASGI_APP:-config.asgi:application}"
       DJANGO_DEBUG: "${DJANGO_DEBUG:-0}"
       DJANGO_ALLOWED_HOSTS: "${DJANGO_ALLOWED_HOSTS:-localhost,www.localhost,127.0.0.1}"
+      # 웹 앱도 task.delay() 로 브로커에 접속한다 — celery·beat 와 같은 식으로 주입한다.
+      # 미주입 시 settings.py 가 기본값 redis://redis:6379/3 (비밀번호 없음) 로 떨어져
+      # requirepass 를 켠 redis 에 NOAUTH 로 거부된다.
+      CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD must be set in .env}@redis:6379/3
     restart: always
     depends_on:
       redis:

@@ -613,6 +613,48 @@ u39 "compose 없는 폴더 — 5초 내 종료" "$(timeout 5 bash -c '. script/l
 rm -rf "$w39"
 echo
 
+echo "===== 6.40 앱 서비스도 CELERY_BROKER_URL 을 주입받는다 (AUDIT-W1-01) ====="
+# Django settings.py 는 CELERY_BROKER_URL 미주입 시 redis://redis:6379/3 (비밀번호 없음) 으로 떨어진다.
+# redis 는 requirepass 를 강제하므로 웹 앱의 task.delay() 가 NOAUTH 로 거부된다.
+# 웹 단독 스택(compose/web_service) 과 5조합(compose/master_service) 양쪽 모두 대상.
+u40() { if [ "$2" = "$3" ]; then echo "  PASS 6.40 $1"; else echo "  FAIL 6.40 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
+for st in gunicorn uvicorn uwsgi daphne; do
+    for f in "compose/web_service/nginx_$st/docker-compose.yml" "compose/master_service/docker-compose-$st.yml"; do
+        # app 서비스 블록 안에 CELERY_BROKER_URL 이 있는지 (주석 줄 제외)
+        n=$(awk -v app="  $st-app:" '$0==app{f=1;next} f&&/^  [A-Za-z#]/{f=0} f' "$f" | grep -vE '^\s*#' | grep -c 'CELERY_BROKER_URL')
+        u40 "$f 의 $st-app 에 CELERY_BROKER_URL 주입" "$n" 1
+    done
+done
+# 기본값 폴백이 비밀번호 없는 URL 이라는 전제 자체를 고정한다 — settings 가 바뀌면 이 단언도 갱신할 것
+u40 "settings 기본 폴백이 비밀번호 없는 redis URL" "$(grep -c "CELERY_BROKER_URL', 'redis://redis:6379/3'" www/django_sample/config/settings.py)" 1
+echo
+
+echo "===== 6.41 .env-example 에 compose 가 쓰지 않는 죽은 키가 없다 (AUDIT-W1-02) ====="
+u41() { if [ "$2" = "$3" ]; then echo "  PASS 6.41 $1"; else echo "  FAIL 6.41 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
+for st in gunicorn uvicorn uwsgi daphne php; do
+    d="compose/web_service/nginx_$st"
+    dead=""
+    for k in $(grep -oE '^[A-Z_][A-Z0-9_]*=' "$d/.env-example" | tr -d '='); do
+        grep -qE "[$]\{$k[:}]" "$d/docker-compose.yml" || dead="$dead $k"
+    done
+    u41 "nginx_$st .env-example 죽은 키 0" "${dead:-none}" none
+done
+# 5조합은 .env-example 1개를 5개 compose (+ include 조각) 가 공유하므로 합집합으로 판정한다.
+dead=""
+for k in $(grep -oE '^[A-Z_][A-Z0-9_]*=' compose/master_service/.env-example | tr -d '='); do
+    grep -qE "[$]\{$k[:}]" compose/master_service/*.yml compose/common/*.yml || dead="$dead $k"
+done
+u41 "master_service .env-example 죽은 키 0" "${dead:-none}" none
+echo
+
+echo "===== 6.42 uwsgi 본체 logrotate dropin 은 마운트하지 않는다 (AUDIT-W1-03) ====="
+# uwsgi.ini 의 log-maxsize 와 이중 회전이 되어 race / 로그 손실이 난다.
+u42() { if [ "$2" = "$3" ]; then echo "  PASS 6.42 $1"; else echo "  FAIL 6.42 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
+u42 "compose 어디에도 logrotate.d/uwsgi 마운트 없음" "$(grep -rc 'logrotate/uwsgi/uwsgi:' compose/ --include=*.yml | awk -F: '{s+=$2} END{print s+0}')" 0
+u42 "uwsgi.ini 네이티브 회전 설정 존재" "$(grep -cE '^log-maxsize' config/app-server/uwsgi/uwsgi.ini)" 1
+u42 "dropin 파일에 마운트 금지 경고" "$(head -1 script/logrotate/uwsgi/uwsgi | grep -c '마운트하지 않는다')" 1
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]

@@ -30,7 +30,8 @@ bind = "0.0.0.0:8000"
 #       각 워커 메모리: 200-500MB
 #       4 워커 × 500MB = 2GB (시스템 예비 2GB 확보)
 # 성능: ~50 req/s는 4개 워커로 충분 (워커당 ~12.5 req/s)
-# 환경 변수: GUNICORN_WORKERS=6 으로 오버라이드 가능
+# 워커 수는 이 파일에 고정한다 — 환경 변수 오버라이드는 구현돼 있지 않다.
+# 바꾸려면 아래 workers 값을 직접 수정한다.
 # workers = multiprocessing.cpu_count() * 2 + 1
 workers = 4
 

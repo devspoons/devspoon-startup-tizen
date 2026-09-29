@@ -1,3 +1,9 @@
+# ⚠️ 이 파일은 의도적으로 어떤 compose 에서도 마운트하지 않는다 (마운트 금지).
+#    uwsgi 본체 로그는 uwsgi.ini 의 log-maxsize(100MB) + log-reopen 으로 네이티브 회전한다.
+#    여기에 더해 logrotate 를 걸면 같은 파일에 두 회전 메커니즘이 동시에 작동해 race / 로그 손실이 난다.
+#    celery / celery-beat 로그는 Python logging 이라 logrotate 가 필요하며, 그 dropin 은
+#    script/logrotate/uwsgi/{celery,celerybeat}/ 에 따로 있고 compose 가 마운트한다.
+#    이 파일은 다른 스택(gunicorn·uvicorn·daphne)과 형식을 맞춰 참고용으로만 남겨 둔다.
 # uWSGI 로그 로테이션 설정
 # - Docker 컨테이너 환경에서 무중단 운영을 위해 copytruncate 방식 사용
 # - copytruncate: 로그 파일을 복사 후 원본을 비우는 방식 (서비스 재시작 불필요)
