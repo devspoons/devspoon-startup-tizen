@@ -8,6 +8,35 @@ devspoon-startup-tizen is an open source solution for building a reliable Tizen 
 
 devspoon-startup-tizen is built on top of [devspoon-startup-web], an integrated management solution catered to startups. It provides nginx-based PHP and Python platforms for developing web and API services, and lets you install, back up and manage the project solutions a startup needs — Plane, Jenkins, Gitea (private git server) and Harbor (private Docker registry).
 
+## Repository family — which one to pick
+
+This repository is one of four that share the same foundation. Pick by what you need to run.
+
+| Repository | What it adds | Pick it when |
+|---|---|---|
+| [devspoon-web] | The web stack only — 6 stacks (gunicorn · uvicorn · uwsgi · daphne · php-7.3 · php-8.4) | You only need to serve a web app or API |
+| [devspoon-startup-web] | + Plane · Jenkins · Gitea · Harbor | You want the project-management solutions too |
+| **devspoon-startup-tizen** (this one) | + a **Tizen development environment** | You develop for Samsung Tizen IoT devices |
+| devspoon-startup-cloud-tizen | The same set as devspoon-startup-web, positioned for cloud operation | You run on a cloud VM and do not need the Tizen toolchain |
+
+**What makes this repository different**: everything else is shared with [devspoon-startup-web] — the same five web stacks, the same app-server and nginx configs, the same Plane / Jenkins / Gitea / Harbor definitions. What only this repository has is the Tizen toolchain:
+
+| Tizen-only addition | What it is |
+|---|---|
+| `compose/dev_env_service/tizen-env/` | The standalone Tizen build environment (GBS, mic, Gerrit access), SSH on host **2221** |
+| `docker/tizen-env/` | Its Dockerfile, sshd config and `.ssh/{config,known_hosts}` (private keys stay on the host) |
+| `tizenenv` inside `compose/master_service/docker-compose-php.yml` | The same environment folded into the all-in-one php combination — so that combination runs **18 containers**, one more than the others |
+
+### Port map
+
+| Port | Used by | Notes |
+|---|---|---|
+| 80 / 443 | nginx (web stack, or the all-in-one front proxy) | One stack at a time |
+| 2222 | Gitea, git over SSH | Published by the container; needs a cloud security-group rule too |
+| 2221 | tizen-env / tizenenv SSH | Binds to `127.0.0.1` by default; `TIZEN_SSH_BIND=0.0.0.0` opens it |
+
+The standalone `tizen-env` (2221 only) can run alongside a web stack. It cannot run at the same time as the all-in-one php combination, because both use the container name `tizenenv` and port 2221.
+
 ## Introducing "Devspoon-Projects"
 
 We provide an open source infrastructure integration solution that makes it easy to serve Python, Django, PHP and more with Docker Compose. You can install a commercial-grade customizable nginx service and redis in one go, and install and manage more services together. If you are interested, visit [Devspoon-Projects](https://github.com/devspoon/Devspoon-Projects).
@@ -431,6 +460,28 @@ git config --global user.email "E-MAIL"   # fill in E-MAIL
 - `/root/samples` holds projects for anchor5 and Raspberry Pi 3.
 - It builds the `peripheral-io` package assuming you changed its code.
   - The result is `tizen-unified_iot-headed-3parts-armv7l-artik530.tar.gz` in `/Tizen-Work/mic-output`.
+
+## Verification status
+
+Last verified 2026-09-30 on an Oracle Cloud **aarch64** instance (4 vCPU / 23 GiB, Ubuntu 24.04, Docker 29.7.2, Compose v5.4.0). Every check used internal paths only — `127.0.0.1` with a Host header, and container-to-container calls.
+
+| Area | Result |
+|---|---|
+| Web stacks (5) | Each started, HTTP 200, all containers running with zero restarts, celery connected to the authenticated broker and published a task |
+| Plane standalone | 13 / 13 |
+| Jenkins standalone | 10 / 10 |
+| Gitea standalone | 14 / 14 |
+| Harbor standalone | 11 / 11 |
+| All-in-one (master_service, gunicorn) | 23 / 23 — **17 containers at once** behind one nginx, split across four domains |
+| Static checks | `s6_regression`, `repo-steps`, `preflight` all pass |
+
+**Not verified — the Tizen environment itself.** This is the honest gap in this repository:
+
+- The `tizen-env` image is **not build-verified**. Its base is `ubuntu:18.04` because the Tizen tooling apt source only serves 18.04, and on a non-x86_64 host the `openjdk-8-jdk` post-install step dies under qemu (`ca-certificates-java` exits 139). CI deliberately does not build or start it — it checks the compose rendering, the SSH port, the key fail-fast behaviour and the sshd settings statically.
+- Because of that, the all-in-one verification above used the **gunicorn** combination, which has no `tizenenv`. The php combination (18 containers) was not exercised end to end.
+- **What is needed**: run the Tizen steps on an **x86_64 host**. There `tizenenv` builds natively and the php combination can be verified as a whole.
+
+**Also not verified**: reaching **TCP 2222 over the public domain** — the OCI security list has no inbound rule for it. An infrastructure limitation, not a defect; git over SSH passes over the private IP.
 
 ## Additional development item
 

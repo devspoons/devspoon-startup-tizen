@@ -8,6 +8,35 @@ devspoon-startup-tizen 은 Docker 로 신뢰할 수 있는 Tizen 개발 환경�
 
 devspoon-startup-tizen 은 스타트업을 위한 통합 관리 솔루션 [devspoon-startup-web] 위에 얹혀 있습니다. nginx 기반 PHP · Python 플랫폼으로 웹과 API 를 개발할 수 있고, 스타트업에 중요한 프로젝트 솔루션(Plane · Jenkins · Gitea(사설 git 서버) · Harbor(사설 Docker 레지스트리))을 설치 · 백업 · 관리할 수 있습니다.
 
+## 저장소 선택 가이드 — 어느 것을 고를까
+
+같은 토대를 공유하는 저장소가 넷 있습니다. **무엇을 띄울 것인가**로 고르세요.
+
+| 저장소 | 추가되는 것 | 이럴 때 고릅니다 |
+|---|---|---|
+| [devspoon-web] | 웹 스택만 — 6종(gunicorn · uvicorn · uwsgi · daphne · php-7.3 · php-8.4) | 웹/API 서비스만 필요할 때 |
+| [devspoon-startup-web] | + Plane · Jenkins · Gitea · Harbor | 프로젝트 관리 솔루션까지 함께 쓸 때 |
+| **devspoon-startup-tizen** (이 저장소) | + **Tizen 개발 환경** | 삼성 Tizen IoT 기기를 개발할 때 |
+| devspoon-startup-cloud-tizen | devspoon-startup-web 과 같은 구성, 클라우드 운영에 맞춘 위치 | 클라우드 VM 에서 돌리고 Tizen 도구는 필요 없을 때 |
+
+**이 저장소만 다른 점**: 나머지는 [devspoon-startup-web] 과 공유합니다 — 같은 웹 스택 5종, 같은 앱 서버·nginx 설정, 같은 Plane / Jenkins / Gitea / Harbor 정의입니다. 이 저장소에만 있는 것은 Tizen 도구 체계입니다.
+
+| Tizen 전용 추가 | 내용 |
+|---|---|
+| `compose/dev_env_service/tizen-env/` | 단독 Tizen 빌드 환경(GBS · mic · Gerrit 접근), SSH 는 호스트 **2221** |
+| `docker/tizen-env/` | 그 Dockerfile · sshd 설정 · `.ssh/{config,known_hosts}` (개인키는 호스트에만 둡니다) |
+| `compose/master_service/docker-compose-php.yml` 안의 `tizenenv` | 같은 환경을 통합 php 조합에 넣은 것 — 그래서 이 조합만 **컨테이너 18개**로 다른 조합보다 하나 많습니다 |
+
+### 포트 지도
+
+| 포트 | 쓰는 곳 | 비고 |
+|---|---|---|
+| 80 / 443 | nginx (웹 스택 또는 통합 구축의 앞단 프록시) | 한 번에 한 스택만 |
+| 2222 | Gitea, git over SSH | 컨테이너가 직접 게시 — 클라우드면 보안 그룹에도 열어야 합니다 |
+| 2221 | tizen-env / tizenenv SSH | 기본은 `127.0.0.1` 바인드, `TIZEN_SSH_BIND=0.0.0.0` 으로 개방 |
+
+단독 `tizen-env`(2221 만 사용)는 웹 스택과 함께 띄울 수 있습니다. 다만 통합 php 조합과는 컨테이너 이름(`tizenenv`)과 포트(2221)가 같아 동시에 띄울 수 없습니다.
+
 ## "Devspoon-Projects" 소개
 
 Docker Compose 로 Python · Django · PHP 등을 쉽게 서비스할 수 있는 오픈소스 인프라 통합 솔루션을 제공합니다. 상용 수준으로 커스터마이징 가능한 nginx 와 redis 를 한 번에 설치하고, 더 많은 서비스를 함께 설치 · 관리할 수 있습니다. 관심 있으시면 [Devspoon-Projects](https://github.com/devspoon/Devspoon-Projects) 를 방문하세요.
@@ -431,6 +460,28 @@ git config --global user.email "E-MAIL"   # E-MAIL 입력
 - `/root/samples` 에 anchor5 용과 Raspberry Pi 3 용 프로젝트가 있습니다.
 - `peripheral-io` 패키지를 수정했다고 가정하고 빌드합니다.
   - 결과물은 `/Tizen-Work/mic-output` 의 `tizen-unified_iot-headed-3parts-armv7l-artik530.tar.gz` 입니다.
+
+## 검증 상태
+
+최종 검증 2026-09-30, Oracle Cloud **aarch64** 인스턴스(4 vCPU / 23 GiB, Ubuntu 24.04, Docker 29.7.2, Compose v5.4.0). 전부 **내부 경로**만 사용했습니다 — `127.0.0.1` + Host 헤더, 컨테이너 간 호출.
+
+| 영역 | 결과 |
+|---|---|
+| 웹 스택 5종 | 각각 기동 · HTTP 200 · 전 컨테이너 running·재시작 0 · celery 가 인증 걸린 브로커에 연결해 태스크 publish |
+| Plane 단독 | 13 / 13 |
+| Jenkins 단독 | 10 / 10 |
+| Gitea 단독 | 14 / 14 |
+| Harbor 단독 | 11 / 11 |
+| 통합 구축 (master_service, gunicorn) | 23 / 23 — **컨테이너 17개 동시 기동**, 한 nginx 가 도메인 4개로 분기 |
+| 정적 검사 | `s6_regression` · `repo-steps` · `preflight` 전부 통과 |
+
+**검증하지 못한 것 — Tizen 환경 자체.** 이 저장소의 솔직한 공백입니다.
+
+- `tizen-env` 이미지는 **빌드 검증을 하지 않았습니다.** Tizen 도구 apt 소스가 Ubuntu 18.04 전용이라 베이스가 `ubuntu:18.04` 인데, 비 x86_64 호스트에서는 `openjdk-8-jdk` 설치 후처리가 qemu 아래에서 죽습니다(`ca-certificates-java` exit 139). CI 는 의도적으로 빌드·기동하지 않고 compose 렌더 · SSH 포트 · 키 fail-fast · sshd 설정만 정적으로 검사합니다.
+- 그래서 위 통합 검증은 `tizenenv` 가 없는 **gunicorn 조합**으로 했습니다. php 조합(컨테이너 18개)은 종단 검증을 하지 못했습니다.
+- **필요한 것**: **x86_64 호스트**에서 Tizen 단계를 실행하는 것. 거기서는 `tizenenv` 가 네이티브로 빌드되고 php 조합을 통째로 검증할 수 있습니다.
+
+**함께 미검증**: **공인 도메인으로 TCP 2222 도달** — OCI 보안 목록에 인바운드 규칙이 없습니다. 제품 결함이 아닌 인프라 제약이며, git over SSH 는 사설 IP 로 통과합니다.
 
 ## 추가 개발 항목
 
