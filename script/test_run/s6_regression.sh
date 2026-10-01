@@ -655,6 +655,18 @@ u42 "uwsgi.ini 네이티브 회전 설정 존재" "$(grep -cE '^log-maxsize' con
 u42 "dropin 파일에 마운트 금지 경고" "$(head -1 script/logrotate/uwsgi/uwsgi | grep -c '마운트하지 않는다')" 1
 echo
 
+echo "===== 6.43 의존성 취약점 감사가 CI 에 편입되어 있다 ====="
+# 이 저장소들은 PR 을 쓰지 않아 Dependabot 자동 PR(security updates)을 끈다.
+# 그 빈자리를 run-ci 의 감사 단계가 메우므로, 배선이 풀리면 취약한 lock 이 조용히 들어온다.
+a43() { if [ "$2" = "$3" ]; then echo "  PASS 6.43 $1"; else echo "  FAIL 6.43 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
+a43 "audit-deps.sh 존재·실행권한" "$([ -x script/test/audit-deps.sh ] && echo yes || echo no)" yes
+a43 "허용목록 파일 존재" "$([ -f script/test/audit-allow.txt ] && echo yes || echo no)" yes
+a43 "run-ci.sh 에 감사 단계 배선" "$(grep -c 'run_step "의존성 취약점 감사"' script/ci/run-ci.sh)" 1
+a43 "감사 대상 lock 개수" "$(ls -d www/*/uv.lock 2>/dev/null | wc -l)" 1
+# 판정이 종료코드와 요약 문자열에만 의존하는지 — uv audit 가 실험적이라 서식은 바뀔 수 있다.
+a43 "요약 문자열로만 판정" "$(grep -c 'Found \[0-9\]\* known vulnerabilit' script/test/audit-deps.sh)" 1
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]

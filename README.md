@@ -284,21 +284,22 @@ GitHub Actions (`.github/workflows/test.yml`) calls the same script on every pus
 
 ##### How it works
 
-It runs 11 steps **in order** and **stops immediately** on the first failure. Each step writes a log under `log/ci/`, and on failure it reports which step failed and why, with the tail of that log.
+It runs 12 steps **in order** and **stops immediately** on the first failure. Each step writes a log under `log/ci/`, and on failure it reports which step failed and why, with the tail of that log.
 
 | # | Step | What it does |
 |---|---|---|
 | 1 | preflight | Checks the required tools and files exist and the design invariants hold (read-only) |
-| 2 | prereq · log dirs | Creates the log folders the tests write to |
-| 3 | nginx conf generators | Verifies the configs produced by `nginx_http_conf.sh` / `nginx_https_conf.sh` match the inputs |
-| 4 | compose validation | Compose syntax and mount paths for every stack |
-| 5 | repository-specific checks | `script/ci/repo-steps.sh` — rules unique to this repository (static assertions for Plane, Gitea, Jenkins, Harbor) |
-| 6 | image builds | Builds every Dockerfile under `devspoon-test/*` tags (never overwriting production tags) |
-| 7 | static regression | `s6_regression.sh` — invariants that catch previously fixed defects coming back |
-| 8 | healthcheck | Validates the healthcheck and `depends_on` declarations of the five stacks |
-| 9 | stack matrix | **Actually starts** gunicorn · uvicorn · uwsgi · daphne · php in turn — 200 responses, bot blocking, healthy, zero restarts, DEBUG off, 403 on upload paths |
-| 10 | sample projects | Checks the django and php samples work |
-| 11 | script logs | Checks the scripts write their logs properly |
+| 2 | dependency audit | `uv audit` over every `www/*/uv.lock` — fails if a lock carries a known vulnerability that is not in `script/test/audit-allow.txt` (read-only, a few seconds) |
+| 3 | prereq · log dirs | Creates the log folders the tests write to |
+| 4 | nginx conf generators | Verifies the configs produced by `nginx_http_conf.sh` / `nginx_https_conf.sh` match the inputs |
+| 5 | compose validation | Compose syntax and mount paths for every stack |
+| 6 | repository-specific checks | `script/ci/repo-steps.sh` — rules unique to this repository (static assertions for Plane, Gitea, Jenkins, Harbor) |
+| 7 | image builds | Builds every Dockerfile under `devspoon-test/*` tags (never overwriting production tags) |
+| 8 | static regression | `s6_regression.sh` — invariants that catch previously fixed defects coming back |
+| 9 | healthcheck | Validates the healthcheck and `depends_on` declarations of the five stacks |
+| 10 | stack matrix | **Actually starts** gunicorn · uvicorn · uwsgi · daphne · php in turn — 200 responses, bot blocking, healthy, zero restarts, DEBUG off, 403 on upload paths |
+| 11 | sample projects | Checks the django and php samples work |
+| 12 | script logs | Checks the scripts write their logs properly |
 
 ##### Requirements
 

@@ -284,21 +284,22 @@ GitHub Actions(`.github/workflows/test.yml`)가 push 마다 같은 스크립트�
 
 ##### 어떻게 동작하는가
 
-11개 단계를 **순서대로** 실행하고, 한 단계라도 실패하면 **즉시 중단**합니다. 단계마다 로그를 `log/ci/` 에 남기고, 실패 시 "어느 단계에서 무슨 오류로" 실패했는지 로그 끝부분과 함께 알립니다.
+12개 단계를 **순서대로** 실행하고, 한 단계라도 실패하면 **즉시 중단**합니다. 단계마다 로그를 `log/ci/` 에 남기고, 실패 시 "어느 단계에서 무슨 오류로" 실패했는지 로그 끝부분과 함께 알립니다.
 
 | # | 단계 | 하는 일 |
 |---|---|---|
 | 1 | preflight | 필요한 도구·파일이 있는지, 설계 불변식이 지켜졌는지 확인 (읽기 전용) |
-| 2 | prereq · 로그 디렉터리 | 테스트가 쓸 로그 폴더 생성 |
-| 3 | nginx conf 생성기 | `nginx_http_conf.sh` · `nginx_https_conf.sh` 가 만든 conf 가 설정대로 나오는지 |
-| 4 | compose 검증 | 모든 스택의 compose 문법과 마운트 경로 |
-| 5 | 저장소 고유 검사 | `script/ci/repo-steps.sh` — 이 저장소에만 있는 규칙(Plane · Gitea · Jenkins · Harbor 관련 정적 단언) |
-| 6 | 이미지 빌드 | 모든 Dockerfile 을 `devspoon-test/*` 태그로 빌드 (운영 태그를 덮어쓰지 않음) |
-| 7 | 정적 회귀 | `s6_regression.sh` — 과거에 고친 결함이 되살아나지 않았는지 검사하는 불변식 모음 |
-| 8 | healthcheck | 5개 스택의 healthcheck · `depends_on` 선언 검증 |
-| 9 | 스택 매트릭스 | gunicorn · uvicorn · uwsgi · daphne · php 를 **차례로 실제 기동** — 200 응답, 봇 차단, healthy, 재시작 0회, DEBUG off, 업로드 경로 403 |
-| 10 | 샘플 프로젝트 | django · php 샘플이 동작하는지 |
-| 11 | 스크립트 로그 | 스크립트들이 로그를 제대로 남기는지 |
+| 2 | 의존성 취약점 감사 | `www/*/uv.lock` 전수를 `uv audit` 로 검사 — `script/test/audit-allow.txt` 에 없는 알려진 취약점이 있으면 실패 (읽기 전용, 수 초) |
+| 3 | prereq · 로그 디렉터리 | 테스트가 쓸 로그 폴더 생성 |
+| 4 | nginx conf 생성기 | `nginx_http_conf.sh` · `nginx_https_conf.sh` 가 만든 conf 가 설정대로 나오는지 |
+| 5 | compose 검증 | 모든 스택의 compose 문법과 마운트 경로 |
+| 6 | 저장소 고유 검사 | `script/ci/repo-steps.sh` — 이 저장소에만 있는 규칙(Plane · Gitea · Jenkins · Harbor 관련 정적 단언) |
+| 7 | 이미지 빌드 | 모든 Dockerfile 을 `devspoon-test/*` 태그로 빌드 (운영 태그를 덮어쓰지 않음) |
+| 8 | 정적 회귀 | `s6_regression.sh` — 과거에 고친 결함이 되살아나지 않았는지 검사하는 불변식 모음 |
+| 9 | healthcheck | 5개 스택의 healthcheck · `depends_on` 선언 검증 |
+| 10 | 스택 매트릭스 | gunicorn · uvicorn · uwsgi · daphne · php 를 **차례로 실제 기동** — 200 응답, 봇 차단, healthy, 재시작 0회, DEBUG off, 업로드 경로 403 |
+| 11 | 샘플 프로젝트 | django · php 샘플이 동작하는지 |
+| 12 | 스크립트 로그 | 스크립트들이 로그를 제대로 남기는지 |
 
 ##### 실행 조건
 

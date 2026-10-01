@@ -42,6 +42,9 @@ check "jq"                     "jq --version"
 check "curl"                   "curl --version"
 check "openssl"                "openssl version"
 warn  "wrk (load test, optional)" "wrk --version 2>&1 | head -1"
+# uv audit 는 uv 0.11.3+ 의 실험적 기능이다. 없으면 run-ci 의 의존성 감사 단계가 스스로 건너뛰므로
+# 여기서는 경고만 남긴다 — 다만 그 경우 취약한 lock 을 걸러 줄 게이트가 사라진다는 뜻이다.
+warn  "uv audit (의존성 취약점 감사 — 없으면 해당 CI 단계 생략)" "uv audit --help"
 
 # ----- (2) 리포 파일 -----
 echo "[2] Repository files"

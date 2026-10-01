@@ -5,6 +5,7 @@
 # 목적
 #   GitHub Actions(push) 에서 호출되어 아래를 순차 검증한다.
 #     1) preflight          — 선결 도구/파일/디자인 불변식 점검 (read-only)
+#    1b) 의존성 취약점 감사 — www/*/uv.lock 전수 (uv audit, read-only·수 초)
 #     2) prereq + 로그 디렉토리 생성
 #     3) nginx conf 생성기   — 각 config 설정의 적용/반영
 #     4) docker-compose 검증 — 모든 스택 compose 문법 + 마운트
@@ -108,6 +109,8 @@ run_step() {
 # 단계 정의
 # ----------------------------------------------------------------------------
 step_preflight()  { bash "$ROOT/script/test/preflight.sh"; }
+# PR 을 쓰지 않는 저장소라 Dependabot 자동 PR 을 끈 대신, 취약한 lock 의 master 유입은 여기서 막는다.
+step_audit()      { bash "$ROOT/script/test/audit-deps.sh"; }
 step_prereq()     { bash "$ROOT/script/test_run/s0_prereq.sh"; }
 step_conf_gen()   { bash "$ROOT/script/test_run/s1b_nginx_conf_generators.sh"; }
 step_compose()    { bash "$ROOT/script/test_run/verify_compose_yml.sh"; }
@@ -169,6 +172,7 @@ step_logcheck() {
 # 실행 순서
 # ----------------------------------------------------------------------------
 run_step "preflight 선결점검"        step_preflight
+run_step "의존성 취약점 감사"        step_audit
 run_step "prereq+로그디렉토리"       step_prereq
 run_step "nginx conf 생성기 반영"    step_conf_gen
 run_step "docker-compose 검증"       step_compose
