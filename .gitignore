@@ -13,14 +13,18 @@ nginx_cache/
 
 # ssl files
 **/ssl/
+# 단, 스택별 ssl/letsencrypt 는 compose 가 bind mount 하므로 디렉터리를 트리에 남긴다
+# (자리표시자가 없으면 첫 기동 때 Docker 가 root 소유로 만들어 이후 git 작업이 막힌다).
+# Harbor ssl 과 같은 방식: 디렉터리만 되살리고 내용물은 무시, 빈 .gitkeep 하나만 추적.
+!compose/web_service/*/ssl/
+compose/web_service/*/ssl/*
+!compose/web_service/*/ssl/letsencrypt/
+compose/web_service/*/ssl/letsencrypt/*
+!compose/web_service/*/ssl/letsencrypt/.gitkeep
 
-# data
-compose/web_service/nginx_gunicorn/ssl/
-compose/web_service/nginx_gunicorn/redis/
-compose/web_service/nginx_php/ssl/
-compose/web_service/nginx_php/redis/
-compose/web_service/nginx_uwsgi/ssl/
-compose/web_service/nginx_uwsgi/redis/
+# 과거 여기 있던 `# data` 블록(nginx_{gunicorn,php,uwsgi} 의 ssl/ · redis/ 개별 지정)은 제거했다.
+# ssl/ 3줄은 위 `**/ssl/` 과 중복이었고, redis/ 3줄은 디렉터리 자체를 제외해 아래
+# `!**/redis/data/.gitkeep` negation 을 무력화했다(부모가 제외되면 그 안은 다시 포함시키지 못한다).
 
 # Redis 실시간 dump (테스트/운영 중 컨테이너가 생성) — 모든 스택 공통
 # .gitkeep 은 negation 으로 유지 (디렉터리 자체는 트리 상에 보존)
