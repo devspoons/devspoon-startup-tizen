@@ -684,6 +684,25 @@ a44 "ssl/letsencrypt/.gitkeep 이 무시되지 않음" "$(git check-ignore -q --
 a44 "실제 인증서는 여전히 무시" "$(git check-ignore -q --no-index compose/web_service/nginx_gunicorn/ssl/letsencrypt/live/ex.test/privkey.pem && echo ignored || echo tracked)" ignored
 echo
 
+echo "===== 6.45 php pool 이 logrotate 드롭인과 같은 로그 경로를 쓴다 ====="
+# compose 가 pool.d/www.conf 만 마운트하므로 이미지 docker.conf 가 살아 있고, 그 기본값은
+# access.log·error_log 를 /proc/self/fd/2 로 보낸다. 여기서 경로를 덮지 않으면 log/php-fpm/ 이
+# 비어 있어 마운트된 logrotate 드롭인이 회전할 대상을 못 찾는다(마운트·디렉터리만 갖춰진 상태).
+a45() { if [ "$2" = "$3" ]; then echo "  PASS 6.45 $1"; else echo "  FAIL 6.45 $1 (got [$2], expected [$3])"; FAILS=$((FAILS+1)); fi; }
+POOL=config/app-server/php/pool.d/www.conf
+a45 "access.log 경로 선언"   "$(grep -c '^access.log = /log/php-fpm/access.log' $POOL)" 1
+a45 "slowlog 경로 선언"      "$(grep -c '^slowlog = /log/php-fpm/slow.log' $POOL)" 1
+# 경로만 있고 타임아웃이 0 이면 slowlog 는 영원히 비어 있다.
+a45 "request_slowlog_timeout 설정" "$(grep -c '^request_slowlog_timeout = [1-9]' $POOL)" 1
+a45 "error_log 경로 선언"    "$(grep -c '^php_admin_value\[error_log\] = /log/php-fpm/www-error.log' $POOL)" 1
+# 드롭인이 회전 대상으로 잡은 3개 경로와 pool 선언이 어긋나지 않는지 — 한쪽만 고치면 여기서 깨진다.
+for lf in access.log slow.log www-error.log; do
+    a45 "드롭인에 /log/php-fpm/$lf 항목" "$(grep -c "^/log/php-fpm/$lf {" script/logrotate/php-fpm/php-fpm)" 1
+done
+# docker.conf 가 주는 값은 다시 적지 않는다(단일 파일 마운트라 살아 있다) — 중복 선언은 드리프트 신호.
+a45 "clear_env 재선언 없음"  "$(grep -c '^clear_env' $POOL)" 0
+echo
+
 echo "===== 6 FAILS=$FAILS ====="
 # 실패가 있으면 non-zero 로 종료 → CI / 상위 스크립트가 $? 로 판정 가능.
 [ "$FAILS" -eq 0 ]
